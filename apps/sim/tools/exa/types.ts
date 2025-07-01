@@ -88,3 +88,28 @@ export interface ExaAnswerResponse extends ToolResponse {
     }[]
   }
 }
+
+// Websets tool types
+export interface ExaWebsetsParams extends ExaBaseParams {
+  websetId?: string
+  query?: string
+  count?: number
+}
+
+export interface ExaWebset {
+  id: string
+  name?: string
+  status: string
+  createdAt: string
+  updatedAt?: string
+  searchConfig?: any
+  importConfig?: any
+  enrichmentConfigs?: any[]
+}
+
+export interface ExaWebsetsResponse extends ToolResponse {
+  output: {
+    webset?: ExaWebset
+    searchResults?: any[]
+  }
+}

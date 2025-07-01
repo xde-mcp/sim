@@ -4,6 +4,7 @@ import type {
   ExaFindSimilarLinksResponse,
   ExaGetContentsResponse,
   ExaSearchResponse,
+  ExaWebsetsResponse,
 } from '@/tools/exa/types'
 import type { BlockConfig } from '../types'
 
@@ -12,6 +13,7 @@ type ExaResponse =
   | ExaGetContentsResponse
   | ExaFindSimilarLinksResponse
   | ExaAnswerResponse
+  | ExaWebsetsResponse
 
 export const ExaBlock: BlockConfig<ExaResponse> = {
   type: 'exa',
@@ -35,6 +37,9 @@ export const ExaBlock: BlockConfig<ExaResponse> = {
         { label: 'Get Contents', id: 'exa_get_contents' },
         { label: 'Find Similar Links', id: 'exa_find_similar_links' },
         { label: 'Answer', id: 'exa_answer' },
+        { label: 'Create Webset', id: 'exa_create_webset' },
+        { label: 'Get Webset', id: 'exa_get_webset' },
+        { label: 'Search Webset', id: 'exa_search_webset' },
       ],
       value: () => 'exa_search',
     },
@@ -140,6 +145,50 @@ export const ExaBlock: BlockConfig<ExaResponse> = {
       layout: 'full',
       condition: { field: 'operation', value: 'exa_answer' },
     },
+    // Create Webset operation inputs
+    {
+      id: 'query',
+      title: 'Search Query',
+      type: 'long-input',
+      layout: 'full',
+      placeholder:
+        'Enter natural language search description (e.g., "Marketing agencies based in the US, that focus on consumer products")...',
+      condition: { field: 'operation', value: 'exa_create_webset' },
+    },
+    {
+      id: 'count',
+      title: 'Result Count',
+      type: 'short-input',
+      layout: 'full',
+      placeholder: '10',
+      condition: { field: 'operation', value: 'exa_create_webset' },
+    },
+    // Get Webset operation inputs
+    {
+      id: 'websetId',
+      title: 'Webset ID',
+      type: 'short-input',
+      layout: 'full',
+      placeholder: 'Enter webset ID...',
+      condition: { field: 'operation', value: 'exa_get_webset' },
+    },
+    // Search Webset operation inputs
+    {
+      id: 'websetId',
+      title: 'Webset ID',
+      type: 'short-input',
+      layout: 'full',
+      placeholder: 'Enter webset ID...',
+      condition: { field: 'operation', value: 'exa_search_webset' },
+    },
+    {
+      id: 'query',
+      title: 'Search Query',
+      type: 'long-input',
+      layout: 'full',
+      placeholder: 'Enter search query to search within the webset...',
+      condition: { field: 'operation', value: 'exa_search_webset' },
+    },
     // API Key (common)
     {
       id: 'apiKey',
@@ -151,7 +200,15 @@ export const ExaBlock: BlockConfig<ExaResponse> = {
     },
   ],
   tools: {
-    access: ['exa_search', 'exa_get_contents', 'exa_find_similar_links', 'exa_answer'],
+    access: [
+      'exa_search',
+      'exa_get_contents',
+      'exa_find_similar_links',
+      'exa_answer',
+      'exa_create_webset',
+      'exa_get_webset',
+      'exa_search_webset',
+    ],
     config: {
       tool: (params) => {
         // Convert numResults to a number for operations that use it
@@ -168,6 +225,12 @@ export const ExaBlock: BlockConfig<ExaResponse> = {
             return 'exa_find_similar_links'
           case 'exa_answer':
             return 'exa_answer'
+          case 'exa_create_webset':
+            return 'exa_create_webset'
+          case 'exa_get_webset':
+            return 'exa_get_webset'
+          case 'exa_search_webset':
+            return 'exa_search_webset'
           default:
             return 'exa_search'
         }
@@ -177,8 +240,6 @@ export const ExaBlock: BlockConfig<ExaResponse> = {
   inputs: {
     operation: { type: 'string', required: true },
     apiKey: { type: 'string', required: true },
-    // Search operation
-    query: { type: 'string', required: false },
     numResults: { type: 'number', required: false },
     useAutoprompt: { type: 'boolean', required: false },
     type: { type: 'string', required: false },
@@ -188,6 +249,12 @@ export const ExaBlock: BlockConfig<ExaResponse> = {
     summaryQuery: { type: 'string', required: false },
     // Find Similar Links operation
     url: { type: 'string', required: false },
+    // Websets operations
+    websetId: { type: 'string', required: false },
+    // Search operation
+
+    query: { type: 'string', required: false },
+    count: { type: 'number', required: false },
   },
   outputs: {
     response: {
@@ -199,6 +266,9 @@ export const ExaBlock: BlockConfig<ExaResponse> = {
         // Answer output
         answer: 'string',
         citations: 'json',
+        // Websets output
+        webset: 'json',
+        searchResults: 'json',
       },
     },
   },
