@@ -42,6 +42,7 @@ import { OutlookBlock } from './blocks/outlook'
 import { PerplexityBlock } from './blocks/perplexity'
 import { PineconeBlock } from './blocks/pinecone'
 import { RedditBlock } from './blocks/reddit'
+import { RedtailBlock } from './blocks/redtail'
 import { ResponseBlock } from './blocks/response'
 import { RouterBlock } from './blocks/router'
 import { S3Block } from './blocks/s3'
@@ -127,6 +128,7 @@ export const registry: Record<string, BlockConfig> = {
   workflow: WorkflowBlock,
   x: XBlock,
   youtube: YouTubeBlock,
+  redtail: RedtailBlock,
 }
 
 // Helper functions to access the registry
