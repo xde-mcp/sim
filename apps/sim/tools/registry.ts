@@ -83,7 +83,7 @@ import {
   pineconeUpsertTextTool,
 } from './pinecone'
 import { redditGetCommentsTool, redditGetPostsTool, redditHotPostsTool } from './reddit'
-import { redtailReadNoteTool } from './redtail'
+import { redtailReadNoteTool, redtailWriteNoteTool, redtailReadContactTool, redtailWriteContactTool, redtailReadAccountTool } from './redtail'
 import { s3GetObjectTool } from './s3'
 import { searchTool as serperSearch } from './serper'
 import { slackMessageTool } from './slack'
@@ -232,4 +232,8 @@ export const tools: Record<string, ToolConfig> = {
   wealthbox_read_note: wealthboxReadNoteTool,
   wealthbox_write_note: wealthboxWriteNoteTool,
   redtail_read_note: redtailReadNoteTool,
+  redtail_write_note: redtailWriteNoteTool,
+  redtail_read_contact: redtailReadContactTool,
+  redtail_write_contact: redtailWriteContactTool,
+  redtail_read_account: redtailReadAccountTool,
 }
