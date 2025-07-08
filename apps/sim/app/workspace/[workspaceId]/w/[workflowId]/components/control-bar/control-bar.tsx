@@ -1,15 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { formatDistanceToNow } from 'date-fns'
+import { useEffect, useState } from 'react'
 import {
   Bell,
   Bug,
-  ChevronDown,
   Copy,
   History,
   Layers,
-  Loader2,
   Play,
   SkipForward,
   StepForward,
@@ -35,7 +32,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSession } from '@/lib/auth-client'
 import { createLogger } from '@/lib/logs/console-logger'
@@ -57,9 +53,7 @@ import {
 import { useWorkflowExecution } from '../../hooks/use-workflow-execution'
 import { DeploymentControls } from './components/deployment-controls/deployment-controls'
 import { HistoryDropdownItem } from './components/history-dropdown-item/history-dropdown-item'
-import { MarketplaceModal } from './components/marketplace-modal/marketplace-modal'
 import { NotificationDropdownItem } from './components/notification-dropdown-item/notification-dropdown-item'
-import { UserAvatarStack } from './components/user-avatar-stack/user-avatar-stack'
 
 const logger = createLogger('ControlBar')
 
@@ -70,9 +64,6 @@ let usageDataCache = {
   // Cache expires after 1 minute
   expirationMs: 60 * 1000,
 }
-
-// Predefined run count options
-const RUN_COUNT_OPTIONS = [1, 5, 10, 25, 50, 100]
 
 interface ControlBarProps {
   hasValidationErrors?: boolean
@@ -145,14 +136,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
   // Marketplace modal state
   const [isMarketplaceModalOpen, setIsMarketplaceModalOpen] = useState(false)
 
-  // Multiple runs state
-  const [runCount, setRunCount] = useState(1)
-  const [completedRuns, setCompletedRuns] = useState(0)
-  const [isMultiRunning, setIsMultiRunning] = useState(false)
-  const [showRunProgress, setShowRunProgress] = useState(false)
-  const [isCancelling, setIsCancelling] = useState(false)
-  const cancelFlagRef = useRef(false)
-
   // Usage limit state
   const [usageExceeded, setUsageExceeded] = useState(false)
   const [usageData, setUsageData] = useState<{
@@ -164,16 +147,12 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
   } | null>(null)
 
   // Shared condition for keyboard shortcut and button disabled state
-  const isWorkflowBlocked = isExecuting || isMultiRunning || isCancelling || hasValidationErrors
+  const isWorkflowBlocked = isExecuting || hasValidationErrors
 
   // Register keyboard shortcut for running workflow
   useKeyboardShortcuts(() => {
     if (!isWorkflowBlocked) {
-      if (isDebugModeEnabled) {
-        handleRunWorkflow()
-      } else {
-        handleMultipleRuns()
-      }
+      handleRunWorkflow()
     }
   }, isWorkflowBlocked)
 
@@ -181,12 +160,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
   const getMarketplaceData = () => {
     if (!activeWorkflowId || !workflows[activeWorkflowId]) return null
     return workflows[activeWorkflowId].marketplaceData
-  }
-
-  // Check if the current workflow is published to marketplace
-  const _isPublishedToMarketplace = () => {
-    const marketplaceData = getMarketplaceData()
-    return !!marketplaceData
   }
 
   // // Check if the current user is the owner of the published workflow
@@ -334,7 +307,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
         }
       })
     }
-  }, [session?.user?.id, completedRuns, isRegistryLoading])
+  }, [session?.user?.id, isRegistryLoading])
 
   /**
    * Check user usage data with caching to prevent excessive API calls
@@ -373,32 +346,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
     } catch (error) {
       logger.error('Error checking usage limits:', { error })
       return null
-    }
-  }
-
-  /**
-   * Workflow name handlers
-   */
-  const handleNameClick = () => {
-    if (!userPermissions.canEdit) return
-    setIsEditing(true)
-    setEditedName(activeWorkflowId ? workflows[activeWorkflowId]?.name || '' : '')
-  }
-
-  const handleNameSubmit = () => {
-    if (!userPermissions.canEdit) return
-
-    if (editedName.trim() && activeWorkflowId) {
-      updateWorkflow(activeWorkflowId, { name: editedName.trim() })
-    }
-    setIsEditing(false)
-  }
-
-  const handleNameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleNameSubmit()
-    } else if (e.key === 'Escape') {
-      setIsEditing(false)
     }
   }
 
@@ -458,7 +405,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
    * Handle deleting the current workflow
    */
   const handleDeleteWorkflow = () => {
-    if (!activeWorkflowId || !userPermissions.canAdmin) return
+    if (!activeWorkflowId || !userPermissions.canEdit) return
 
     const sidebarWorkflows = getSidebarOrderedWorkflows()
     const currentIndex = sidebarWorkflows.findIndex((w) => w.id === activeWorkflowId)
@@ -513,113 +460,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
   }
 
   /**
-   * Handle running workflow multiple times
-   */
-  const handleMultipleRuns = async () => {
-    if (isExecuting || isMultiRunning || runCount <= 0) return
-
-    // Check if usage is exceeded before allowing execution
-    if (usageExceeded) {
-      openSubscriptionSettings()
-      return
-    }
-
-    // Switch panel tab to console
-    setActiveTab('console')
-
-    // Reset state and ref for a new batch of runs
-    setCompletedRuns(0)
-    setIsMultiRunning(true)
-    setIsCancelling(false)
-    cancelFlagRef.current = false
-    setShowRunProgress(runCount > 1)
-
-    let workflowError = null
-    let wasCancelled = false
-    let runCounter = 0
-    let shouldCheckUsage = false
-
-    try {
-      // Run the workflow multiple times sequentially
-      for (let i = 0; i < runCount; i++) {
-        // Check for cancellation before starting the next run using the ref
-        if (cancelFlagRef.current) {
-          logger.info('Multi-run cancellation requested by user.')
-          wasCancelled = true
-          break
-        }
-
-        // Run the workflow and immediately increment counter for visual feedback
-        await handleRunWorkflow()
-        runCounter = i + 1
-        setCompletedRuns(runCounter)
-
-        // Only check usage periodically to avoid excessive API calls
-        // Check on first run, every 5 runs, and on last run
-        shouldCheckUsage = i === 0 || (i + 1) % 5 === 0 || i === runCount - 1
-
-        // Check usage if needed
-        if (shouldCheckUsage && session?.user?.id) {
-          const usage = await checkUserUsage(session.user.id, i === 0)
-
-          if (usage?.isExceeded) {
-            setUsageExceeded(true)
-            setUsageData(usage)
-            // Stop execution if we've exceeded the limit during this batch
-            if (i < runCount - 1) {
-              addNotification(
-                'info',
-                `Usage limit reached after ${runCounter} runs. Execution stopped.`,
-                activeWorkflowId
-              )
-              break
-            }
-          }
-        }
-      }
-
-      // Update workflow stats only if the run wasn't cancelled and completed normally
-      if (!wasCancelled && activeWorkflowId) {
-        try {
-          // Don't block UI on stats update
-          fetch(`/api/workflows/${activeWorkflowId}/stats?runs=${runCounter}`, {
-            method: 'POST',
-          }).catch((error) => {
-            logger.error(`Failed to update workflow stats: ${error.message}`)
-          })
-        } catch (error) {
-          logger.error('Error updating workflow stats:', { error })
-        }
-      }
-    } catch (error) {
-      workflowError = error
-      logger.error('Error during multiple workflow runs:', { error })
-    } finally {
-      // Always immediately update UI state
-      setIsMultiRunning(false)
-
-      // Handle progress bar visibility
-      if (runCount > 1) {
-        // Keep progress visible briefly after completion
-        setTimeout(() => setShowRunProgress(false), 1000)
-      } else {
-        // Immediately hide progress for single runs
-        setShowRunProgress(false)
-      }
-
-      setIsCancelling(false)
-      cancelFlagRef.current = false
-
-      // Show notification after state is updated
-      if (wasCancelled) {
-        addNotification('info', 'Workflow run cancelled', activeWorkflowId)
-      } else if (workflowError) {
-        addNotification('error', 'Failed to complete all workflow runs', activeWorkflowId)
-      }
-    }
-  }
-
-  /**
    * Handle duplicating the current workflow
    */
   const handleDuplicateWorkflow = async () => {
@@ -639,64 +479,15 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
   }
 
   /**
-   * Render workflow name section (editable/non-editable)
-   */
-  const renderWorkflowName = () => {
-    const canEdit = userPermissions.canEdit
-
-    return (
-      <div className='flex items-center'>
-        <div className='flex flex-col gap-[2px]'>
-          {isEditing ? (
-            <input
-              type='text'
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              onBlur={handleNameSubmit}
-              onKeyDown={handleNameKeyDown}
-              className='w-[200px] border-none bg-transparent p-0 font-medium text-sm outline-none'
-            />
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <h2
-                  className={cn(
-                    'w-fit font-medium text-sm',
-                    canEdit ? 'cursor-pointer hover:text-muted-foreground' : 'cursor-default'
-                  )}
-                  onClick={canEdit ? handleNameClick : undefined}
-                >
-                  {activeWorkflowId ? workflows[activeWorkflowId]?.name : 'Workflow'}
-                </h2>
-              </TooltipTrigger>
-              {!canEdit && (
-                <TooltipContent>Edit permissions required to rename workflows</TooltipContent>
-              )}
-            </Tooltip>
-          )}
-          {mounted && (
-            <p className='text-muted-foreground text-xs'>
-              Saved{' '}
-              {formatDistanceToNow(lastSaved || Date.now(), {
-                addSuffix: true,
-              })}
-            </p>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  /**
    * Render delete workflow button with confirmation dialog
    */
   const renderDeleteButton = () => {
-    const canAdmin = userPermissions.canAdmin
+    const canEdit = userPermissions.canEdit
     const hasMultipleWorkflows = Object.keys(workflows).length > 1
-    const isDisabled = !canAdmin || !hasMultipleWorkflows
+    const isDisabled = !canEdit || !hasMultipleWorkflows
 
     const getTooltipText = () => {
-      if (!canAdmin) return 'Admin permission required to delete workflows'
+      if (!canEdit) return 'Admin permission required to delete workflows'
       if (!hasMultipleWorkflows) return 'Cannot delete the last workflow'
       return 'Delete Workflow'
     }
@@ -705,7 +496,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className='inline-flex h-10 w-10 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
               <Trash2 className='h-5 w-5' />
             </div>
           </TooltipTrigger>
@@ -719,7 +510,10 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <AlertDialogTrigger asChild>
-              <Button variant='ghost' size='icon' className='hover:text-red-600'>
+              <Button
+                variant='outline'
+                className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm hover:text-red-600'
+              >
                 <Trash2 className='h-5 w-5' />
                 <span className='sr-only'>Delete Workflow</span>
               </Button>
@@ -772,7 +566,10 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <Button variant='ghost' size='icon'>
+            <Button
+              variant='outline'
+              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm'
+            >
               <History />
               <span className='sr-only'>Version History</span>
             </Button>
@@ -837,7 +634,10 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button variant='ghost' size='icon'>
+              <Button
+                variant='outline'
+                className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm'
+              >
                 <Bell />
                 <span className='sr-only'>Notifications</span>
               </Button>
@@ -919,16 +719,15 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
         <TooltipTrigger asChild>
           {canEdit ? (
             <Button
-              variant='ghost'
-              size='icon'
+              variant='outline'
               onClick={handleDuplicateWorkflow}
-              className='hover:text-primary'
+              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm hover:text-primary'
             >
               <Copy className='h-5 w-5' />
               <span className='sr-only'>Duplicate Workflow</span>
             </Button>
           ) : (
-            <div className='inline-flex h-10 w-10 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
               <Copy className='h-5 w-5' />
             </div>
           )}
@@ -945,28 +744,27 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
    */
   const renderAutoLayoutButton = () => {
     const handleAutoLayoutClick = () => {
-      if (isExecuting || isMultiRunning || isDebugging || !userPermissions.canEdit) {
+      if (isExecuting || isDebugging || !userPermissions.canEdit) {
         return
       }
 
       window.dispatchEvent(new CustomEvent('trigger-auto-layout'))
     }
 
-    const isDisabled = isExecuting || isMultiRunning || isDebugging || !userPermissions.canEdit
+    const isDisabled = isExecuting || isDebugging || !userPermissions.canEdit
 
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           {isDisabled ? (
-            <div className='inline-flex h-10 w-10 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
               <Layers className='h-5 w-5' />
             </div>
           ) : (
             <Button
-              variant='ghost'
-              size='icon'
+              variant='outline'
               onClick={handleAutoLayoutClick}
-              className='hover:text-primary'
+              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm hover:text-primary'
             >
               <Layers className='h-5 w-5' />
               <span className='sr-only'>Auto Layout</span>
@@ -1002,9 +800,8 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
           <TooltipTrigger asChild>
             <Button
               variant='outline'
-              size='icon'
               onClick={handleStepDebug}
-              className='h-8 w-8 bg-background'
+              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD]'
               disabled={pendingCount === 0}
             >
               <StepForward className='h-4 w-4' />
@@ -1016,9 +813,8 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
           <TooltipTrigger asChild>
             <Button
               variant='outline'
-              size='icon'
               onClick={handleResumeDebug}
-              className='h-8 w-8 bg-background'
+              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD]'
               disabled={pendingCount === 0}
             >
               <SkipForward className='h-4 w-4' />
@@ -1030,9 +826,8 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
           <TooltipTrigger asChild>
             <Button
               variant='outline'
-              size='icon'
               onClick={handleCancelDebug}
-              className='h-8 w-8 bg-background'
+              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD]'
             >
               <X className='h-4 w-4' />
             </Button>
@@ -1048,7 +843,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
    */
   const renderDebugModeToggle = () => {
     const canDebug = userPermissions.canRead // Debug mode now requires only read permissions
-    const isDisabled = isExecuting || isMultiRunning || !canDebug
+    const isDisabled = isExecuting || !canDebug
 
     const handleToggleDebugMode = () => {
       if (!canDebug) return
@@ -1068,7 +863,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
           {isDisabled ? (
             <div
               className={cn(
-                'inline-flex h-10 w-10 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+                'inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
                 isDebugModeEnabled && 'text-amber-500'
               )}
             >
@@ -1076,10 +871,12 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
             </div>
           ) : (
             <Button
-              variant='ghost'
-              size='icon'
+              variant='outline'
               onClick={handleToggleDebugMode}
-              className={cn(isDebugModeEnabled && 'text-amber-500')}
+              className={cn(
+                'h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm',
+                isDebugModeEnabled && 'text-amber-500'
+              )}
             >
               <Bug className='h-5 w-5' />
               <span className='sr-only'>Toggle Debug Mode</span>
@@ -1098,7 +895,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
   }
 
   /**
-   * Render run workflow button with multi-run dropdown and cancel button
+   * Render run workflow button
    */
   const renderRunButton = () => {
     const canRun = userPermissions.canRead // Running only requires read permissions
@@ -1107,16 +904,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
 
     return (
       <div className='flex items-center'>
-        {showRunProgress && isMultiRunning && (
-          <div className='mr-3 w-28'>
-            <Progress value={(completedRuns / runCount) * 100} className='h-2 bg-muted' />
-            <p className='mt-1 text-center text-muted-foreground text-xs'>
-              {completedRuns}/{runCount} runs
-            </p>
-          </div>
-        )}
-
-        {/* Show how many blocks have been executed in debug mode if debugging */}
+        {/* Show debug mode indicator if debugging */}
         {isDebugging && (
           <div className='mr-3 min-w-28 rounded bg-muted px-1 py-0.5'>
             <div className='text-center text-muted-foreground text-xs'>
@@ -1135,43 +923,25 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
                   'bg-[#701FFC] hover:bg-[#6518E6]',
                   'shadow-[0_0_0_0_#701FFC] hover:shadow-[0_0_0_4px_rgba(127,47,255,0.15)]',
                   'text-white transition-all duration-200',
-                  (isExecuting || isMultiRunning) &&
-                    !isCancelling &&
+                  isExecuting &&
                     'relative after:absolute after:inset-0 after:animate-pulse after:bg-white/20',
                   'disabled:opacity-50 disabled:hover:bg-[#701FFC] disabled:hover:shadow-none',
-                  isDebugModeEnabled || isMultiRunning
-                    ? 'h-10 rounded px-4 py-2'
-                    : 'h-10 rounded-r-none border-r border-r-[#6420cc] px-4 py-2'
+                  'h-12 rounded-[11px] px-4 py-2'
                 )}
-                onClick={
-                  usageExceeded
-                    ? openSubscriptionSettings
-                    : isDebugModeEnabled
-                      ? handleRunWorkflow
-                      : handleMultipleRuns
-                }
+                onClick={() => {
+                  if (usageExceeded) {
+                    openSubscriptionSettings()
+                  } else {
+                    handleRunWorkflow()
+                  }
+                }}
                 disabled={isButtonDisabled}
               >
-                {isCancelling ? (
-                  <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' />
-                ) : isDebugModeEnabled ? (
-                  <Bug className={cn('mr-1.5 h-3.5 w-3.5', 'fill-current stroke-current')} />
+                {isDebugModeEnabled ? (
+                  <Bug className={cn('h-3.5 w-3.5', 'fill-current stroke-current')} />
                 ) : (
                   <Play className={cn('h-3.5 w-3.5', 'fill-current stroke-current')} />
                 )}
-                {isCancelling
-                  ? 'Cancelling...'
-                  : isMultiRunning
-                    ? `Running (${completedRuns}/${runCount})`
-                    : isExecuting
-                      ? isDebugging
-                        ? 'Debugging'
-                        : 'Running'
-                      : isDebugModeEnabled
-                        ? 'Debug'
-                        : runCount === 1
-                          ? 'Run'
-                          : `Run (${runCount})`}
               </Button>
             </TooltipTrigger>
             <TooltipContent command={getKeyboardShortcutText('Enter', true)}>
@@ -1193,107 +963,27 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
                     Upgrade your plan to continue.
                   </p>
                 </div>
-              ) : !canRun && !isLoadingPermissions ? (
-                'Read permissions required to run workflows'
               ) : (
-                <>
-                  {isDebugModeEnabled
-                    ? 'Debug Workflow'
-                    : runCount === 1
-                      ? 'Run Workflow'
-                      : `Run Workflow ${runCount} times`}
-                </>
+                <>{isDebugModeEnabled ? 'Debug Workflow' : 'Run Workflow'}</>
               )}
             </TooltipContent>
           </Tooltip>
           {renderDebugControls()}
-
-          {/* Dropdown Trigger - Only show when not in debug mode and not multi-running */}
-          {!isDebugModeEnabled && !isMultiRunning && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  className={cn(
-                    'px-2 font-medium',
-                    'bg-[#701FFC] hover:bg-[#6518E6]',
-                    'shadow-[0_0_0_0_#701FFC] hover:shadow-[0_0_0_4px_rgba(127,47,255,0.15)]',
-                    'text-white transition-all duration-200',
-                    (isExecuting || isMultiRunning) &&
-                      !isCancelling &&
-                      'relative after:absolute after:inset-0 after:animate-pulse after:bg-white/20',
-                    'disabled:opacity-50 disabled:hover:bg-[#701FFC] disabled:hover:shadow-none',
-                    'h-10 rounded-l-none'
-                  )}
-                  disabled={isButtonDisabled}
-                >
-                  <ChevronDown className='h-4 w-4' />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align='end' className='w-20'>
-                {RUN_COUNT_OPTIONS.map((count) => (
-                  <DropdownMenuItem
-                    key={count}
-                    onClick={() => setRunCount(count)}
-                    className={cn('justify-center', runCount === count && 'bg-muted')}
-                  >
-                    {count}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          {/* Cancel Button - Only show when multi-running */}
-          {isMultiRunning && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant='outline'
-                  size='icon'
-                  onClick={() => {
-                    cancelFlagRef.current = true
-                    setIsCancelling(true)
-                  }}
-                  disabled={isCancelling}
-                  className='ml-2 h-10 w-10'
-                >
-                  <X className='h-4 w-4' />
-                  <span className='sr-only'>Cancel Runs</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Cancel Runs</TooltipContent>
-            </Tooltip>
-          )}
         </div>
       </div>
     )
   }
 
   return (
-    <div className='flex h-16 w-full items-center justify-between border-b bg-background'>
-      {/* Left Section - Workflow Info */}
-      <div className='pl-4'>{renderWorkflowName()}</div>
-
-      {/* Middle Section - Connection Status */}
-      <div className='flex flex-1 justify-center'>
-        <UserAvatarStack />
-      </div>
-
-      {/* Right Section - Actions */}
-      <div className='flex items-center gap-1 pr-4'>
-        {renderDeleteButton()}
-        {renderHistoryDropdown()}
-        {renderNotificationsDropdown()}
-        {renderDuplicateButton()}
-        {renderAutoLayoutButton()}
-        {renderDebugModeToggle()}
-        {/* {renderPublishButton()} */}
-        {renderDeployButton()}
-        {renderRunButton()}
-
-        {/* Add the marketplace modal */}
-        <MarketplaceModal open={isMarketplaceModalOpen} onOpenChange={setIsMarketplaceModalOpen} />
-      </div>
+    <div className='fixed top-4 right-4 z-20 flex items-center gap-1'>
+      {renderDeleteButton()}
+      {/* {renderHistoryDropdown()} */}
+      {/* {renderNotificationsDropdown()} */}
+      {renderDuplicateButton()}
+      {renderAutoLayoutButton()}
+      {renderDebugModeToggle()}
+      {renderDeployButton()}
+      {renderRunButton()}
     </div>
   )
 }

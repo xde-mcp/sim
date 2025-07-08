@@ -86,12 +86,11 @@ export function DeploymentControls({
         <TooltipTrigger asChild>
           <div className='relative'>
             <Button
-              variant='ghost'
-              size='icon'
+              variant='outline'
               onClick={handleDeployClick}
               disabled={isDisabled}
               className={cn(
-                'hover:text-[#802FFF]',
+                'h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm hover:text-[#802FFF]',
                 isDeployed && 'text-[#802FFF]',
                 isDisabled && 'cursor-not-allowed opacity-50'
               )}
