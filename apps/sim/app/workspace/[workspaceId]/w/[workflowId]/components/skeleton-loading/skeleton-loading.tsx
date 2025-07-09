@@ -1,80 +1,41 @@
 'use client'
 
-import { Bell, Bug, ChevronDown, Copy, History, Layers, Play, Rocket, Trash2 } from 'lucide-react'
+import { Bug, Copy, Layers, Play, Rocket, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSidebarStore } from '@/stores/sidebar/store'
 
 const SkeletonControlBar = () => {
   return (
-    <div className='flex h-16 w-full items-center justify-between border-b bg-background'>
-      {/* Left Section - Workflow Name Skeleton */}
-      <div className='flex flex-col gap-[2px] pl-4'>
-        {/* Workflow name skeleton */}
-        <Skeleton className='h-[20px] w-32' />
-        {/* "Saved X time ago" skeleton */}
-        <Skeleton className='h-3 w-24' />
+    <div className='fixed top-4 right-4 z-20 flex items-center gap-1'>
+      {/* Delete Button */}
+      <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+        <Trash2 className='h-5 w-5' />
       </div>
 
-      {/* Middle Section */}
-      <div className='flex-1' />
+      {/* Duplicate Button */}
+      <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+        <Copy className='h-5 w-5' />
+      </div>
 
-      {/* Right Section - Action Buttons with Real Icons */}
-      <div className='flex items-center gap-1 pr-4'>
-        {/* Delete Button */}
-        <Button variant='ghost' size='icon' disabled className='opacity-60'>
-          <Trash2 className='h-5 w-5' />
-        </Button>
+      {/* Auto Layout Button */}
+      <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+        <Layers className='h-5 w-5' />
+      </div>
 
-        {/* History Button */}
-        <Button variant='ghost' size='icon' disabled className='opacity-60'>
-          <History className='h-5 w-5' />
-        </Button>
+      {/* Debug Mode Button */}
+      <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+        <Bug className='h-5 w-5' />
+      </div>
 
-        {/* Notifications Button */}
-        <Button variant='ghost' size='icon' disabled className='opacity-60'>
-          <Bell className='h-5 w-5' />
-        </Button>
+      {/* Deploy Button */}
+      <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+        <Rocket className='h-5 w-5' />
+      </div>
 
-        {/* Duplicate Button */}
-        <Button variant='ghost' size='icon' disabled className='opacity-60'>
-          <Copy className='h-5 w-5' />
-        </Button>
-
-        {/* Auto Layout Button */}
-        <Button variant='ghost' size='icon' disabled className='opacity-60'>
-          <Layers className='h-5 w-5' />
-        </Button>
-
-        {/* Debug Mode Button */}
-        <Button variant='ghost' size='icon' disabled className='opacity-60'>
-          <Bug className='h-5 w-5' />
-        </Button>
-
-        {/* Deploy Button */}
-        <Button variant='ghost' size='icon' disabled className='opacity-60'>
-          <Rocket className='h-5 w-5' />
-        </Button>
-
-        {/* Run Button with Dropdown */}
-        <div className='ml-1 flex'>
-          {/* Main Run Button */}
-          <Button
-            disabled
-            className='h-10 gap-2 rounded-r-none border-r border-r-[#6420cc] bg-[#701FFC] px-4 py-2 font-medium text-white opacity-60'
-          >
-            <Play className='h-3.5 w-3.5 fill-current stroke-current' />
-            Run
-          </Button>
-
-          {/* Dropdown Trigger */}
-          <Button
-            disabled
-            className='h-10 rounded-l-none bg-[#701FFC] px-2 font-medium text-white opacity-60'
-          >
-            <ChevronDown className='h-4 w-4' />
-          </Button>
-        </div>
+      {/* Run Button */}
+      <div className='gap-2 font-medium bg-[#701FFC] text-white h-12 rounded-[11px] px-4 py-2 opacity-50 cursor-not-allowed inline-flex items-center justify-center'>
+        <Play className='h-3.5 w-3.5 fill-current stroke-current' />
       </div>
     </div>
   )
@@ -167,22 +128,20 @@ export function SkeletonLoading({
 
   return (
     <div className='flex h-screen w-full flex-col overflow-hidden'>
-      <div className={`transition-all duration-200 ${isSidebarCollapsed ? 'ml-14' : 'ml-60'}`}>
-        {/* Skeleton Control Bar */}
-        <div
-          className={`transition-opacity duration-500 ${showSkeleton ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
-          style={{ zIndex: showSkeleton ? 10 : -1 }}
-        >
-          <SkeletonControlBar />
-        </div>
+      {/* Skeleton Control Bar */}
+      <div
+        className={`transition-opacity duration-500 ${showSkeleton ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
+        style={{ zIndex: showSkeleton ? 10 : -1 }}
+      >
+        <SkeletonControlBar />
+      </div>
 
-        {/* Real Control Bar */}
-        <div
-          className={`transition-opacity duration-500 ${showSkeleton ? 'pointer-events-none absolute opacity-0' : 'opacity-100'}`}
-          style={{ zIndex: showSkeleton ? -1 : 10 }}
-        >
-          {children}
-        </div>
+      {/* Real Control Bar */}
+      <div
+        className={`transition-opacity duration-500 ${showSkeleton ? 'pointer-events-none absolute opacity-0' : 'opacity-100'}`}
+        style={{ zIndex: showSkeleton ? -1 : 10 }}
+      >
+        {children}
       </div>
 
       {/* Real content will be rendered by children - sidebar will show its own loading state */}
