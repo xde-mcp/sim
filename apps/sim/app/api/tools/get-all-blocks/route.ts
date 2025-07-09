@@ -13,16 +13,16 @@ export async function POST(request: NextRequest) {
 
     // Create mapping of block_id -> [tool_ids]
     const blockToToolsMapping: Record<string, string[]> = {}
-    
+
     // Process blocks - filter out hidden blocks and map to their tools
     Object.entries(blockRegistry)
       .filter(([blockType, blockConfig]) => {
         // Filter out hidden blocks
         if (blockConfig.hideFromToolbar) return false
-        
+
         // Apply category filter if specified
         if (filterCategory && blockConfig.category !== filterCategory) return false
-        
+
         return true
       })
       .forEach(([blockType, blockConfig]) => {
@@ -36,17 +36,17 @@ export async function POST(request: NextRequest) {
     const filteredBlocksCount = totalBlocks - includedBlocks
 
     // Log block to tools mapping for debugging
-    const blockToolsInfo = Object.entries(blockToToolsMapping).map(([blockType, tools]) => 
-      `${blockType}: [${tools.join(', ')}]`
-    ).sort()
-    
+    const blockToolsInfo = Object.entries(blockToToolsMapping)
+      .map(([blockType, tools]) => `${blockType}: [${tools.join(', ')}]`)
+      .sort()
+
     logger.info(`Successfully mapped ${includedBlocks} blocks to their tools`, {
       totalBlocks,
       includedBlocks,
       filteredBlocks: filteredBlocksCount,
       filterCategory,
       blockToolsMapping: blockToolsInfo,
-      outputMapping: blockToToolsMapping
+      outputMapping: blockToToolsMapping,
     })
 
     return NextResponse.json({
