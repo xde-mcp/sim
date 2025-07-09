@@ -393,7 +393,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] font-medium text-[hsl(var(--card-text))] text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border bg-card font-medium text-card-foreground text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
               <Trash2 className='h-5 w-5' />
             </div>
           </TooltipTrigger>
@@ -410,7 +410,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
               <Button
                 variant='outline'
                 className={cn(
-                  'h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs',
+                  'h-12 w-12 rounded-[11px] border bg-card text-card-foreground shadow-xs',
                   'hover:border-red-500 hover:bg-red-500 hover:text-white',
                   'transition-all duration-200'
                 )}
@@ -476,14 +476,14 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           {isDisabled ? (
-            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] font-medium text-[hsl(var(--card-text))] text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border bg-card font-medium text-card-foreground text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
               <Copy className='h-5 w-5' />
             </div>
           ) : (
             <Button
               variant='outline'
               onClick={handleDuplicateWorkflow}
-              className='h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs hover:bg-[hsl(var(--card-hover))]'
+              className='h-12 w-12 rounded-[11px] border bg-card text-card-foreground shadow-xs hover:bg-secondary'
             >
               <Copy className='h-5 w-5' />
               <span className='sr-only'>Duplicate Workflow</span>
@@ -521,14 +521,14 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           {isDisabled ? (
-            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] font-medium text-[hsl(var(--card-text))] text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border bg-card font-medium text-card-foreground text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
               <Layers className='h-5 w-5' />
             </div>
           ) : (
             <Button
               variant='outline'
               onClick={handleAutoLayoutClick}
-              className='h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs hover:bg-[hsl(var(--card-hover))]'
+              className='h-12 w-12 rounded-[11px] border bg-card text-card-foreground shadow-xs hover:bg-secondary'
             >
               <Layers className='h-5 w-5' />
               <span className='sr-only'>Auto Layout</span>
@@ -660,7 +660,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
     }
 
     const buttonClass = cn(
-      'h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs hover:bg-[hsl(var(--card-hover))]',
+      'h-12 w-12 rounded-[11px] border bg-card text-card-foreground shadow-xs hover:bg-secondary',
       isDebugging && 'text-amber-500'
     )
 
@@ -671,7 +671,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
             <div
               className={cn(
                 'inline-flex h-12 w-12 cursor-not-allowed items-center justify-center',
-                'rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] opacity-50',
+                'rounded-[11px] border bg-card text-card-foreground opacity-50',
                 'transition-colors [&_svg]:size-4 [&_svg]:shrink-0',
                 isDebugging && 'text-amber-500'
               )}

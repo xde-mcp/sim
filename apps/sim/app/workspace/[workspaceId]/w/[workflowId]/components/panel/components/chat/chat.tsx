@@ -315,7 +315,7 @@ export function Chat({ panelWidth, chatMessage, setChatMessage }: ChatProps) {
   return (
     <div className='flex h-full flex-col'>
       {/* Output Source Dropdown */}
-      <div className='flex-none border-b px-4 py-2'>
+      <div className='flex-none py-2'>
         <OutputSelect
           workflowId={activeWorkflowId}
           selectedOutputs={selectedOutputs}
@@ -329,7 +329,7 @@ export function Chat({ panelWidth, chatMessage, setChatMessage }: ChatProps) {
       <div className='flex flex-1 flex-col overflow-hidden'>
         {/* Chat messages section - Scrollable area */}
         <div className='flex-1 overflow-hidden'>
-          <ScrollArea className='h-full'>
+          <ScrollArea className='h-full my-1' hideScrollbar={true}>
             <div>
               {workflowMessages.length === 0 ? (
                 <div className='flex h-32 items-center justify-center text-muted-foreground text-sm'>
@@ -337,7 +337,7 @@ export function Chat({ panelWidth, chatMessage, setChatMessage }: ChatProps) {
                 </div>
               ) : (
                 workflowMessages.map((message) => (
-                  <ChatMessage key={message.id} message={message} containerWidth={panelWidth} />
+                  <ChatMessage key={message.id} message={message} />
                 ))
               )}
               <div ref={messagesEndRef} />
@@ -346,21 +346,21 @@ export function Chat({ panelWidth, chatMessage, setChatMessage }: ChatProps) {
         </div>
 
         {/* Input section - Fixed height */}
-        <div className='-mt-[1px] relative flex-none border-t bg-background px-4 pt-4 pb-4'>
+        <div className='-mt-[1px] relative flex-nonept-3 pb-4'>
           <div className='flex gap-2'>
             <Input
               value={chatMessage}
               onChange={(e) => setChatMessage(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder='Type a message...'
-              className='h-10 flex-1 focus-visible:ring-0 focus-visible:ring-offset-0'
+              className='h-9 flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg bg-[#FFFFFF] border-[#E5E5E5] text-muted-foreground dark:bg-[#202020] dark:border-[#414141] shadow-xs'
               disabled={!activeWorkflowId || isExecuting}
             />
             <Button
               onClick={handleSendMessage}
               size='icon'
               disabled={!chatMessage.trim() || !activeWorkflowId || isExecuting}
-              className='h-10 w-10 bg-[#802FFF] text-white hover:bg-[#7028E6]'
+              className='h-9 w-9 bg-[#802FFF] hover:bg-[#7028E6] shadow-[0_0_0_0_#802FFF] hover:shadow-[0_0_0_4px_rgba(127,47,255,0.15)] text-white transition-all duration-200 rounded-lg'
             >
               <ArrowUp className='h-4 w-4' />
             </Button>

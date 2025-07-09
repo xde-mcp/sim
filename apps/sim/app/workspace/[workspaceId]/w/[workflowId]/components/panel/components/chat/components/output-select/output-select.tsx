@@ -289,14 +289,14 @@ export function OutputSelect({
   }
 
   return (
-    <div className='relative' ref={dropdownRef}>
+    <div className='relative w-full' ref={dropdownRef}>
       <button
         type='button'
         onClick={() => setIsOutputDropdownOpen(!isOutputDropdownOpen)}
-        className={`flex w-full items-center justify-between rounded-md px-3 py-1.5 text-sm transition-colors ${
+        className={`flex w-full h-9 items-center justify-between rounded-[8px] border px-3 py-1.5 text-sm font-normal transition-colors shadow-xs ${
           isOutputDropdownOpen
-            ? 'bg-accent text-foreground'
-            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            ? 'bg-[#FFFFFF] border-[#E5E5E5] text-muted-foreground dark:bg-[#202020] dark:border-[#414141]'
+            : 'bg-[#FFFFFF] border-[#E5E5E5] text-muted-foreground hover:text-muted-foreground dark:bg-[#202020] dark:border-[#414141]'
         }`}
         disabled={workflowOutputs.length === 0 || disabled}
       >
@@ -328,11 +328,11 @@ export function OutputSelect({
       </button>
 
       {isOutputDropdownOpen && workflowOutputs.length > 0 && (
-        <div className='absolute z-50 mt-1 w-full overflow-hidden rounded-md border bg-popover pt-1 shadow-md'>
-          <div className='max-h-[240px] overflow-y-auto'>
+        <div className='absolute left-0 z-50 mt-1 w-full overflow-hidden rounded-[8px] border bg-[#FFFFFF] border-[#E5E5E5] dark:bg-[#202020] dark:border-[#414141] pt-1 shadow-xs'>
+          <div className='max-h-[230px] overflow-y-auto'>
             {Object.entries(groupedOutputs).map(([blockName, outputs]) => (
               <div key={blockName}>
-                <div className='border-t px-2 pt-1.5 pb-0.5 font-medium text-muted-foreground text-xs first:border-t-0'>
+                <div className='border-t border-[#E5E5E5] dark:border-[#414141] px-3 pt-1.5 pb-0.5 font-normal text-muted-foreground text-xs first:border-t-0'>
                   {blockName}
                 </div>
                 <div>
@@ -342,20 +342,11 @@ export function OutputSelect({
                       key={output.id}
                       onClick={() => handleOutputSelection(output.id)}
                       className={cn(
-                        'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm',
+                        'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm font-normal',
                         'hover:bg-accent hover:text-accent-foreground',
                         'focus:bg-accent focus:text-accent-foreground focus:outline-none'
                       )}
                     >
-                      <div className='flex h-5 w-5 flex-shrink-0 items-center justify-center'>
-                        {selectedOutputs.includes(output.id) ? (
-                          <div className='flex h-4 w-4 items-center justify-center rounded bg-primary'>
-                            <Check className='h-3 w-3 text-white' />
-                          </div>
-                        ) : (
-                          <div className='h-4 w-4 rounded border border-input' />
-                        )}
-                      </div>
                       <div
                         className='flex h-5 w-5 flex-shrink-0 items-center justify-center rounded'
                         style={{
@@ -366,24 +357,15 @@ export function OutputSelect({
                           {blockName.charAt(0).toUpperCase()}
                         </span>
                       </div>
-                      <span className='max-w-[calc(100%-48px)] truncate'>{output.path}</span>
+                      <span className='flex-1 truncate'>{output.path}</span>
+                      {selectedOutputs.includes(output.id) && (
+                        <Check className='h-4 w-4 text-primary flex-shrink-0' />
+                      )}
                     </button>
                   ))}
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Done button to close dropdown */}
-          <div className='border-t p-2'>
-            <Button
-              variant='secondary'
-              size='sm'
-              onClick={() => setIsOutputDropdownOpen(false)}
-              className='w-full bg-secondary/80 text-secondary-foreground hover:bg-secondary/90'
-            >
-              Done
-            </Button>
           </div>
         </div>
       )}

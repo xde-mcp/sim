@@ -302,7 +302,7 @@ export function LongInput({
       />
       <div
         ref={overlayRef}
-        className='pointer-events-none absolute inset-0 overflow-auto whitespace-pre-wrap break-words bg-transparent px-3 py-2 text-sm'
+        className='pointer-events-none absolute inset-0 overflow-auto whitespace-pre-wrap break-words bg-transparent px-3 py-2 text-sm scrollbar-hide'
         style={{
           fontFamily: 'inherit',
           lineHeight: 'inherit',
