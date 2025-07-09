@@ -363,7 +363,7 @@ export async function sendDocsMessage(request: DocsQueryRequest): Promise<{
   try {
     // Convert docs query to a regular message request with docs-focused prompt
     const message = `Please search the documentation and answer this question: ${request.query}`
-    
+
     const response = await fetch('/api/copilot', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

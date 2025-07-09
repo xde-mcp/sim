@@ -82,7 +82,5 @@ export const TITLE_GENERATION_SYSTEM_PROMPT = `You are a helpful assistant that 
 /**
  * User prompt template for title generation
  */
-export const TITLE_GENERATION_USER_PROMPT = (userMessage: string) => 
+export const TITLE_GENERATION_USER_PROMPT = (userMessage: string) =>
   `Generate a concise title for a conversation that starts with this user message: "${userMessage}"\n\nReturn only the title text, nothing else.`
-
- 
