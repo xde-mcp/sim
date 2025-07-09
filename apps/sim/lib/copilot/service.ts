@@ -6,6 +6,7 @@ import { executeProviderRequest } from '@/providers'
 import type { ProviderToolConfig } from '@/providers/types'
 import { getApiKey } from '@/providers/utils'
 import { getCopilotConfig, getCopilotModel } from './config'
+import { TITLE_GENERATION_SYSTEM_PROMPT, TITLE_GENERATION_USER_PROMPT } from './prompts'
 
 const logger = createLogger('CopilotService')
 
@@ -87,9 +88,8 @@ export async function generateChatTitle(userMessage: string): Promise<string> {
 
     const response = await executeProviderRequest(provider, {
       model,
-      systemPrompt:
-        'You are a helpful assistant that generates concise, descriptive titles for chat conversations. Create a title that captures the main topic or question being discussed. Keep it under 50 characters and make it specific and clear.',
-      context: `Generate a concise title for a conversation that starts with this user message: "${userMessage}"\n\nReturn only the title text, nothing else.`,
+      systemPrompt: TITLE_GENERATION_SYSTEM_PROMPT,
+      context: TITLE_GENERATION_USER_PROMPT(userMessage),
       temperature: 0.3,
       maxTokens: 50,
       apiKey,

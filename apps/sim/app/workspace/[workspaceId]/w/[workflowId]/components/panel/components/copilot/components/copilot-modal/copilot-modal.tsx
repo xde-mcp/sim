@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import type { CopilotChat } from '@/lib/copilot-api'
+import type { CopilotChat } from '@/lib/copilot/api'
 import { createLogger } from '@/lib/logs/console-logger'
 
 const logger = createLogger('CopilotModal')

@@ -10,7 +10,7 @@ import {
   sendStreamingDocsMessage,
   sendStreamingMessage,
   updateChatMessages,
-} from '@/lib/copilot-api'
+} from '@/lib/copilot/api'
 import { createLogger } from '@/lib/logs/console-logger'
 import type { CopilotStore } from './types'
 

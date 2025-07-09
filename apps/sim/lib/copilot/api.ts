@@ -345,7 +345,8 @@ export async function sendStreamingMessage(request: SendMessageRequest): Promise
 }
 
 /**
- * Send a message using the docs RAG API with chat context
+ * Send a documentation query using the main copilot API
+ * This function now redirects to the main copilot endpoint since the docs endpoint was removed
  */
 export async function sendDocsMessage(request: DocsQueryRequest): Promise<{
   success: boolean
@@ -360,10 +361,19 @@ export async function sendDocsMessage(request: DocsQueryRequest): Promise<{
   error?: string
 }> {
   try {
-    const response = await fetch('/api/copilot/docs', {
+    // Convert docs query to a regular message request with docs-focused prompt
+    const message = `Please search the documentation and answer this question: ${request.query}`
+    
+    const response = await fetch('/api/copilot', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
+      body: JSON.stringify({
+        message,
+        chatId: request.chatId,
+        workflowId: request.workflowId,
+        createNewChat: request.createNewChat,
+        stream: request.stream,
+      }),
     })
 
     const data = await response.json()
@@ -376,7 +386,7 @@ export async function sendDocsMessage(request: DocsQueryRequest): Promise<{
       success: true,
       response: data.response,
       chatId: data.chatId,
-      sources: data.sources,
+      sources: [], // Main agent embeds citations directly in response
     }
   } catch (error) {
     logger.error('Failed to send docs message:', error)
@@ -388,7 +398,8 @@ export async function sendDocsMessage(request: DocsQueryRequest): Promise<{
 }
 
 /**
- * Send a streaming docs message
+ * Send a streaming documentation query using the main copilot API
+ * This function now redirects to the main copilot endpoint since the docs endpoint was removed
  */
 export async function sendStreamingDocsMessage(request: DocsQueryRequest): Promise<{
   success: boolean
@@ -399,10 +410,19 @@ export async function sendStreamingDocsMessage(request: DocsQueryRequest): Promi
   try {
     logger.debug('sendStreamingDocsMessage called with:', request)
 
-    const response = await fetch('/api/copilot/docs', {
+    // Convert docs query to a regular message request with docs-focused prompt
+    const message = `Please search the documentation and answer this question: ${request.query}`
+
+    const response = await fetch('/api/copilot', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...request, stream: true }),
+      body: JSON.stringify({
+        message,
+        chatId: request.chatId,
+        workflowId: request.workflowId,
+        createNewChat: request.createNewChat,
+        stream: true,
+      }),
     })
 
     logger.debug('Fetch response received:', {
