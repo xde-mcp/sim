@@ -379,23 +379,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
     useWorkflowRegistry.getState().removeWorkflow(activeWorkflowId)
   }
 
-  // /**
-  //  * Handle opening marketplace modal or showing published status
-  //  */
-  // const handlePublishWorkflow = async () => {
-  //   if (!activeWorkflowId) return
-
-  //   // If already published, show marketplace modal with info instead of notifications
-  //   const isPublished = isPublishedToMarketplace()
-  //   if (isPublished) {
-  //     setIsMarketplaceModalOpen(true)
-  //     return
-  //   }
-
-  //   // If not published, open the modal to start the publishing process
-  //   setIsMarketplaceModalOpen(true)
-  // }
-
   // Helper function to open subscription settings
   const openSubscriptionSettings = () => {
     if (typeof window !== 'undefined') {
@@ -458,10 +441,14 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <AlertDialogTrigger asChild>
-              <Button
-                variant='outline'
-                className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm hover:text-red-600'
-              >
+                          <Button
+              variant='outline'
+              className={cn(
+                'h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs',
+                'hover:bg-red-500 hover:border-red-500 hover:text-white',
+                'transition-all duration-200'
+              )}
+            >
                 <Trash2 className='h-5 w-5' />
                 <span className='sr-only'>Delete Workflow</span>
               </Button>
@@ -516,7 +503,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
           <DropdownMenuTrigger asChild>
             <Button
               variant='outline'
-              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm'
+              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs'
             >
               <History />
               <span className='sr-only'>Version History</span>
@@ -584,7 +571,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
             <DropdownMenuTrigger asChild>
               <Button
                 variant='outline'
-                className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm'
+                className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs'
               >
                 <Bell />
                 <span className='sr-only'>Notifications</span>
@@ -680,7 +667,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
             <Button
               variant='outline'
               onClick={handleDuplicateWorkflow}
-              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm hover:text-primary'
+              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs hover:bg-gray-100'
             >
               <Copy className='h-5 w-5' />
               <span className='sr-only'>Duplicate Workflow</span>
@@ -717,7 +704,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
             <Button
               variant='outline'
               onClick={handleAutoLayoutClick}
-              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm hover:text-primary'
+              className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs hover:bg-gray-100'
             >
               <Layers className='h-5 w-5' />
               <span className='sr-only'>Auto Layout</span>
@@ -854,7 +841,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
     }
 
     const buttonClass = cn(
-      'h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-sm',
+      'h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs hover:bg-gray-100',
       isDebugging && 'text-amber-500'
     )
 

@@ -9,34 +9,57 @@ const SkeletonControlBar = () => {
   return (
     <div className='fixed top-4 right-4 z-20 flex items-center gap-1'>
       {/* Delete Button */}
-      <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+      <Button
+        variant='outline'
+        className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs opacity-50 cursor-not-allowed hover:bg-[#FDFDFD] hover:border-[#E5E5E5]'
+        disabled
+      >
         <Trash2 className='h-5 w-5' />
-      </div>
+      </Button>
 
       {/* Duplicate Button */}
-      <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+      <Button
+        variant='outline'
+        className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[#FDFDFD] hover:border-[#E5E5E5]'
+        disabled
+      >
         <Copy className='h-5 w-5' />
-      </div>
+      </Button>
 
       {/* Auto Layout Button */}
-      <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+      <Button
+        variant='outline'
+        className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[#FDFDFD] hover:border-[#E5E5E5]'
+        disabled
+      >
         <Layers className='h-5 w-5' />
-      </div>
+      </Button>
 
       {/* Debug Mode Button */}
-      <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+      <Button
+        variant='outline'
+        className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[#FDFDFD] hover:border-[#E5E5E5]'
+        disabled
+      >
         <Bug className='h-5 w-5' />
-      </div>
+      </Button>
 
       {/* Deploy Button */}
-      <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[#E5E5E5] bg-[#FDFDFD] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+      <Button
+        variant='outline'
+        className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[#FDFDFD] hover:border-[#E5E5E5]'
+        disabled
+      >
         <Rocket className='h-5 w-5' />
-      </div>
+      </Button>
 
       {/* Run Button */}
-      <div className='gap-2 font-medium bg-[#701FFC] text-white h-12 rounded-[11px] px-4 py-2 opacity-50 cursor-not-allowed inline-flex items-center justify-center'>
+      <Button
+        className='gap-2 font-medium bg-[#701FFC] hover:bg-[#6518E6] shadow-[0_0_0_0_#701FFC] hover:shadow-[0_0_0_4px_rgba(127,47,255,0.15)] text-white transition-all duration-200 disabled:opacity-50 disabled:hover:bg-[#701FFC] disabled:hover:shadow-none h-12 rounded-[11px] px-4 py-2 cursor-not-allowed'
+        disabled
+      >
         <Play className='h-3.5 w-3.5 fill-current stroke-current' />
-      </div>
+      </Button>
     </div>
   )
 }
