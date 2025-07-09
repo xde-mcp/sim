@@ -10,7 +10,6 @@ import { Serializer } from '@/serializer'
 import type { SerializedWorkflow } from '@/serializer/types'
 import { useExecutionStore } from '@/stores/execution/store'
 import { useConsoleStore } from '@/stores/panel/console/store'
-import { usePanelStore } from '@/stores/panel/store'
 import { useVariablesStore } from '@/stores/panel/variables/store'
 import { useEnvironmentStore } from '@/stores/settings/environment/store'
 import { useGeneralStore } from '@/stores/settings/general/store'
@@ -45,7 +44,6 @@ export function useWorkflowExecution() {
   const { blocks, edges, loops, parallels } = useWorkflowStore()
   const { activeWorkflowId } = useWorkflowRegistry()
   const { toggleConsole } = useConsoleStore()
-  const { togglePanel, setActiveTab, activeTab } = usePanelStore()
   const { getAllVariables } = useEnvironmentStore()
   const { isDebugModeEnabled } = useGeneralStore()
   const { getVariablesByWorkflowId, variables } = useVariablesStore()
@@ -255,23 +253,9 @@ export function useWorkflowExecution() {
         setIsDebugging(true)
       }
 
-      // Check if panel is open and open it if not
-      const isPanelOpen = usePanelStore.getState().isOpen
-      if (!isPanelOpen) {
-        togglePanel()
-      }
-
-      // Set active tab to console
-      if (activeTab !== 'console' && activeTab !== 'chat') {
-        setActiveTab('console')
-      }
-
       // Determine if this is a chat execution
       const isChatExecution =
-        activeTab === 'chat' &&
-        workflowInput &&
-        typeof workflowInput === 'object' &&
-        'input' in workflowInput
+        workflowInput && typeof workflowInput === 'object' && 'input' in workflowInput
 
       // For chat executions, we'll use a streaming approach
       if (isChatExecution) {
@@ -411,9 +395,6 @@ export function useWorkflowExecution() {
       loops,
       parallels,
       toggleConsole,
-      togglePanel,
-      setActiveTab,
-      activeTab,
       getAllVariables,
       getVariablesByWorkflowId,
       isDebugModeEnabled,
@@ -471,10 +452,7 @@ export function useWorkflowExecution() {
 
     // Determine if this is a chat execution
     const isChatExecution =
-      activeTab === 'chat' &&
-      workflowInput &&
-      typeof workflowInput === 'object' &&
-      'input' in workflowInput
+      workflowInput && typeof workflowInput === 'object' && 'input' in workflowInput
 
     // If this is a chat execution, get the selected outputs
     let selectedOutputIds: string[] | undefined

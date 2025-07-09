@@ -329,7 +329,7 @@ export function Chat({ panelWidth, chatMessage, setChatMessage }: ChatProps) {
       <div className='flex flex-1 flex-col overflow-hidden'>
         {/* Chat messages section - Scrollable area */}
         <div className='flex-1 overflow-hidden'>
-          <ScrollArea className='h-full my-1' hideScrollbar={true}>
+          <ScrollArea className='h-full' hideScrollbar={true}>
             <div>
               {workflowMessages.length === 0 ? (
                 <div className='flex h-32 items-center justify-center text-muted-foreground text-sm'>
@@ -353,14 +353,14 @@ export function Chat({ panelWidth, chatMessage, setChatMessage }: ChatProps) {
               onChange={(e) => setChatMessage(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder='Type a message...'
-              className='h-9 flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg bg-[#FFFFFF] border-[#E5E5E5] text-muted-foreground dark:bg-[#202020] dark:border-[#414141] shadow-xs'
+              className='h-9 flex-1 rounded-lg border-[#E5E5E5] bg-[#FFFFFF] text-muted-foreground shadow-xs focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-[#414141] dark:bg-[#202020]'
               disabled={!activeWorkflowId || isExecuting}
             />
             <Button
               onClick={handleSendMessage}
               size='icon'
               disabled={!chatMessage.trim() || !activeWorkflowId || isExecuting}
-              className='h-9 w-9 bg-[#802FFF] hover:bg-[#7028E6] shadow-[0_0_0_0_#802FFF] hover:shadow-[0_0_0_4px_rgba(127,47,255,0.15)] text-white transition-all duration-200 rounded-lg'
+              className='h-9 w-9 rounded-lg bg-[#802FFF] text-white shadow-[0_0_0_0_#802FFF] transition-all duration-200 hover:bg-[#7028E6] hover:shadow-[0_0_0_4px_rgba(127,47,255,0.15)]'
             >
               <ArrowUp className='h-4 w-4' />
             </Button>

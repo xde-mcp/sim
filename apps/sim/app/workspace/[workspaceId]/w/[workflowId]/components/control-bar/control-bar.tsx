@@ -72,7 +72,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
     isLoading: isRegistryLoading,
   } = useWorkflowRegistry()
   const { isExecuting, handleRunWorkflow } = useWorkflowExecution()
-  const { setActiveTab } = usePanelStore()
+  const { setActiveTab, togglePanel, isOpen } = usePanelStore()
   const { getFolderTree, expandedFolders } = useFolderStore()
 
   // User permissions - use stable activeWorkspaceId from registry instead of deriving from currentWorkflow
@@ -94,17 +94,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
   // Change detection state
   const [changeDetected, setChangeDetected] = useState(false)
 
-  // Workflow name editing state
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedName, setEditedName] = useState('')
-
-  // Dropdown states
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
-
-  // Marketplace modal state
-  const [isMarketplaceModalOpen, setIsMarketplaceModalOpen] = useState(false)
-
   // Usage limit state
   const [usageExceeded, setUsageExceeded] = useState(false)
   const [usageData, setUsageData] = useState<{
@@ -124,12 +113,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       handleRunWorkflow()
     }
   }, isWorkflowBlocked)
-
-  // Get the marketplace data from the workflow registry if available
-  const getMarketplaceData = () => {
-    if (!activeWorkflowId || !workflows[activeWorkflowId]) return null
-    return workflows[activeWorkflowId].marketplaceData
-  }
 
   // // Check if the current user is the owner of the published workflow
   // const isWorkflowOwner = () => {
@@ -731,6 +714,11 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
     }
 
     const handleRunClick = () => {
+      setActiveTab('console')
+      if (!isOpen) {
+        togglePanel()
+      }
+
       if (usageExceeded) {
         openSubscriptionSettings()
       } else {

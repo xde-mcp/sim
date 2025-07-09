@@ -61,7 +61,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         <div className='flex justify-end'>
           <div className='max-w-[80%]'>
             <div className='rounded-[10px] bg-secondary px-3 py-2'>
-              <div className='whitespace-pre-wrap break-words font-normal leading-normal text-sm text-foreground'>
+              <div className='whitespace-pre-wrap break-words font-normal text-foreground text-sm leading-normal'>
                 <WordWrap text={formattedContent} />
               </div>
             </div>
@@ -74,7 +74,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
   // Render agent/workflow messages as full-width text
   return (
     <div className='w-full py-2 pl-[2px]'>
-      <div className='overflow-wrap-anywhere relative whitespace-normal break-normal font-normal leading-normal text-sm'>
+      <div className='overflow-wrap-anywhere relative whitespace-normal break-normal font-normal text-sm leading-normal'>
         <div className='whitespace-pre-wrap break-words text-foreground'>
           <WordWrap text={formattedContent} />
           {message.isStreaming && (
