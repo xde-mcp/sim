@@ -11,7 +11,7 @@ const SkeletonControlBar = () => {
       {/* Delete Button */}
       <Button
         variant='outline'
-        className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs opacity-50 cursor-not-allowed hover:bg-[#FDFDFD] hover:border-[#E5E5E5]'
+        className='h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs opacity-50 cursor-not-allowed hover:bg-[hsl(var(--card-background))] hover:border-[hsl(var(--card-border))]'
         disabled
       >
         <Trash2 className='h-5 w-5' />
@@ -20,7 +20,7 @@ const SkeletonControlBar = () => {
       {/* Duplicate Button */}
       <Button
         variant='outline'
-        className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[#FDFDFD] hover:border-[#E5E5E5]'
+        className='h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[hsl(var(--card-background))] hover:border-[hsl(var(--card-border))]'
         disabled
       >
         <Copy className='h-5 w-5' />
@@ -29,7 +29,7 @@ const SkeletonControlBar = () => {
       {/* Auto Layout Button */}
       <Button
         variant='outline'
-        className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[#FDFDFD] hover:border-[#E5E5E5]'
+        className='h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[hsl(var(--card-background))] hover:border-[hsl(var(--card-border))]'
         disabled
       >
         <Layers className='h-5 w-5' />
@@ -38,7 +38,7 @@ const SkeletonControlBar = () => {
       {/* Debug Mode Button */}
       <Button
         variant='outline'
-        className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[#FDFDFD] hover:border-[#E5E5E5]'
+        className='h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[hsl(var(--card-background))] hover:border-[hsl(var(--card-border))]'
         disabled
       >
         <Bug className='h-5 w-5' />
@@ -47,7 +47,7 @@ const SkeletonControlBar = () => {
       {/* Deploy Button */}
       <Button
         variant='outline'
-        className='h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[#FDFDFD] hover:border-[#E5E5E5]'
+        className='h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs hover:bg-gray-100 opacity-50 cursor-not-allowed hover:bg-[hsl(var(--card-background))] hover:border-[hsl(var(--card-border))]'
         disabled
       >
         <Rocket className='h-5 w-5' />

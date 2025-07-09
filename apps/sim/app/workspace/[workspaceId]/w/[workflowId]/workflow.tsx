@@ -1520,7 +1520,7 @@ const WorkflowContent = React.memo(() => {
             <NotificationList />
           </div>
                   <div className='workflow-container h-full'>
-          <Background color='#F1F1F1' size={4} gap={40} style={{ backgroundColor: '#FFFFFF' }} />
+          <Background color='hsl(var(--workflow-dots))' size={4} gap={40} style={{ backgroundColor: 'hsl(var(--workflow-background))' }} />
         </div>
         </div>
       </div>
@@ -1587,7 +1587,7 @@ const WorkflowContent = React.memo(() => {
           autoPanOnConnect={userPermissions.canEdit}
           autoPanOnNodeDrag={userPermissions.canEdit}
         >
-          <Background color='#F1F1F1' size={4} gap={40} style={{ backgroundColor: '#FFFFFF' }} />
+          <Background color='hsl(var(--workflow-dots))' size={4} gap={40} style={{ backgroundColor: 'hsl(var(--workflow-background))' }} />
         </ReactFlow>
       </div>
     </div>

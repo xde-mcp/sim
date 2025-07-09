@@ -90,11 +90,11 @@ export function DeploymentControls({
               onClick={handleDeployClick}
               disabled={isDisabled}
               className={cn(
-                'h-12 w-12 rounded-[11px] border-[#E5E5E5] bg-[#FDFDFD] shadow-xs',
+                'h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs',
                 'hover:bg-[#701FFC] hover:border-[#701FFC] hover:text-white',
                 'transition-all duration-200',
                 isDeployed && 'text-[#802FFF]',
-                isDisabled && 'cursor-not-allowed opacity-50 hover:bg-[#FDFDFD] hover:border-[#E5E5E5] hover:text-inherit hover:shadow-xs'
+                isDisabled && 'cursor-not-allowed opacity-50 hover:bg-[hsl(var(--card-background))] hover:border-[hsl(var(--card-border))] hover:text-[hsl(var(--card-text))] hover:shadow-xs'
               )}
             >
               {isDeploying ? (
