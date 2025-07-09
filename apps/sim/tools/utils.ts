@@ -2,6 +2,7 @@ import { env } from '@/lib/env'
 import { createLogger } from '@/lib/logs/console-logger'
 import { useCustomToolsStore } from '@/stores/custom-tools/store'
 import { useEnvironmentStore } from '@/stores/settings/environment/store'
+import { getAllBlocksTool } from './blocks/get-all'
 import { docsSearchTool } from './docs/search'
 import { tools } from './registry'
 import type { TableRow, ToolConfig, ToolResponse } from './types'
@@ -13,6 +14,12 @@ const logger = createLogger('ToolsUtils')
 const internalTools: Record<string, ToolConfig> = {
   docs_search_internal: docsSearchTool,
   get_user_workflow: getUserWorkflowTool,
+  get_blocks_and_tools: getAllBlocksTool,
+}
+
+// Export the list of internal tool IDs for filtering purposes
+export const getInternalToolIds = (): Set<string> => {
+  return new Set(Object.keys(internalTools))
 }
 
 /**

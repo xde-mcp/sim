@@ -277,6 +277,29 @@ export async function generateChatResponse(
           required: [],
         },
       },
+      {
+        id: 'get_blocks_and_tools',
+        name: 'Get All Blocks and Tools',
+        description:
+          'Get a comprehensive list of all available blocks and tools in Sim Studio with their descriptions, categories, and capabilities. Use this when users ask about what blocks or tools are available, or when they want to know what options they have for building workflows.',
+        params: {},
+        parameters: {
+          type: 'object',
+          properties: {
+            includeDetails: {
+              type: 'boolean',
+              description:
+                'Whether to include detailed information like inputs, outputs, and sub-blocks (default: false)',
+              default: false,
+            },
+            filterCategory: {
+              type: 'string',
+              description: 'Optional category filter for blocks (e.g., "tools", "blocks", "ai")',
+            },
+          },
+          required: [],
+        },
+      },
     ]
 
     const response = await executeProviderRequest(provider, {
