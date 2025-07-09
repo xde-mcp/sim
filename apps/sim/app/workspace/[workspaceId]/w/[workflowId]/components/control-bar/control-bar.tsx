@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Bell,
   Bug,
@@ -37,7 +37,6 @@ import { useSession } from '@/lib/auth-client'
 import { createLogger } from '@/lib/logs/console-logger'
 import { cn } from '@/lib/utils'
 import { useUserPermissionsContext } from '@/app/workspace/[workspaceId]/w/components/providers/workspace-permissions-provider'
-import { useExecutionStore } from '@/stores/execution/store'
 import { useFolderStore } from '@/stores/folders/store'
 import { useNotificationStore } from '@/stores/notifications/store'
 import { usePanelStore } from '@/stores/panel/store'
@@ -427,7 +426,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] font-medium text-[hsl(var(--card-text))] text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
               <Trash2 className='h-5 w-5' />
             </div>
           </TooltipTrigger>
@@ -441,14 +440,14 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <AlertDialogTrigger asChild>
-                          <Button
-              variant='outline'
-              className={cn(
-                'h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs',
-                'hover:bg-red-500 hover:border-red-500 hover:text-white',
-                'transition-all duration-200'
-              )}
-            >
+              <Button
+                variant='outline'
+                className={cn(
+                  'h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs',
+                  'hover:border-red-500 hover:bg-red-500 hover:text-white',
+                  'transition-all duration-200'
+                )}
+              >
                 <Trash2 className='h-5 w-5' />
                 <span className='sr-only'>Delete Workflow</span>
               </Button>
@@ -660,7 +659,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           {isDisabled ? (
-            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] font-medium text-[hsl(var(--card-text))] text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
               <Copy className='h-5 w-5' />
             </div>
           ) : (
@@ -705,18 +704,18 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           {isDisabled ? (
-            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] font-medium text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
+            <div className='inline-flex h-12 w-12 cursor-not-allowed items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] font-medium text-[hsl(var(--card-text))] text-sm opacity-50 ring-offset-background transition-colors [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0'>
               <Layers className='h-5 w-5' />
             </div>
           ) : (
-                          <Button
-                variant='outline'
-                onClick={handleAutoLayoutClick}
-                className='h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs hover:bg-[hsl(var(--card-hover))]'
-              >
-                <Layers className='h-5 w-5' />
-                <span className='sr-only'>Auto Layout</span>
-              </Button>
+            <Button
+              variant='outline'
+              onClick={handleAutoLayoutClick}
+              className='h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs hover:bg-[hsl(var(--card-hover))]'
+            >
+              <Layers className='h-5 w-5' />
+              <span className='sr-only'>Auto Layout</span>
+            </Button>
           )}
         </TooltipTrigger>
         <TooltipContent command={`${isDebugging ? '' : 'Shift+L'}`}>
@@ -738,9 +737,9 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
     } else {
       // Check if there are executable blocks before starting debug mode
       const hasExecutableBlocks = Object.values(blocks).some(
-        block => block.type !== 'starter' && block.enabled !== false
+        (block) => block.type !== 'starter' && block.enabled !== false
       )
-      
+
       if (!hasExecutableBlocks) {
         return // Do nothing if no executable blocks
       }
@@ -796,7 +795,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
           </TooltipTrigger>
           <TooltipContent>Step Forward</TooltipContent>
         </Tooltip>
-        
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -810,13 +809,10 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
           </TooltipTrigger>
           <TooltipContent>Resume Until End</TooltipContent>
         </Tooltip>
-        
+
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              onClick={handleCancelDebug}
-              className={debugButtonClass}
-            >
+            <Button onClick={handleCancelDebug} className={debugButtonClass}>
               <X className='h-5 w-5' />
               <span className='sr-only'>Cancel Debugging</span>
             </Button>
@@ -832,14 +828,14 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
    */
   const renderDebugModeToggle = () => {
     const canDebug = userPermissions.canRead
-    
+
     // Check if there are any meaningful blocks in the workflow (excluding just the starter block)
     const hasExecutableBlocks = Object.values(blocks).some(
-      block => block.type !== 'starter' && block.enabled !== false
+      (block) => block.type !== 'starter' && block.enabled !== false
     )
-    
+
     const isDisabled = isExecuting || !canDebug || !hasExecutableBlocks
-    
+
     const getTooltipText = () => {
       if (!canDebug) return 'Read permission required to use debug mode'
       if (!hasExecutableBlocks) return 'Add blocks to enable debug mode'
@@ -855,20 +851,18 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           {isDisabled ? (
-            <div className={cn(
-              'inline-flex h-12 w-12 cursor-not-allowed items-center justify-center',
-              'rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] opacity-50',
-              'transition-colors [&_svg]:size-4 [&_svg]:shrink-0',
-              isDebugging && 'text-amber-500'
-            )}>
+            <div
+              className={cn(
+                'inline-flex h-12 w-12 cursor-not-allowed items-center justify-center',
+                'rounded-[11px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] opacity-50',
+                'transition-colors [&_svg]:size-4 [&_svg]:shrink-0',
+                isDebugging && 'text-amber-500'
+              )}
+            >
               <Bug className='h-5 w-5' />
             </div>
           ) : (
-            <Button
-              variant='outline'
-              onClick={handleDebugToggle}
-              className={buttonClass}
-            >
+            <Button variant='outline' onClick={handleDebugToggle} className={buttonClass}>
               <Bug className='h-5 w-5' />
               <span className='sr-only'>{getTooltipText()}</span>
             </Button>
@@ -893,29 +887,29 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
           <div className='text-center'>
             <p className='font-medium text-destructive'>Workflow Has Errors</p>
             <p className='text-xs'>
-              Nested subflows are not supported. Remove subflow blocks from inside other
-              subflow blocks.
+              Nested subflows are not supported. Remove subflow blocks from inside other subflow
+              blocks.
             </p>
           </div>
         )
       }
-      
+
       if (!canRun && !isLoadingPermissions) {
         return 'Read permission required to run workflows'
       }
-      
+
       if (usageExceeded) {
         return (
           <div className='text-center'>
             <p className='font-medium text-destructive'>Usage Limit Exceeded</p>
             <p className='text-xs'>
-              You've used {usageData?.currentUsage.toFixed(2)}$ of {usageData?.limit}$.
-              Upgrade your plan to continue.
+              You've used {usageData?.currentUsage.toFixed(2)}$ of {usageData?.limit}$. Upgrade your
+              plan to continue.
             </p>
           </div>
         )
       }
-      
+
       return 'Run Workflow'
     }
 

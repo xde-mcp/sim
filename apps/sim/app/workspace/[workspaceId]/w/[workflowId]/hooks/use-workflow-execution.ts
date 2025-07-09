@@ -78,7 +78,7 @@ export function useWorkflowExecution() {
 
       return {
         isValid: false,
-        error: `Cannot perform debug operation - missing: ${missing.join(', ')}. Try restarting debug mode.`
+        error: `Cannot perform debug operation - missing: ${missing.join(', ')}. Try restarting debug mode.`,
       }
     }
     return { isValid: true }
@@ -123,80 +123,93 @@ export function useWorkflowExecution() {
   /**
    * Handles debug session completion
    */
-  const handleDebugSessionComplete = useCallback(async (result: ExecutionResult) => {
-    logger.info('Debug session complete')
-    setExecutionResult(result)
+  const handleDebugSessionComplete = useCallback(
+    async (result: ExecutionResult) => {
+      logger.info('Debug session complete')
+      setExecutionResult(result)
 
-    // Show completion notification
-    const notificationMessage = result.success
-      ? 'Workflow completed successfully'
-      : `Workflow execution failed: ${result.error}`
+      // Show completion notification
+      const notificationMessage = result.success
+        ? 'Workflow completed successfully'
+        : `Workflow execution failed: ${result.error}`
 
-    try {
-      addNotification(
-        result.success ? 'console' : 'error',
-        notificationMessage,
-        activeWorkflowId || ''
-      )
-    } catch (notificationError) {
-      logger.error('Error showing completion notification:', notificationError)
-      console.info('Workflow execution completed')
-    }
+      try {
+        addNotification(
+          result.success ? 'console' : 'error',
+          notificationMessage,
+          activeWorkflowId || ''
+        )
+      } catch (notificationError) {
+        logger.error('Error showing completion notification:', notificationError)
+        console.info('Workflow execution completed')
+      }
 
-    // Persist logs
-    await persistLogs(uuidv4(), result)
+      // Persist logs
+      await persistLogs(uuidv4(), result)
 
-    // Reset debug state
-    resetDebugState()
-  }, [addNotification, activeWorkflowId, resetDebugState])
+      // Reset debug state
+      resetDebugState()
+    },
+    [addNotification, activeWorkflowId, resetDebugState]
+  )
 
   /**
    * Handles debug session continuation
    */
-  const handleDebugSessionContinuation = useCallback((result: ExecutionResult) => {
-    logger.info('Debug step completed, next blocks pending', {
-      nextPendingBlocks: result.metadata?.pendingBlocks?.length || 0,
-    })
+  const handleDebugSessionContinuation = useCallback(
+    (result: ExecutionResult) => {
+      logger.info('Debug step completed, next blocks pending', {
+        nextPendingBlocks: result.metadata?.pendingBlocks?.length || 0,
+      })
 
-    // Update debug context and pending blocks
-    if (result.metadata?.context) {
-      setDebugContext(result.metadata.context)
-    }
-    if (result.metadata?.pendingBlocks) {
-      setPendingBlocks(result.metadata.pendingBlocks)
-    }
-  }, [setDebugContext, setPendingBlocks])
+      // Update debug context and pending blocks
+      if (result.metadata?.context) {
+        setDebugContext(result.metadata.context)
+      }
+      if (result.metadata?.pendingBlocks) {
+        setPendingBlocks(result.metadata.pendingBlocks)
+      }
+    },
+    [setDebugContext, setPendingBlocks]
+  )
 
   /**
    * Handles debug execution errors
    */
-  const handleDebugExecutionError = useCallback(async (error: any, operation: string) => {
-    logger.error(`Debug ${operation} Error:`, error)
+  const handleDebugExecutionError = useCallback(
+    async (error: any, operation: string) => {
+      logger.error(`Debug ${operation} Error:`, error)
 
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    const errorResult = {
-      success: false,
-      output: {},
-      error: errorMessage,
-      logs: debugContext?.blockLogs || [],
-    }
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorResult = {
+        success: false,
+        output: {},
+        error: errorMessage,
+        logs: debugContext?.blockLogs || [],
+      }
 
-    setExecutionResult(errorResult)
+      setExecutionResult(errorResult)
 
-    // Show error notification
-    try {
-      addNotification('error', `Debug ${operation} failed: ${errorMessage}`, activeWorkflowId || '')
-    } catch (notificationError) {
-      logger.error('Error showing debug error notification:', notificationError)
-      console.error(`Debug ${operation} failed:`, errorMessage)
-    }
+      // Show error notification
+      try {
+        addNotification(
+          'error',
+          `Debug ${operation} failed: ${errorMessage}`,
+          activeWorkflowId || ''
+        )
+      } catch (notificationError) {
+        logger.error('Error showing debug error notification:', notificationError)
+        console.error(`Debug ${operation} failed:`, errorMessage)
+      }
 
-    // Persist logs
-    await persistLogs(uuidv4(), errorResult)
+      // Persist logs
+      await persistLogs(uuidv4(), errorResult)
 
-    // Reset debug state
-    resetDebugState()
-  }, [debugContext, addNotification, activeWorkflowId, resetDebugState])
+      // Reset debug state
+      resetDebugState()
+    },
+    [debugContext, addNotification, activeWorkflowId, resetDebugState]
+  )
 
   const persistLogs = async (
     executionId: string,
@@ -260,7 +273,7 @@ export function useWorkflowExecution() {
   }
 
   const handleRunWorkflow = useCallback(
-    async (workflowInput?: any, enableDebug: boolean = false) => {
+    async (workflowInput?: any, enableDebug = false) => {
       if (!activeWorkflowId) return
 
       // Reset execution result and set execution state
@@ -343,7 +356,7 @@ export function useWorkflowExecution() {
                 if (!result.metadata) {
                   result.metadata = { duration: 0, startTime: new Date().toISOString() }
                 }
-                ; (result.metadata as any).source = 'chat'
+                ;(result.metadata as any).source = 'chat'
                 // Update streamed content and apply tokenization
                 if (result.logs) {
                   result.logs.forEach((log: BlockLog) => {
@@ -412,7 +425,7 @@ export function useWorkflowExecution() {
             if (!result.metadata) {
               result.metadata = { duration: 0, startTime: new Date().toISOString() }
             }
-            ; (result.metadata as any).source = 'chat'
+            ;(result.metadata as any).source = 'chat'
           }
 
           if (activeWorkflowId) {
@@ -677,7 +690,11 @@ export function useWorkflowExecution() {
     try {
       // Show a notification that we're resuming execution
       try {
-        addNotification('info', 'Resuming workflow execution until completion', activeWorkflowId || '')
+        addNotification(
+          'info',
+          'Resuming workflow execution until completion',
+          activeWorkflowId || ''
+        )
       } catch (notificationError) {
         logger.error('Error showing resume notification:', notificationError)
         console.info('Resuming workflow execution until completion')
@@ -700,7 +717,9 @@ export function useWorkflowExecution() {
       const maxIterations = 100 // Safety to prevent infinite loops
 
       while (currentPendingBlocks.length > 0 && iterationCount < maxIterations) {
-        logger.info(`Resume iteration ${iterationCount + 1}, executing ${currentPendingBlocks.length} blocks`)
+        logger.info(
+          `Resume iteration ${iterationCount + 1}, executing ${currentPendingBlocks.length} blocks`
+        )
 
         currentResult = await executor!.continueExecution(currentPendingBlocks, currentContext)
 

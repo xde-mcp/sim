@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Expand, PanelRight } from 'lucide-react'
+import { useState } from 'react'
+import { PanelRight } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useChatStore } from '@/stores/panel/chat/store'
 import { useConsoleStore } from '@/stores/panel/console/store'
@@ -13,8 +13,6 @@ import { Console } from './components/console/console'
 import { Variables } from './components/variables/variables'
 
 export function Panel() {
-  const [width, setWidth] = useState(336) // 84 * 4 = 336px (default width)
-  const [isDragging, setIsDragging] = useState(false)
   const [chatMessage, setChatMessage] = useState<string>('')
   const [isChatModalOpen, setIsChatModalOpen] = useState(false)
 
@@ -27,33 +25,8 @@ export function Panel() {
   const clearChat = useChatStore((state) => state.clearChat)
   const { activeWorkflowId } = useWorkflowRegistry()
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true)
-    e.preventDefault()
-  }
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        const newWidth = window.innerWidth - e.clientX
-        setWidth(Math.max(336, Math.min(newWidth, window.innerWidth * 0.8)))
-      }
-    }
-
-    const handleMouseUp = () => {
-      setIsDragging(false)
-    }
-
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [isDragging])
+  // Fixed width to match floating tab selector
+  const panelWidth = 308
 
   if (!isOpen) {
     return (
@@ -72,105 +45,63 @@ export function Panel() {
     )
   }
 
+  //  {(activeTab === 'console' || activeTab === 'chat') && (
+  //           <button
+  //             onClick={() =>
+  //               activeTab === 'console'
+  //                 ? clearConsole(activeWorkflowId)
+  //                 : clearChat(activeWorkflowId)
+  //             }
+  //             className='rounded-md px-3 py-1 text-muted-foreground text-sm transition-colors hover:bg-accent/50 hover:text-foreground'
+  //           >
+  //             Clear
+  //           </button>
+  //         )}
+
   return (
     <>
-      <div
-        className='fixed top-16 right-0 z-10 flex h-[calc(100vh-4rem)] flex-col border-l bg-background'
-        style={{ width: `${width}px` }}
-      >
-        <div
-          className='absolute top-0 bottom-0 left-[-4px] z-50 w-4 cursor-ew-resize hover:bg-accent/50'
-          onMouseDown={handleMouseDown}
-        />
+      {/* Tab Selector */}
+      <div className='fixed top-[76px] right-4 z-20 flex h-9 w-[308px] items-center gap-1 rounded-[14px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] px-[2.5px] py-1 shadow-xs'>
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`panel-tab-base inline-flex flex-1 cursor-pointer items-center justify-center rounded-[10px] border border-transparent py-1 font-[450] text-sm outline-none transition-colors duration-200 ${
+            activeTab === 'chat' ? 'panel-tab-active' : 'panel-tab-inactive'
+          }`}
+        >
+          Chat
+        </button>
+        <button
+          onClick={() => setActiveTab('console')}
+          className={`panel-tab-base inline-flex flex-1 cursor-pointer items-center justify-center rounded-[10px] border border-transparent py-1 font-[450] text-sm outline-none transition-colors duration-200 ${
+            activeTab === 'console' ? 'panel-tab-active' : 'panel-tab-inactive'
+          }`}
+        >
+          Console
+        </button>
+        <button
+          onClick={() => setActiveTab('variables')}
+          className={`panel-tab-base inline-flex flex-1 cursor-pointer items-center justify-center rounded-[10px] border border-transparent py-1 font-[450] text-sm outline-none transition-colors duration-200 ${
+            activeTab === 'variables' ? 'panel-tab-active' : 'panel-tab-inactive'
+          }`}
+        >
+          Variables
+        </button>
+      </div>
 
-        {/* Panel Header */}
-        <div className='flex h-14 flex-none items-center justify-between border-b px-4'>
-          <div className='flex gap-2'>
-            <button
-              onClick={() => setActiveTab('chat')}
-              className={`rounded-md px-3 py-1 text-sm transition-colors ${
-                activeTab === 'chat'
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-              }`}
-            >
-              Chat
-            </button>
-            <button
-              onClick={() => setActiveTab('console')}
-              className={`rounded-md px-3 py-1 text-sm transition-colors ${
-                activeTab === 'console'
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-              }`}
-            >
-              Console
-            </button>
-            <button
-              onClick={() => setActiveTab('variables')}
-              className={`rounded-md px-3 py-1 text-sm transition-colors ${
-                activeTab === 'variables'
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-              }`}
-            >
-              Variables
-            </button>
-          </div>
-
-          {(activeTab === 'console' || activeTab === 'chat') && (
-            <button
-              onClick={() =>
-                activeTab === 'console'
-                  ? clearConsole(activeWorkflowId)
-                  : clearChat(activeWorkflowId)
-              }
-              className='rounded-md px-3 py-1 text-muted-foreground text-sm transition-colors hover:bg-accent/50 hover:text-foreground'
-            >
-              Clear
-            </button>
-          )}
-        </div>
-
-        {/* Panel Content */}
-        <div className='flex-1 overflow-hidden'>
+      {/* Panel Content */}
+      <div className='fixed top-[124px] right-4 bottom-4 z-10 flex w-[308px] flex-col rounded-[14px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] shadow-xs'>
+        {/* Panel Content Area */}
+        <div className='flex-1 overflow-hidden rounded-[14px]'>
           {activeTab === 'chat' ? (
-            <Chat panelWidth={width} chatMessage={chatMessage} setChatMessage={setChatMessage} />
+            <Chat
+              panelWidth={panelWidth}
+              chatMessage={chatMessage}
+              setChatMessage={setChatMessage}
+            />
           ) : activeTab === 'console' ? (
-            <Console panelWidth={width} />
+            <Console panelWidth={panelWidth} />
           ) : (
-            <Variables panelWidth={width} />
-          )}
-        </div>
-
-        {/* Panel Footer */}
-        <div className='flex h-16 flex-none items-center justify-between border-t bg-background px-4'>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={togglePanel}
-                className='flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
-              >
-                <PanelRight className='h-5 w-5 rotate-180 transform' />
-                <span className='sr-only'>Close Panel</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side='right'>Close Panel</TooltipContent>
-          </Tooltip>
-
-          {activeTab === 'chat' && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setIsChatModalOpen(true)}
-                  className='flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
-                >
-                  <Expand className='h-5 w-5' />
-                  <span className='sr-only'>Expand Chat</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side='left'>Expand Chat</TooltipContent>
-            </Tooltip>
+            <Variables panelWidth={panelWidth} />
           )}
         </div>
       </div>
