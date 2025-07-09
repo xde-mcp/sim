@@ -6,7 +6,7 @@ import {
   type CopilotMessage,
   createChat,
   generateChatTitle,
-  generateDocsResponse,
+  sendMessage,
   getChat,
   updateChat,
 } from '@/lib/copilot/service'
@@ -68,15 +68,21 @@ export async function POST(req: NextRequest) {
       currentChat = await createChat(session.user.id, workflowId)
     }
 
-    // Generate docs response
-    const result = await generateDocsResponse(query, conversationHistory, {
-      topK,
-      provider,
-      model,
-      stream,
+    // Generate docs response using main chat agent with explicit docs search request
+    const docsQuery = `Please search the documentation and answer this question: ${query}`
+    const result = await sendMessage({
+      message: docsQuery,
+      chatId: currentChat?.id,
       workflowId,
-      requestId,
+      createNewChat: false, // We handle chat creation above if needed
+      stream,
+      userId: session.user.id,
     })
+
+    // For compatibility with the existing response format, we need to extract sources
+    // Since the main chat agent returns direct responses, we don't have separate sources
+    // This is a limitation of the migration - the new approach embeds citations directly
+    const sources: Array<{ id: number; title: string; url: string; similarity: number }> = []
 
     if (stream && result.response instanceof ReadableStream) {
       // Handle streaming response with docs sources
@@ -91,23 +97,19 @@ export async function POST(req: NextRequest) {
             let accumulatedResponse = ''
 
             try {
-              // Send initial metadata including sources
+              // Send initial metadata
               const metadata = {
                 type: 'metadata',
                 chatId: currentChat?.id,
-                sources: result.sources,
-                citations: result.sources.map((source, index) => ({
-                  id: index + 1,
-                  title: source.title,
-                  url: source.url,
-                })),
+                sources: sources,
+                citations: [],
                 metadata: {
                   requestId,
-                  chunksFound: result.sources.length,
+                  chunksFound: 0,
                   query,
-                  topSimilarity: result.sources[0]?.similarity,
                   provider,
                   model,
+                  note: 'Using main chat agent - citations are embedded in response',
                 },
               }
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(metadata)}\n\n`))
@@ -149,11 +151,7 @@ export async function POST(req: NextRequest) {
                         role: 'assistant',
                         content: accumulatedResponse,
                         timestamp: new Date().toISOString(),
-                        citations: result.sources.map((source, index) => ({
-                          id: index + 1,
-                          title: source.title,
-                          url: source.url,
-                        })),
+                        citations: [],
                       }
 
                       const updatedMessages = [
@@ -229,11 +227,7 @@ export async function POST(req: NextRequest) {
         role: 'assistant',
         content: typeof result.response === 'string' ? result.response : '[Streaming Response]',
         timestamp: new Date().toISOString(),
-        citations: result.sources.map((source, index) => ({
-          id: index + 1,
-          title: source.title,
-          url: source.url,
-        })),
+        citations: [],
       }
 
       const updatedMessages = [...conversationHistory, userMessage, assistantMessage]
@@ -256,15 +250,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       response: result.response,
-      sources: result.sources,
+      sources: sources,
       chatId: currentChat?.id,
       metadata: {
         requestId,
-        chunksFound: result.sources.length,
+        chunksFound: sources.length,
         query,
-        topSimilarity: result.sources[0]?.similarity,
+        topSimilarity: sources[0]?.similarity,
         provider,
         model,
+        note: 'Using main chat agent - citations are embedded in response',
       },
     })
   } catch (error) {
