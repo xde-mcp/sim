@@ -5,7 +5,6 @@ import { createLogger } from '@/lib/logs/console-logger'
 import { useCopilotStore } from './copilot/store'
 import { useCustomToolsStore } from './custom-tools/store'
 import { useExecutionStore } from './execution/store'
-import { useNotificationStore } from './notifications/store'
 import { useConsoleStore } from './panel/console/store'
 import { useVariablesStore } from './panel/variables/store'
 import { useEnvironmentStore } from './settings/environment/store'
@@ -198,7 +197,6 @@ if (typeof window !== 'undefined') {
 export {
   useWorkflowStore,
   useWorkflowRegistry,
-  useNotificationStore,
   useEnvironmentStore,
   useExecutionStore,
   useConsoleStore,
@@ -220,7 +218,6 @@ export const resetAllStores = () => {
   useWorkflowStore.getState().clear()
   useSubBlockStore.getState().clear()
   useSubBlockStore.getState().clearToolParams()
-  useNotificationStore.setState({ notifications: [] })
   useEnvironmentStore.setState({
     variables: {},
     isLoading: false,
@@ -238,7 +235,6 @@ export const logAllStores = () => {
   const state = {
     workflow: useWorkflowStore.getState(),
     workflowRegistry: useWorkflowRegistry.getState(),
-    notifications: useNotificationStore.getState(),
     environment: useEnvironmentStore.getState(),
     execution: useExecutionStore.getState(),
     console: useConsoleStore.getState(),

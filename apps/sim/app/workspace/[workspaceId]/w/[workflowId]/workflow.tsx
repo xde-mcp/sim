@@ -15,7 +15,6 @@ import { createLogger } from '@/lib/logs/console-logger'
 import { ControlBar } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/control-bar/control-bar'
 import { ErrorBoundary } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/error/index'
 import { LoopNodeComponent } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/loop-node/loop-node'
-import { NotificationList } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/notifications/notifications'
 import { Panel } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/panel/panel'
 import { ParallelNodeComponent } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/parallel-node/parallel-node'
 import { SkeletonLoading } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/skeleton-loading/skeleton-loading'
@@ -26,7 +25,6 @@ import { useSocket } from '@/contexts/socket-context'
 import { useCollaborativeWorkflow } from '@/hooks/use-collaborative-workflow'
 import { useWorkspacePermissions } from '@/hooks/use-workspace-permissions'
 import { useExecutionStore } from '@/stores/execution/store'
-import { useNotificationStore } from '@/stores/notifications/store'
 import { useVariablesStore } from '@/stores/panel/variables/store'
 import { useGeneralStore } from '@/stores/settings/general/store'
 import { useSidebarStore } from '@/stores/sidebar/store'
@@ -124,7 +122,6 @@ const WorkflowContent = React.memo(() => {
     currentWorkflowId,
   } = useCollaborativeWorkflow()
   const { emitSubblockUpdate } = useSocket()
-  const { markAllAsRead } = useNotificationStore()
   const { resetLoaded: resetVariablesLoaded } = useVariablesStore()
 
   // Execution and debug mode state
@@ -906,8 +903,6 @@ const WorkflowContent = React.memo(() => {
         // Don't reset variables cache if we're not actually switching workflows
         setActiveWorkflow(currentId)
       }
-
-      markAllAsRead(currentId)
     }
 
     validateAndNavigate()
@@ -918,7 +913,6 @@ const WorkflowContent = React.memo(() => {
     setActiveWorkflow,
     createWorkflow,
     router,
-    markAllAsRead,
     resetVariablesLoaded,
   ])
 
@@ -1517,7 +1511,6 @@ const WorkflowContent = React.memo(() => {
         >
           <div className='fixed top-0 right-0 z-10'>
             <Panel />
-            <NotificationList />
           </div>
           <div className='workflow-container h-full'>
             <Background
@@ -1540,7 +1533,6 @@ const WorkflowContent = React.memo(() => {
       >
         <div className='fixed top-0 right-0 z-10'>
           <Panel />
-          <NotificationList />
         </div>
 
         {/* Floating Control Bar */}

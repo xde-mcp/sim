@@ -1,18 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import {
-  Bell,
-  Bug,
-  Copy,
-  History,
-  Layers,
-  Play,
-  SkipForward,
-  StepForward,
-  Trash2,
-  X,
-} from 'lucide-react'
+import { Bug, Copy, Layers, Play, SkipForward, StepForward, Trash2, X } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   AlertDialog,
@@ -26,19 +15,12 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSession } from '@/lib/auth-client'
 import { createLogger } from '@/lib/logs/console-logger'
 import { cn } from '@/lib/utils'
 import { useUserPermissionsContext } from '@/app/workspace/[workspaceId]/w/components/providers/workspace-permissions-provider'
 import { useFolderStore } from '@/stores/folders/store'
-import { useNotificationStore } from '@/stores/notifications/store'
 import { usePanelStore } from '@/stores/panel/store'
 import { useGeneralStore } from '@/stores/settings/general/store'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
@@ -51,8 +33,6 @@ import {
 } from '../../../hooks/use-keyboard-shortcuts'
 import { useWorkflowExecution } from '../../hooks/use-workflow-execution'
 import { DeploymentControls } from './components/deployment-controls/deployment-controls'
-import { HistoryDropdownItem } from './components/history-dropdown-item/history-dropdown-item'
-import { NotificationDropdownItem } from './components/notification-dropdown-item/notification-dropdown-item'
 
 const logger = createLogger('ControlBar')
 
@@ -79,13 +59,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
   const workspaceId = params.workspaceId as string
 
   // Store hooks
-  const {
-    notifications,
-    getWorkflowNotifications,
-    addNotification,
-    showNotification,
-    removeNotification,
-  } = useNotificationStore()
   const { history, revertToHistoryState, lastSaved, setNeedsRedeploymentFlag, blocks } =
     useWorkflowStore()
   const { workflowValues } = useSubBlockStore()
@@ -101,9 +74,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
   const { isExecuting, handleRunWorkflow } = useWorkflowExecution()
   const { setActiveTab } = usePanelStore()
   const { getFolderTree, expandedFolders } = useFolderStore()
-
-  // Get current workflow and workspace ID for permissions
-  const currentWorkflow = activeWorkflowId ? workflows[activeWorkflowId] : null
 
   // User permissions - use stable activeWorkspaceId from registry instead of deriving from currentWorkflow
   const userPermissions = useUserPermissionsContext()
@@ -399,12 +369,9 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       const newWorkflow = await duplicateWorkflow(activeWorkflowId)
       if (newWorkflow) {
         router.push(`/workspace/${workspaceId}/w/${newWorkflow}`)
-      } else {
-        addNotification('error', 'Failed to duplicate workflow', activeWorkflowId)
       }
     } catch (error) {
       logger.error('Error duplicating workflow:', { error })
-      addNotification('error', 'Failed to duplicate workflow', activeWorkflowId)
     }
   }
 
@@ -491,156 +458,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       userPermissions={userPermissions}
     />
   )
-
-  /**
-   * Render history dropdown
-   */
-  const renderHistoryDropdown = () => (
-    <DropdownMenu open={historyOpen} onOpenChange={setHistoryOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant='outline'
-              className='h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs'
-            >
-              <History />
-              <span className='sr-only'>Version History</span>
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        {!historyOpen && <TooltipContent>History</TooltipContent>}
-      </Tooltip>
-
-      {history.past.length === 0 && history.future.length === 0 ? (
-        <DropdownMenuContent align='end' className='w-40'>
-          <DropdownMenuItem className='text-muted-foreground text-sm'>
-            No history available
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      ) : (
-        <DropdownMenuContent align='end' className='max-h-[300px] w-60 overflow-y-auto'>
-          <>
-            {[...history.future].reverse().map((entry, index) => (
-              <HistoryDropdownItem
-                key={`future-${entry.timestamp}-${index}`}
-                action={entry.action}
-                timestamp={entry.timestamp}
-                onClick={() =>
-                  revertToHistoryState(
-                    history.past.length + 1 + (history.future.length - 1 - index)
-                  )
-                }
-                isFuture={true}
-              />
-            ))}
-            <HistoryDropdownItem
-              key={`current-${history.present.timestamp}`}
-              action={history.present.action}
-              timestamp={history.present.timestamp}
-              isCurrent={true}
-              onClick={() => {}}
-            />
-            {[...history.past].reverse().map((entry, index) => (
-              <HistoryDropdownItem
-                key={`past-${entry.timestamp}-${index}`}
-                action={entry.action}
-                timestamp={entry.timestamp}
-                onClick={() => revertToHistoryState(history.past.length - 1 - index)}
-              />
-            ))}
-          </>
-        </DropdownMenuContent>
-      )}
-    </DropdownMenu>
-  )
-
-  /**
-   * Render notifications dropdown
-   */
-  const renderNotificationsDropdown = () => {
-    const currentWorkflowNotifications = activeWorkflowId
-      ? notifications.filter((n) => n.workflowId === activeWorkflowId)
-      : []
-
-    return (
-      <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant='outline'
-                className='h-12 w-12 rounded-[11px] border-[hsl(var(--card-border))] bg-[hsl(var(--card-background))] text-[hsl(var(--card-text))] shadow-xs'
-              >
-                <Bell />
-                <span className='sr-only'>Notifications</span>
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          {!notificationsOpen && <TooltipContent>Notifications</TooltipContent>}
-        </Tooltip>
-
-        {currentWorkflowNotifications.length === 0 ? (
-          <DropdownMenuContent align='end' className='w-40'>
-            <DropdownMenuItem className='text-muted-foreground text-sm'>
-              No new notifications
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        ) : (
-          <DropdownMenuContent align='end' className='max-h-[300px] w-60 overflow-y-auto'>
-            {[...currentWorkflowNotifications]
-              .sort((a, b) => b.timestamp - a.timestamp)
-              .map((notification) => (
-                <NotificationDropdownItem
-                  key={notification.id}
-                  id={notification.id}
-                  type={notification.type}
-                  message={notification.message}
-                  timestamp={notification.timestamp}
-                  options={notification.options}
-                  setDropdownOpen={setNotificationsOpen}
-                />
-              ))}
-          </DropdownMenuContent>
-        )}
-      </DropdownMenu>
-    )
-  }
-
-  /**
-   * Render publish button
-   */
-  // const renderPublishButton = () => {
-  //   const isPublished = isPublishedToMarketplace()
-
-  //   return (
-  //     <Tooltip>
-  //       <TooltipTrigger asChild>
-  //         <Button
-  //           variant="ghost"
-  //           size="icon"
-  //           onClick={handlePublishWorkflow}
-  //           disabled={isPublishing}
-  //           className={cn('hover:text-[#701FFC]', isPublished && 'text-[#701FFC]')}
-  //         >
-  //           {isPublishing ? (
-  //             <Loader2 className="h-5 w-5 animate-spin" />
-  //           ) : (
-  //             <Store className="h-5 w-5" />
-  //           )}
-  //           <span className="sr-only">Publish to Marketplace</span>
-  //         </Button>
-  //       </TooltipTrigger>
-  //       <TooltipContent>
-  //         {isPublishing
-  //           ? 'Publishing...'
-  //           : isPublished
-  //             ? 'Published to Marketplace'
-  //             : 'Publish to Marketplace'}
-  //       </TooltipContent>
-  //     </Tooltip>
-  //   )
-  // }
 
   /**
    * Render workflow duplicate button
@@ -1003,8 +820,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
   return (
     <div className='fixed top-4 right-4 z-20 flex items-center gap-1'>
       {renderDeleteButton()}
-      {/* {renderHistoryDropdown()} */}
-      {/* {renderNotificationsDropdown()} */}
       {renderDuplicateButton()}
       {renderAutoLayoutButton()}
       {!isDebugging && renderDebugModeToggle()}

@@ -9,7 +9,6 @@ import type { BlockLog, ExecutionResult, StreamingExecution } from '@/executor/t
 import { Serializer } from '@/serializer'
 import type { SerializedWorkflow } from '@/serializer/types'
 import { useExecutionStore } from '@/stores/execution/store'
-import { useNotificationStore } from '@/stores/notifications/store'
 import { useConsoleStore } from '@/stores/panel/console/store'
 import { usePanelStore } from '@/stores/panel/store'
 import { useVariablesStore } from '@/stores/panel/variables/store'
@@ -45,7 +44,6 @@ interface DebugValidationResult {
 export function useWorkflowExecution() {
   const { blocks, edges, loops, parallels } = useWorkflowStore()
   const { activeWorkflowId } = useWorkflowRegistry()
-  const { addNotification } = useNotificationStore()
   const { toggleConsole } = useConsoleStore()
   const { togglePanel, setActiveTab, activeTab } = usePanelStore()
   const { getAllVariables } = useEnvironmentStore()
@@ -128,29 +126,13 @@ export function useWorkflowExecution() {
       logger.info('Debug session complete')
       setExecutionResult(result)
 
-      // Show completion notification
-      const notificationMessage = result.success
-        ? 'Workflow completed successfully'
-        : `Workflow execution failed: ${result.error}`
-
-      try {
-        addNotification(
-          result.success ? 'console' : 'error',
-          notificationMessage,
-          activeWorkflowId || ''
-        )
-      } catch (notificationError) {
-        logger.error('Error showing completion notification:', notificationError)
-        console.info('Workflow execution completed')
-      }
-
       // Persist logs
       await persistLogs(uuidv4(), result)
 
       // Reset debug state
       resetDebugState()
     },
-    [addNotification, activeWorkflowId, resetDebugState]
+    [activeWorkflowId, resetDebugState]
   )
 
   /**
@@ -190,25 +172,13 @@ export function useWorkflowExecution() {
 
       setExecutionResult(errorResult)
 
-      // Show error notification
-      try {
-        addNotification(
-          'error',
-          `Debug ${operation} failed: ${errorMessage}`,
-          activeWorkflowId || ''
-        )
-      } catch (notificationError) {
-        logger.error('Error showing debug error notification:', notificationError)
-        console.error(`Debug ${operation} failed:`, errorMessage)
-      }
-
       // Persist logs
       await persistLogs(uuidv4(), errorResult)
 
       // Reset debug state
       resetDebugState()
     },
-    [debugContext, addNotification, activeWorkflowId, resetDebugState]
+    [debugContext, activeWorkflowId, resetDebugState]
   )
 
   const persistLogs = async (
@@ -386,13 +356,6 @@ export function useWorkflowExecution() {
               }
             } catch (error: any) {
               controller.error(error)
-              if (activeWorkflowId) {
-                addNotification(
-                  'error',
-                  `Workflow execution failed: ${error.message}`,
-                  activeWorkflowId
-                )
-              }
             } finally {
               controller.close()
               setIsExecuting(false)
@@ -428,15 +391,6 @@ export function useWorkflowExecution() {
             ;(result.metadata as any).source = 'chat'
           }
 
-          if (activeWorkflowId) {
-            addNotification(
-              result.success ? 'console' : 'error',
-              result.success
-                ? 'Workflow completed successfully'
-                : `Workflow execution failed: ${result.error || 'Unknown error'}`,
-              activeWorkflowId
-            )
-          }
           persistLogs(executionId, result).catch((err) => {
             logger.error('Error persisting logs:', { error: err })
           })
@@ -456,7 +410,6 @@ export function useWorkflowExecution() {
       edges,
       loops,
       parallels,
-      addNotification,
       toggleConsole,
       togglePanel,
       setActiveTab,
@@ -614,13 +567,6 @@ export function useWorkflowExecution() {
       notificationMessage += `: ${errorMessage}`
     }
 
-    try {
-      addNotification('error', notificationMessage, activeWorkflowId || '')
-    } catch (notificationError) {
-      logger.error('Error showing error notification:', notificationError)
-      console.error('Workflow execution failed:', errorMessage)
-    }
-
     return errorResult
   }
 
@@ -637,7 +583,6 @@ export function useWorkflowExecution() {
     // Validate debug state
     const validation = validateDebugState()
     if (!validation.isValid) {
-      addNotification('error', validation.error!, activeWorkflowId || '')
       resetDebugState()
       return
     }
@@ -666,7 +611,6 @@ export function useWorkflowExecution() {
     handleDebugSessionComplete,
     handleDebugSessionContinuation,
     handleDebugExecutionError,
-    addNotification,
   ])
 
   /**
@@ -682,23 +626,12 @@ export function useWorkflowExecution() {
     // Validate debug state
     const validation = validateDebugState()
     if (!validation.isValid) {
-      addNotification('error', validation.error!, activeWorkflowId || '')
       resetDebugState()
       return
     }
 
     try {
-      // Show a notification that we're resuming execution
-      try {
-        addNotification(
-          'info',
-          'Resuming workflow execution until completion',
-          activeWorkflowId || ''
-        )
-      } catch (notificationError) {
-        logger.error('Error showing resume notification:', notificationError)
-        console.info('Resuming workflow execution until completion')
-      }
+      logger.info('Resuming workflow execution until completion')
 
       let currentResult: ExecutionResult = {
         success: true,
@@ -777,7 +710,6 @@ export function useWorkflowExecution() {
     resetDebugState,
     handleDebugSessionComplete,
     handleDebugExecutionError,
-    addNotification,
   ])
 
   /**
