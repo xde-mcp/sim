@@ -61,6 +61,7 @@ import { HistoryDropdownItem } from './components/history-dropdown-item/history-
 import { MarketplaceModal } from './components/marketplace-modal/marketplace-modal'
 import { NotificationDropdownItem } from './components/notification-dropdown-item/notification-dropdown-item'
 import { UserAvatarStack } from './components/user-avatar-stack/user-avatar-stack'
+import { WorkflowTextEditorModal } from '../workflow-text-editor/workflow-text-editor-modal'
 
 const logger = createLogger('ControlBar')
 
@@ -1300,7 +1301,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
         {renderDebugModeToggle()}
 
         <ExportControls disabled={!userPermissions.canRead} />
-        {/* <WorkflowTextEditorModal disabled={!userPermissions.canEdit} /> */}
+        <WorkflowTextEditorModal disabled={!userPermissions.canEdit} />
         {/* {renderPublishButton()} */}
         {renderDeployButton()}
         {renderRunButton()}
