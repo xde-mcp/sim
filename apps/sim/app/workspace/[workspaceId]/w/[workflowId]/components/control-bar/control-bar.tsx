@@ -55,13 +55,13 @@ import {
   useKeyboardShortcuts,
 } from '../../../hooks/use-keyboard-shortcuts'
 import { useWorkflowExecution } from '../../hooks/use-workflow-execution'
+import { WorkflowTextEditorModal } from '../workflow-text-editor/workflow-text-editor-modal'
 import { DeploymentControls } from './components/deployment-controls/deployment-controls'
 import { ExportControls } from './components/export-controls/export-controls'
 import { HistoryDropdownItem } from './components/history-dropdown-item/history-dropdown-item'
 import { MarketplaceModal } from './components/marketplace-modal/marketplace-modal'
 import { NotificationDropdownItem } from './components/notification-dropdown-item/notification-dropdown-item'
 import { UserAvatarStack } from './components/user-avatar-stack/user-avatar-stack'
-import { WorkflowTextEditorModal } from '../workflow-text-editor/workflow-text-editor-modal'
 
 const logger = createLogger('ControlBar')
 
