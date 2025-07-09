@@ -181,7 +181,6 @@ export async function searchDocumentation(
   }
 }
 
-
 /**
  * Generate chat response using LLM with optional documentation search
  */

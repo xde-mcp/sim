@@ -6,8 +6,8 @@ import {
   type CopilotMessage,
   createChat,
   generateChatTitle,
-  sendMessage,
   getChat,
+  sendMessage,
   updateChat,
 } from '@/lib/copilot/service'
 import { createLogger } from '@/lib/logs/console-logger'
