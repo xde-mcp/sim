@@ -5,6 +5,7 @@ import { useEnvironmentStore } from '@/stores/settings/environment/store'
 import { getAllBlocksTool } from './blocks/get-all'
 import { getBlockMetadataTool } from './blocks/get-metadata'
 import { getYamlStructureTool } from './blocks/get-yaml-structure'
+import { editWorkflowTool } from './blocks/edit-workflow'
 import { docsSearchTool } from './docs/search'
 import { tools } from './registry'
 import type { TableRow, ToolConfig, ToolResponse } from './types'
@@ -19,6 +20,7 @@ const internalTools: Record<string, ToolConfig> = {
   get_blocks_and_tools: getAllBlocksTool,
   get_blocks_metadata: getBlockMetadataTool,
   get_yaml_structure: getYamlStructureTool,
+  edit_workflow: editWorkflowTool,
 }
 
 // Export the list of internal tool IDs for filtering purposes

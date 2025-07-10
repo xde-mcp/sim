@@ -332,6 +332,27 @@ export async function generateChatResponse(
           required: [],
         },
       },
+      {
+        id: 'edit_workflow',
+        name: 'Edit Workflow',
+        description:
+          'Save/edit the current workflow by providing YAML content. This performs the same action as saving in the YAML code editor. Only call this after getting blocks info, metadata, and YAML structure guide.',
+        params: {},
+        parameters: {
+          type: 'object',
+          properties: {
+            yamlContent: {
+              type: 'string',
+              description: 'The complete YAML workflow content to save',
+            },
+            description: {
+              type: 'string',
+              description: 'Optional description of the changes being made',
+            },
+          },
+          required: ['yamlContent'],
+        },
+      },
     ]
 
     const response = await executeProviderRequest(provider, {
