@@ -130,8 +130,12 @@ export function generateBlockConnections(
   Object.entries(conditionTargets).forEach(([rawId, targets]) => {
     let cleanId = rawId
 
+    // Simple check: if this is exactly 'else', keep it as 'else'
+    if (rawId === 'else') {
+      cleanId = 'else'
+    }
     // Convert timestamp-based else-if IDs to clean sequential format
-    if (rawId.startsWith('else-if-') && /else-if-\d+$/.test(rawId)) {
+    else if (rawId.startsWith('else-if-') && /else-if-\d+$/.test(rawId)) {
       elseIfCount++
       if (elseIfCount === 1) {
         cleanId = 'else-if'
@@ -142,6 +146,25 @@ export function generateBlockConnections(
 
     cleanConditionTargets[cleanId] = targets
   })
+
+  // After processing all conditions, check if we need to convert the last else-if to else
+  // If we have more than the expected number of else-if conditions, the last one should be else
+  const conditionKeys = Object.keys(cleanConditionTargets)
+  const hasElse = conditionKeys.includes('else')
+  const elseIfKeys = conditionKeys.filter(key => key.startsWith('else-if'))
+  
+  if (!hasElse && elseIfKeys.length > 0) {
+    // Find the highest numbered else-if and convert it to else
+    const highestElseIf = elseIfKeys.sort((a, b) => {
+      const aNum = a === 'else-if' ? 1 : parseInt(a.replace('else-if-', ''))
+      const bNum = b === 'else-if' ? 1 : parseInt(b.replace('else-if-', ''))
+      return bNum - aNum
+    })[0]
+    
+    // Move the targets from the highest else-if to else
+    cleanConditionTargets['else'] = cleanConditionTargets[highestElseIf]
+    delete cleanConditionTargets[highestElseIf]
+  }
 
   // Add to connections object (use single values for single targets, arrays for multiple)
   if (successTargets.length > 0) {
@@ -359,7 +382,7 @@ export function expandConditionInputs(
 
     // Add default else if not present and no existing else key
     const hasElse = Object.keys(conditionsObj).some(
-      (key) => key === 'else' || key.startsWith('else')
+      (key) => key === 'else'
     )
     if (!hasElse) {
       conditionsArray.push({
@@ -605,6 +628,11 @@ function extractConditionId(sourceHandle: string): string {
 
   // Remove "condition-" prefix
   const withoutPrefix = sourceHandle.substring('condition-'.length)
+
+  // Special case: check if this ends with "-else" (the auto-added else condition)
+  if (withoutPrefix.endsWith('-else')) {
+    return 'else'
+  }
 
   // Find the first UUID pattern (36 characters with 4 hyphens in specific positions)
   // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
