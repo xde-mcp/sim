@@ -6,12 +6,12 @@ import { executeProviderRequest } from '@/providers'
 import type { ProviderToolConfig } from '@/providers/types'
 import { getApiKey } from '@/providers/utils'
 import { getCopilotConfig, getCopilotModel } from './config'
-import { 
-  TITLE_GENERATION_SYSTEM_PROMPT, 
-  TITLE_GENERATION_USER_PROMPT,
-  ASK_MODE_SYSTEM_PROMPT,
+import {
   AGENT_MODE_SYSTEM_PROMPT,
-  validateSystemPrompts
+  ASK_MODE_SYSTEM_PROMPT,
+  TITLE_GENERATION_SYSTEM_PROMPT,
+  TITLE_GENERATION_USER_PROMPT,
+  validateSystemPrompts,
 } from './prompts'
 
 const logger = createLogger('CopilotService')
@@ -412,7 +412,7 @@ export async function generateChatResponse(
 
     // Log the first 200 characters of the prompt to verify it's correct
     logger.debug(`System prompt preview (${mode} mode):`, {
-      promptPreview: systemPrompt.substring(0, 200) + '...',
+      promptPreview: `${systemPrompt.substring(0, 200)}...`,
       fullPromptLength: systemPrompt.length,
     })
 

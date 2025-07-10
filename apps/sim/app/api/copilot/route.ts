@@ -91,7 +91,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { message, chatId, workflowId, mode, createNewChat, stream } = SendMessageSchema.parse(body)
+    const { message, chatId, workflowId, mode, createNewChat, stream } =
+      SendMessageSchema.parse(body)
 
     const session = await getSession()
     if (!session?.user?.id) {
