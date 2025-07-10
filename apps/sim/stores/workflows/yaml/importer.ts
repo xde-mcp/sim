@@ -435,7 +435,7 @@ function createSmartIdMapping(
   yamlBlocks: ImportedBlock[],
   existingBlocks: Record<string, any>,
   activeWorkflowId: string,
-  forceNewIds: boolean = false
+  forceNewIds = false
 ): Map<string, string> {
   const yamlIdToActualId = new Map<string, string>()
   const existingBlockIds = new Set(Object.keys(existingBlocks))
@@ -455,7 +455,7 @@ function createSmartIdMapping(
       const newId = crypto.randomUUID()
       yamlIdToActualId.set(block.id, newId)
       logger.info(
-        `🆕 Mapping new block: ${block.id} -> ${newId} (${forceNewIds ? 'forced new ID' : 'not found in workflow ' + activeWorkflowId})`
+        `🆕 Mapping new block: ${block.id} -> ${newId} (${forceNewIds ? 'forced new ID' : `not found in workflow ${activeWorkflowId}`})`
       )
     } else {
       // Block ID exists in current workflow - preserve it
@@ -531,7 +531,7 @@ export async function importWorkflowFromYaml(
     // Handle two different cases:
     // 1. Import button (targetWorkflowId provided): Everything should be fresh, no preservation
     // 2. Text editor (no targetWorkflowId): Smart ID mapping and preservation
-    
+
     let existingBlocks: Record<string, any> = {}
     let yamlIdToActualId: Map<string, string>
 
@@ -548,10 +548,13 @@ export async function importWorkflowFromYaml(
       // Text editor case: Smart ID mapping and preservation
       logger.info('Text editor case: Using smart ID mapping')
       existingBlocks = workflowActions.getExistingBlocks()
-      logger.info(`Got existing blocks from workflow store for active workflow ${activeWorkflowId}`, {
-        blockCount: Object.keys(existingBlocks).length,
-        blockIds: Object.keys(existingBlocks),
-      })
+      logger.info(
+        `Got existing blocks from workflow store for active workflow ${activeWorkflowId}`,
+        {
+          blockCount: Object.keys(existingBlocks).length,
+          blockIds: Object.keys(existingBlocks),
+        }
+      )
       yamlIdToActualId = createSmartIdMapping(blocks, existingBlocks, activeWorkflowId, false)
     }
 
@@ -673,7 +676,9 @@ export async function importWorkflowFromYaml(
             source: sourceId,
             target: targetId,
           }
-          logger.debug(`Creating import edge: ${edge.source} -> ${edge.target} with ID ${newEdgeId}`)
+          logger.debug(
+            `Creating import edge: ${edge.source} -> ${edge.target} with ID ${newEdgeId}`
+          )
           completeEdges.push(newEdge)
         } else {
           logger.warn(`Skipping edge - missing blocks: ${edge.source} -> ${edge.target}`)
@@ -699,7 +704,9 @@ export async function importWorkflowFromYaml(
             ...edge,
             id: newEdgeId,
           }
-          logger.debug(`Preserving existing edge: ${edge.source} -> ${edge.target} with new ID ${newEdgeId}`)
+          logger.debug(
+            `Preserving existing edge: ${edge.source} -> ${edge.target} with new ID ${newEdgeId}`
+          )
           completeEdges.push(preservedEdge)
         }
       }
