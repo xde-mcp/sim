@@ -107,23 +107,23 @@ export function CopilotModal({
                 [...chats]
                   .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                   .map((chat) => (
-                    <div key={chat.id} className='flex items-center'>
-                      <DropdownMenuItem
+                    <div key={chat.id} className='flex items-center gap-1 px-1'>
+                      <div
                         onClick={() => onSelectChat(chat)}
-                        className={`flex-1 cursor-pointer ${
+                        className={`flex-1 min-w-0 cursor-pointer rounded px-2 py-2 transition-colors hover:bg-accent ${
                           currentChat?.id === chat.id ? 'bg-accent' : ''
                         }`}
                       >
-                        <div className='min-w-0 flex-1'>
+                        <div className='min-w-0'>
                           <div className='truncate font-medium text-sm'>
                             {chat.title || 'Untitled Chat'}
                           </div>
-                          <div className='text-muted-foreground text-xs'>
+                          <div className='truncate text-muted-foreground text-xs'>
                             {chat.messageCount} messages •{' '}
                             {new Date(chat.createdAt).toLocaleDateString()}
                           </div>
                         </div>
-                      </DropdownMenuItem>
+                      </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant='ghost' size='sm' className='h-8 w-8 shrink-0 p-0'>
