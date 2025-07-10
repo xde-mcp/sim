@@ -18,7 +18,7 @@ const ProfessionalInput: FC<ProfessionalInputProps> = ({
   onSubmit,
   disabled = false,
   isLoading = false,
-  placeholder = 'Ask about Sim Studio documentation...',
+  placeholder = 'How can I help you today?',
   className,
 }) => {
   const [message, setMessage] = useState('')

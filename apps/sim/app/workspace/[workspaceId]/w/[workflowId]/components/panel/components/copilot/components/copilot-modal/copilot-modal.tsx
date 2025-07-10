@@ -14,6 +14,7 @@ import { createLogger } from '@/lib/logs/console-logger'
 import type { CopilotMessage } from '@/stores/copilot/types'
 import { ProfessionalInput } from '../professional-input/professional-input'
 import { ProfessionalMessage } from '../professional-message/professional-message'
+import { CopilotWelcome } from '../welcome/welcome'
 
 const logger = createLogger('CopilotModal')
 
@@ -173,32 +174,7 @@ export function CopilotModal({
       <div ref={messagesContainerRef} className='flex-1 overflow-y-auto'>
         <div className='mx-auto max-w-3xl'>
           {messages.length === 0 ? (
-            <div className='flex h-full flex-col items-center justify-center px-4 py-10'>
-              <div className='space-y-4 text-center'>
-                <Bot className='mx-auto h-12 w-12 text-muted-foreground' />
-                <div className='space-y-2'>
-                  <h3 className='font-medium text-lg'>Welcome to Documentation Copilot</h3>
-                  <p className='text-muted-foreground text-sm'>
-                    Ask me anything about Sim Studio features, workflows, tools, or how to get
-                    started.
-                  </p>
-                </div>
-                <div className='mx-auto max-w-xs space-y-2 text-left'>
-                  <div className='text-muted-foreground text-xs'>Try asking:</div>
-                  <div className='space-y-1'>
-                    <div className='rounded bg-muted/50 px-2 py-1 text-xs'>
-                      "How do I create a workflow?"
-                    </div>
-                    <div className='rounded bg-muted/50 px-2 py-1 text-xs'>
-                      "What tools are available?"
-                    </div>
-                    <div className='rounded bg-muted/50 px-2 py-1 text-xs'>
-                      "How do I deploy my workflow?"
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <CopilotWelcome />
           ) : (
             messages.map((message) => {
               // Convert modal message format to CopilotMessage format
@@ -246,7 +222,6 @@ export function CopilotModal({
         }}
         disabled={false}
         isLoading={isLoading}
-        placeholder='Ask about Sim Studio documentation...'
       />
     </div>
   )
