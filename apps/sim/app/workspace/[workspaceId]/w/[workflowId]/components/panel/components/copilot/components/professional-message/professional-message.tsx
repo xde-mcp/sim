@@ -64,7 +64,10 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
       }
 
       return (
-        <code className='rounded border bg-muted/80 px-1.5 py-0.5 font-mono text-sm break-all' {...props}>
+        <code
+          className='break-all rounded border bg-muted/80 px-1.5 py-0.5 font-mono text-sm'
+          {...props}
+        >
           {children}
         </code>
       )
@@ -73,23 +76,27 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
       <div className='my-3 overflow-x-auto rounded-lg border bg-muted/30'>{children}</div>
     ),
     h1: ({ children }: any) => (
-      <h1 className='mt-6 mb-3 border-b pb-2 font-bold text-foreground text-xl break-words'>{children}</h1>
+      <h1 className='mt-6 mb-3 break-words border-b pb-2 font-bold text-foreground text-xl'>
+        {children}
+      </h1>
     ),
     h2: ({ children }: any) => (
-      <h2 className='mt-5 mb-2 font-semibold text-foreground text-lg break-words'>{children}</h2>
+      <h2 className='mt-5 mb-2 break-words font-semibold text-foreground text-lg'>{children}</h2>
     ),
     h3: ({ children }: any) => (
-      <h3 className='mt-4 mb-2 font-semibold text-base text-foreground break-words'>{children}</h3>
+      <h3 className='mt-4 mb-2 break-words font-semibold text-base text-foreground'>{children}</h3>
     ),
     p: ({ children }: any) => (
-      <p className='mb-3 text-foreground text-sm leading-relaxed last:mb-0 break-words'>{children}</p>
+      <p className='mb-3 break-words text-foreground text-sm leading-relaxed last:mb-0'>
+        {children}
+      </p>
     ),
     a: ({ href, children }: any) => (
       <a
         href={href}
         target='_blank'
         rel='noopener noreferrer'
-        className='font-medium text-blue-600 underline decoration-blue-600/30 underline-offset-2 transition-colors hover:text-blue-800 hover:decoration-blue-600/60 dark:text-blue-400 dark:hover:text-blue-300 break-all'
+        className='break-all font-medium text-blue-600 underline decoration-blue-600/30 underline-offset-2 transition-colors hover:text-blue-800 hover:decoration-blue-600/60 dark:text-blue-400 dark:hover:text-blue-300'
       >
         {children}
       </a>
@@ -101,10 +108,10 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
       <ol className='mb-3 ml-4 list-outside list-decimal space-y-1 break-words'>{children}</ol>
     ),
     li: ({ children }: any) => (
-      <li className='text-foreground text-sm leading-relaxed break-words'>{children}</li>
+      <li className='break-words text-foreground text-sm leading-relaxed'>{children}</li>
     ),
     blockquote: ({ children }: any) => (
-      <blockquote className='my-3 rounded-r-lg border-muted-foreground/20 border-l-4 bg-muted/30 py-2 pl-4 text-muted-foreground italic break-words'>
+      <blockquote className='my-3 break-words rounded-r-lg border-muted-foreground/20 border-l-4 bg-muted/30 py-2 pl-4 text-muted-foreground italic'>
         {children}
       </blockquote>
     ),
@@ -114,9 +121,13 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
       </div>
     ),
     th: ({ children }: any) => (
-      <th className='border-b bg-muted/50 px-3 py-2 text-left font-semibold break-words'>{children}</th>
+      <th className='break-words border-b bg-muted/50 px-3 py-2 text-left font-semibold'>
+        {children}
+      </th>
     ),
-    td: ({ children }: any) => <td className='border-muted/30 border-b px-3 py-2 break-words'>{children}</td>,
+    td: ({ children }: any) => (
+      <td className='break-words border-muted/30 border-b px-3 py-2'>{children}</td>
+    ),
   }
 
   if (isUser) {
@@ -124,8 +135,8 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
       <div className='group flex justify-end px-4 py-3'>
         <div className='flex max-w-[85%] items-start gap-3'>
           <div className='flex flex-col items-end space-y-1'>
-            <div className='rounded-2xl rounded-tr-md bg-primary px-4 py-3 text-primary-foreground shadow-sm max-w-full'>
-              <div className='whitespace-pre-wrap break-words text-sm leading-relaxed overflow-hidden'>
+            <div className='max-w-full rounded-2xl rounded-tr-md bg-primary px-4 py-3 text-primary-foreground shadow-sm'>
+              <div className='overflow-hidden whitespace-pre-wrap break-words text-sm leading-relaxed'>
                 {message.content}
               </div>
             </div>
@@ -159,7 +170,7 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
             <Bot className='h-4 w-4' />
           </div>
           <div className='flex min-w-0 flex-1 flex-col items-start space-y-1'>
-            <div className='w-full rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm max-w-full'>
+            <div className='w-full max-w-full rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'>
               {message.content ? (
                 <div className='prose prose-sm dark:prose-invert max-w-none overflow-hidden'>
                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
@@ -204,7 +215,7 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
 
             {/* Citations if available */}
             {message.citations && message.citations.length > 0 && (
-              <div className='mt-2 space-y-1 max-w-full'>
+              <div className='mt-2 max-w-full space-y-1'>
                 <div className='font-medium text-muted-foreground text-xs'>Sources:</div>
                 <div className='flex flex-wrap gap-1'>
                   {message.citations.map((citation) => (
@@ -213,7 +224,7 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
                       href={citation.url}
                       target='_blank'
                       rel='noopener noreferrer'
-                      className='inline-flex items-center rounded-md border bg-muted/50 px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground max-w-full break-all'
+                      className='inline-flex max-w-full items-center break-all rounded-md border bg-muted/50 px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground'
                     >
                       {citation.title}
                     </a>
