@@ -275,8 +275,8 @@ export async function generateChatResponse(
             },
             topK: {
               type: 'number',
-              description: 'Number of results to return (default: 5, max: 10)',
-              default: 5,
+              description: 'Number of results to return (default: 10, max: 10)',
+              default: 10,
             },
           },
           required: ['query'],

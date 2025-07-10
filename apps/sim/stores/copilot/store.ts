@@ -371,7 +371,7 @@ export const useCopilotStore = create<CopilotStore>()(
       // Send a docs RAG message
       sendDocsMessage: async (query: string, options = {}) => {
         const { workflowId, currentChat } = get()
-        const { stream = true, topK = 5 } = options
+        const { stream = true, topK = 10 } = options
 
         if (!workflowId) {
           logger.warn('Cannot send docs message: no workflow ID set')

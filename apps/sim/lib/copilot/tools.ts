@@ -38,15 +38,15 @@ const docsSearchTool: CopilotTool = {
       },
       topK: {
         type: 'number',
-        description: 'Number of results to return (default: 5, max: 10)',
-        default: 5,
+        description: 'Number of results to return (default: 10, max: 10)',
+        default: 10,
       },
     },
     required: ['query'],
   },
   execute: async (args: Record<string, any>): Promise<CopilotToolResult> => {
     try {
-      const { query, topK = 5 } = args
+      const { query, topK = 10 } = args
 
       logger.info('Executing documentation search', { query, topK })
 
