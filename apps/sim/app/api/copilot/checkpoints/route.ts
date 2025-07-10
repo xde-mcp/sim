@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       .offset(offset)
 
     // Format timestamps to ISO strings for consistent timezone handling
-    const formattedCheckpoints = checkpoints.map(checkpoint => ({
+    const formattedCheckpoints = checkpoints.map((checkpoint) => ({
       id: checkpoint.id,
       userId: checkpoint.userId,
       workflowId: checkpoint.workflowId,
