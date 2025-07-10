@@ -406,7 +406,7 @@ export function convertYamlToWorkflow(yamlWorkflow: YamlWorkflow): ImportResult 
   Object.entries(yamlWorkflow.blocks).forEach(([blockId, yamlBlock]) => {
     if (yamlBlock.connections?.outgoing) {
       yamlBlock.connections.outgoing.forEach((connection) => {
-        const edgeId = `${blockId}-${connection.target}-${Date.now()}`
+        const edgeId = crypto.randomUUID()
 
         const edge: ImportedEdge = {
           id: edgeId,
@@ -434,7 +434,8 @@ export function convertYamlToWorkflow(yamlWorkflow: YamlWorkflow): ImportResult 
 function createSmartIdMapping(
   yamlBlocks: ImportedBlock[],
   existingBlocks: Record<string, any>,
-  activeWorkflowId: string
+  activeWorkflowId: string,
+  forceNewIds: boolean = false
 ): Map<string, string> {
   const yamlIdToActualId = new Map<string, string>()
   const existingBlockIds = new Set(Object.keys(existingBlocks))
@@ -445,21 +446,22 @@ function createSmartIdMapping(
     existingBlockCount: Object.keys(existingBlocks).length,
     existingBlockIds: Array.from(existingBlockIds),
     yamlBlockIds: yamlBlocks.map((b) => b.id),
+    forceNewIds,
   })
 
   for (const block of yamlBlocks) {
-    if (existingBlockIds.has(block.id)) {
+    if (forceNewIds || !existingBlockIds.has(block.id)) {
+      // Force new ID or block ID doesn't exist in current workflow - generate new UUID
+      const newId = crypto.randomUUID()
+      yamlIdToActualId.set(block.id, newId)
+      logger.info(
+        `🆕 Mapping new block: ${block.id} -> ${newId} (${forceNewIds ? 'forced new ID' : 'not found in workflow ' + activeWorkflowId})`
+      )
+    } else {
       // Block ID exists in current workflow - preserve it
       yamlIdToActualId.set(block.id, block.id)
       logger.info(
         `✅ Preserving existing block ID: ${block.id} (exists in workflow ${activeWorkflowId})`
-      )
-    } else {
-      // Block ID doesn't exist in current workflow - generate new UUID
-      const newId = crypto.randomUUID()
-      yamlIdToActualId.set(block.id, newId)
-      logger.info(
-        `🆕 Mapping new block: ${block.id} -> ${newId} (not found in workflow ${activeWorkflowId})`
       )
     }
   }
@@ -526,61 +528,58 @@ export async function importWorkflowFromYaml(
       currentStateBlockCount: Object.keys(currentWorkflowState.blocks).length,
     })
 
-    // Get the existing workflow state - ONLY from the current workflow being edited
+    // Handle two different cases:
+    // 1. Import button (targetWorkflowId provided): Everything should be fresh, no preservation
+    // 2. Text editor (no targetWorkflowId): Smart ID mapping and preservation
+    
     let existingBlocks: Record<string, any> = {}
+    let yamlIdToActualId: Map<string, string>
 
     if (targetWorkflowId) {
-      // For target workflow, fetch from API
-      try {
-        const response = await fetch(`/api/workflows/${targetWorkflowId}`)
-        if (response.ok) {
-          const workflowData = await response.json()
-          existingBlocks = workflowData.data?.state?.blocks || {}
-          logger.info(`Fetched existing blocks from API for workflow ${targetWorkflowId}`, {
-            blockCount: Object.keys(existingBlocks).length,
-            blockIds: Object.keys(existingBlocks),
-          })
-        }
-      } catch (error) {
-        logger.warn(`Failed to fetch existing blocks for workflow ${targetWorkflowId}:`, error)
+      // Import button case: Create everything fresh with new IDs
+      logger.info('Import button case: Creating everything fresh with new IDs')
+      yamlIdToActualId = new Map()
+      for (const block of blocks) {
+        const newId = crypto.randomUUID()
+        yamlIdToActualId.set(block.id, newId)
+        logger.debug(`Import: ${block.id} -> ${newId}`)
       }
     } else {
-      // For active workflow, use from store
+      // Text editor case: Smart ID mapping and preservation
+      logger.info('Text editor case: Using smart ID mapping')
       existingBlocks = workflowActions.getExistingBlocks()
-      logger.info(
-        `Got existing blocks from workflow store for active workflow ${activeWorkflowId}`,
-        {
-          blockCount: Object.keys(existingBlocks).length,
-          blockIds: Object.keys(existingBlocks),
-        }
-      )
+      logger.info(`Got existing blocks from workflow store for active workflow ${activeWorkflowId}`, {
+        blockCount: Object.keys(existingBlocks).length,
+        blockIds: Object.keys(existingBlocks),
+      })
+      yamlIdToActualId = createSmartIdMapping(blocks, existingBlocks, activeWorkflowId, false)
     }
-
-    // Create smart ID mapping that preserves existing block IDs from THIS workflow only
-    const yamlIdToActualId = createSmartIdMapping(blocks, existingBlocks, activeWorkflowId)
 
     // Build complete blocks object
     const completeBlocks: Record<string, any> = {}
     const completeSubBlockValues: Record<string, Record<string, any>> = {}
 
-    // First, preserve existing blocks that aren't mentioned in YAML
-    const yamlBlockIds = new Set(blocks.map((b) => b.id))
-    for (const [existingId, existingBlock] of Object.entries(existingBlocks)) {
-      if (!yamlBlockIds.has(existingId)) {
-        // This existing block is not in the YAML - preserve it completely
-        completeBlocks[existingId] = { ...existingBlock }
+    if (!targetWorkflowId) {
+      // Text editor case: Preserve existing blocks that aren't mentioned in YAML
+      const yamlBlockIds = new Set(blocks.map((b) => b.id))
+      for (const [existingId, existingBlock] of Object.entries(existingBlocks)) {
+        if (!yamlBlockIds.has(existingId)) {
+          // This existing block is not in the YAML - preserve it completely
+          completeBlocks[existingId] = { ...existingBlock }
 
-        // Also preserve its current subblock values
-        const currentValues = currentWorkflowState.blocks[existingId]?.subBlocks || {}
-        completeSubBlockValues[existingId] = Object.fromEntries(
-          Object.entries(currentValues).map(([key, subBlock]: [string, any]) => [
-            key,
-            subBlock.value,
-          ])
-        )
-        logger.debug(`Preserving existing block not in YAML: ${existingId}`)
+          // Also preserve its current subblock values
+          const currentValues = currentWorkflowState.blocks[existingId]?.subBlocks || {}
+          completeSubBlockValues[existingId] = Object.fromEntries(
+            Object.entries(currentValues).map(([key, subBlock]: [string, any]) => [
+              key,
+              subBlock.value,
+            ])
+          )
+          logger.debug(`Preserving existing block not in YAML: ${existingId}`)
+        }
       }
     }
+    // For import case: No preservation needed - only create blocks from YAML
 
     // Process blocks from YAML - these will update/add blocks
     for (const block of blocks) {
@@ -656,40 +655,73 @@ export async function importWorkflowFromYaml(
       }
     }
 
-    // Handle edges intelligently:
-    // 1. Keep existing edges that don't involve any blocks mentioned in YAML
-    // 2. Replace all edges involving blocks mentioned in YAML with edges from YAML
+    // Handle edges based on the use case
     const completeEdges: any[] = []
-    const yamlBlockIdSet = new Set(blocks.map((b) => b.id))
-    const yamlBlockActualIdSet = new Set(
-      blocks.map((b) => yamlIdToActualId.get(b.id)).filter(Boolean)
-    )
-    const existingEdges = currentWorkflowState.edges || []
 
-    // Preserve edges that don't involve any blocks from YAML
-    for (const edge of existingEdges) {
-      const sourceInYaml = yamlBlockActualIdSet.has(edge.source)
-      const targetInYaml = yamlBlockActualIdSet.has(edge.target)
+    if (targetWorkflowId) {
+      // Import button case: Only create edges from YAML, no preservation
+      logger.info('Import case: Creating only YAML edges, no preservation')
+      for (const edge of edges) {
+        const sourceId = yamlIdToActualId.get(edge.source)
+        const targetId = yamlIdToActualId.get(edge.target)
 
-      if (!sourceInYaml && !targetInYaml) {
-        // Neither block is mentioned in YAML - preserve the edge
-        completeEdges.push(edge)
+        if (sourceId && targetId) {
+          const newEdgeId = crypto.randomUUID()
+          const newEdge = {
+            ...edge,
+            id: newEdgeId,
+            source: sourceId,
+            target: targetId,
+          }
+          logger.debug(`Creating import edge: ${edge.source} -> ${edge.target} with ID ${newEdgeId}`)
+          completeEdges.push(newEdge)
+        } else {
+          logger.warn(`Skipping edge - missing blocks: ${edge.source} -> ${edge.target}`)
+        }
       }
-    }
+    } else {
+      // Text editor case: Preserve existing edges + add YAML edges
+      logger.info('Text editor case: Preserving existing edges + adding YAML edges')
+      const yamlBlockActualIdSet = new Set(
+        blocks.map((b) => yamlIdToActualId.get(b.id)).filter(Boolean)
+      )
+      const existingEdges = currentWorkflowState.edges || []
 
-    // Add all edges from YAML
-    for (const edge of edges) {
-      const sourceId = yamlIdToActualId.get(edge.source)
-      const targetId = yamlIdToActualId.get(edge.target)
+      // Preserve edges that don't involve any blocks from YAML
+      for (const edge of existingEdges) {
+        const sourceInYaml = yamlBlockActualIdSet.has(edge.source)
+        const targetInYaml = yamlBlockActualIdSet.has(edge.target)
 
-      if (sourceId && targetId) {
-        completeEdges.push({
-          ...edge,
-          source: sourceId,
-          target: targetId,
-        })
-      } else {
-        logger.warn(`Skipping edge - missing blocks: ${edge.source} -> ${edge.target}`)
+        if (!sourceInYaml && !targetInYaml) {
+          // Neither block is mentioned in YAML - preserve the edge but with new ID
+          const newEdgeId = crypto.randomUUID()
+          const preservedEdge = {
+            ...edge,
+            id: newEdgeId,
+          }
+          logger.debug(`Preserving existing edge: ${edge.source} -> ${edge.target} with new ID ${newEdgeId}`)
+          completeEdges.push(preservedEdge)
+        }
+      }
+
+      // Add all edges from YAML
+      for (const edge of edges) {
+        const sourceId = yamlIdToActualId.get(edge.source)
+        const targetId = yamlIdToActualId.get(edge.target)
+
+        if (sourceId && targetId) {
+          const newEdgeId = crypto.randomUUID()
+          const newEdge = {
+            ...edge,
+            id: newEdgeId,
+            source: sourceId,
+            target: targetId,
+          }
+          logger.debug(`Creating YAML edge: ${edge.source} -> ${edge.target} with ID ${newEdgeId}`)
+          completeEdges.push(newEdge)
+        } else {
+          logger.warn(`Skipping edge - missing blocks: ${edge.source} -> ${edge.target}`)
+        }
       }
     }
 
