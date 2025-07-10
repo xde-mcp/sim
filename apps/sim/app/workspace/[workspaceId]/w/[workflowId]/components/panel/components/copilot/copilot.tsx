@@ -152,7 +152,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
 
     return (
       <>
-        <div 
+        <div
           className='flex h-full max-w-full flex-col overflow-hidden'
           style={{ width: `${panelWidth}px`, maxWidth: `${panelWidth}px` }}
         >
@@ -168,8 +168,10 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                   >
                     <span className='truncate'>
                       {/* Only show chat title if we have verified workflow match */}
-                      {currentChat && workflowId === activeWorkflowId && chats.some(chat => chat.id === currentChat.id) 
-                        ? currentChat.title || 'New Chat' 
+                      {currentChat &&
+                      workflowId === activeWorkflowId &&
+                      chats.some((chat) => chat.id === currentChat.id)
+                        ? currentChat.title || 'New Chat'
                         : 'New Chat'}
                     </span>
                     <ChevronDown className='ml-2 h-4 w-4 shrink-0' />
@@ -278,7 +280,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
           </div>
 
           {/* Messages area */}
-          <ScrollArea ref={scrollAreaRef} className='flex-1 max-w-full overflow-hidden'>
+          <ScrollArea ref={scrollAreaRef} className='max-w-full flex-1 overflow-hidden'>
             {messages.length === 0 ? (
               <CopilotWelcome onQuestionClick={handleSubmit} />
             ) : (
