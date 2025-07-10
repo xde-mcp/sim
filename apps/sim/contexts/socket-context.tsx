@@ -366,10 +366,12 @@ export function SocketProvider({ children, user }: SocketProviderProps) {
                       // Trigger auto layout after rehydration is complete
                       // Add a small delay to ensure stores have propagated to components
                       setTimeout(() => {
-                        console.log('🔥 Triggering auto layout after copilot rehydration (stores updated)')
+                        console.log(
+                          '🔥 Triggering auto layout after copilot rehydration (stores updated)'
+                        )
                         window.dispatchEvent(new CustomEvent('trigger-auto-layout'))
                       }, 100)
-                      
+
                       logger.info('Successfully rehydrated stores from database after copilot edit')
                     })
                     .catch((error) => {

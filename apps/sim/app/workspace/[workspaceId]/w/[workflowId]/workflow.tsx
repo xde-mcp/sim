@@ -354,7 +354,7 @@ const WorkflowContent = React.memo(() => {
       // Call auto layout directly without debounce for copilot events
       console.log('🔥 Calling handleAutoLayout directly (bypassing debounce)')
       handleAutoLayout()
-      
+
       // Also set up debounced version as backup
       cleanup = debouncedAutoLayout()
     }
