@@ -4,6 +4,7 @@ import { createLogger } from '@/lib/logs/console-logger'
 import { getBlock } from '@/blocks'
 import type { SubBlockConfig } from '@/blocks/types'
 import type { BlockState, WorkflowState } from '@/stores/workflows/workflow/types'
+import { generateBlockConnections, cleanConditionInputs, type ConnectionsFormat } from '@/stores/workflows/yaml/parsing-utils'
 
 const logger = createLogger('WorkflowYamlGenerator')
 
@@ -11,18 +12,7 @@ interface YamlBlock {
   type: string
   name: string
   inputs?: Record<string, any>
-  connections?: {
-    incoming?: Array<{
-      source: string
-      sourceHandle?: string
-      targetHandle?: string
-    }>
-    outgoing?: Array<{
-      target: string
-      sourceHandle?: string
-      targetHandle?: string
-    }>
-  }
+  connections?: ConnectionsFormat
   parentId?: string // Add parentId for nested blocks
 }
 
@@ -219,9 +209,15 @@ export function generateWorkflowYaml(
 
     // Process each block
     Object.entries(workflowState.blocks).forEach(([blockId, blockState]) => {
-      const inputs = extractBlockInputs(blockState, blockId, subBlockValues)
-      const incoming = findIncomingConnections(blockId, workflowState.edges)
-      const outgoing = findOutgoingConnections(blockId, workflowState.edges)
+      const rawInputs = extractBlockInputs(blockState, blockId, subBlockValues)
+      
+      // Clean up condition inputs to use semantic format
+      const inputs = blockState.type === 'condition' 
+        ? cleanConditionInputs(blockId, rawInputs)
+        : rawInputs
+      
+      // Use shared utility to generate connections in new format
+      const connections = generateBlockConnections(blockId, workflowState.edges)
 
       const yamlBlock: YamlBlock = {
         type: blockState.type,
@@ -233,17 +229,10 @@ export function generateWorkflowYaml(
         yamlBlock.inputs = inputs
       }
 
-      // Only include connections if they exist
-      if (incoming.length > 0 || outgoing.length > 0) {
-        yamlBlock.connections = {}
-
-        if (incoming.length > 0) {
-          yamlBlock.connections.incoming = incoming
-        }
-
-        if (outgoing.length > 0) {
-          yamlBlock.connections.outgoing = outgoing
-        }
+      // Only include connections if they exist (check if any connection type has content)
+      const hasConnections = Object.keys(connections).length > 0
+      if (hasConnections) {
+        yamlBlock.connections = connections
       }
 
       // Include parent-child relationship for nested blocks

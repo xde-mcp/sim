@@ -6,6 +6,14 @@ import { resolveOutputType } from '@/blocks/utils'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
 import { useSubBlockStore } from '@/stores/workflows/subblock/store'
 import { useWorkflowStore } from '@/stores/workflows/workflow/store'
+import {
+  parseBlockConnections,
+  validateBlockStructure,
+  validateBlockReferences,
+  expandConditionInputs,
+  type ConnectionsFormat,
+  type ImportedEdge,
+} from './parsing-utils'
 
 const logger = createLogger('WorkflowYamlImporter')
 
@@ -13,18 +21,7 @@ interface YamlBlock {
   type: string
   name: string
   inputs?: Record<string, any>
-  connections?: {
-    incoming?: Array<{
-      source: string
-      sourceHandle?: string
-      targetHandle?: string
-    }>
-    outgoing?: Array<{
-      target: string
-      sourceHandle?: string
-      targetHandle?: string
-    }>
-  }
+  connections?: ConnectionsFormat
   parentId?: string // Add parentId for nested blocks
 }
 
@@ -44,14 +41,7 @@ interface ImportedBlock {
   extent?: 'parent'
 }
 
-interface ImportedEdge {
-  id: string
-  source: string
-  target: string
-  sourceHandle: string
-  targetHandle: string
-  type: string
-}
+
 
 interface ImportResult {
   blocks: ImportedBlock[]
@@ -132,44 +122,7 @@ export function parseWorkflowYaml(yamlContent: string): {
   }
 }
 
-/**
- * Validate that block references in connections exist
- */
-function validateBlockReferences(yamlWorkflow: YamlWorkflow): string[] {
-  const errors: string[] = []
-  const blockIds = new Set(Object.keys(yamlWorkflow.blocks))
 
-  Object.entries(yamlWorkflow.blocks).forEach(([blockId, block]) => {
-    // Check incoming connection references
-    if (block.connections?.incoming) {
-      block.connections.incoming.forEach((connection) => {
-        if (!blockIds.has(connection.source)) {
-          errors.push(
-            `Block '${blockId}' references non-existent source block '${connection.source}'`
-          )
-        }
-      })
-    }
-
-    // Check outgoing connection references
-    if (block.connections?.outgoing) {
-      block.connections.outgoing.forEach((connection) => {
-        if (!blockIds.has(connection.target)) {
-          errors.push(
-            `Block '${blockId}' references non-existent target block '${connection.target}'`
-          )
-        }
-      })
-    }
-
-    // Check parent references
-    if (block.parentId && !blockIds.has(block.parentId)) {
-      errors.push(`Block '${blockId}' references non-existent parent block '${block.parentId}'`)
-    }
-  })
-
-  return errors
-}
 
 /**
  * Validate that block types exist and are valid
@@ -179,6 +132,11 @@ function validateBlockTypes(yamlWorkflow: YamlWorkflow): { errors: string[]; war
   const warnings: string[] = []
 
   Object.entries(yamlWorkflow.blocks).forEach(([blockId, block]) => {
+    // Use shared structure validation
+    const { errors: structureErrors, warnings: structureWarnings } = validateBlockStructure(blockId, block)
+    errors.push(...structureErrors)
+    warnings.push(...structureWarnings)
+
     // Check if block type exists
     const blockConfig = getBlock(block.type)
 
@@ -346,7 +304,7 @@ export function convertYamlToWorkflow(yamlWorkflow: YamlWorkflow): ImportResult 
   const edges: ImportedEdge[] = []
 
   // Validate block references
-  const referenceErrors = validateBlockReferences(yamlWorkflow)
+  const referenceErrors = validateBlockReferences(yamlWorkflow.blocks)
   errors.push(...referenceErrors)
 
   // Validate block types
@@ -365,11 +323,16 @@ export function convertYamlToWorkflow(yamlWorkflow: YamlWorkflow): ImportResult 
   Object.entries(yamlWorkflow.blocks).forEach(([blockId, yamlBlock]) => {
     const position = positions[blockId] || { x: 100, y: 100 }
 
+    // Expand condition inputs from clean format to internal format
+    const processedInputs = yamlBlock.type === 'condition'
+      ? expandConditionInputs(blockId, yamlBlock.inputs || {})
+      : yamlBlock.inputs || {}
+
     const importedBlock: ImportedBlock = {
       id: blockId,
       type: yamlBlock.type,
       name: yamlBlock.name,
-      inputs: yamlBlock.inputs || {},
+      inputs: processedInputs,
       position,
     }
 
@@ -402,24 +365,14 @@ export function convertYamlToWorkflow(yamlWorkflow: YamlWorkflow): ImportResult 
     blocks.push(importedBlock)
   })
 
-  // Convert edges from connections
+  // Convert edges from connections using shared parser
   Object.entries(yamlWorkflow.blocks).forEach(([blockId, yamlBlock]) => {
-    if (yamlBlock.connections?.outgoing) {
-      yamlBlock.connections.outgoing.forEach((connection) => {
-        const edgeId = crypto.randomUUID()
-
-        const edge: ImportedEdge = {
-          id: edgeId,
-          source: blockId,
-          target: connection.target,
-          sourceHandle: connection.sourceHandle || 'source',
-          targetHandle: connection.targetHandle || 'target',
-          type: 'workflowEdge',
-        }
-
-        edges.push(edge)
-      })
-    }
+    const { edges: blockEdges, errors: connectionErrors, warnings: connectionWarnings } = 
+      parseBlockConnections(blockId, yamlBlock.connections, yamlBlock.type)
+    
+    edges.push(...blockEdges)
+    errors.push(...connectionErrors)
+    warnings.push(...connectionWarnings)
   })
 
   // Sort blocks to ensure parents are created before children
