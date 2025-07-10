@@ -56,20 +56,23 @@ export const useCopilotStore = create<CopilotStore>()(
 
           // Load chats for the new workflow
           if (workflowId) {
-            get().loadChats().then(() => {
-              // After loading chats, select the most recent one if available
-              const { chats, currentChat } = get()
-              if (!currentChat && chats.length > 0) {
-                // Sort by creation date to get the most recently created chat
-                const sortedByCreation = [...chats].sort(
-                  (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                )
-                // Select the most recently created chat for this specific workflow
-                get().selectChat(sortedByCreation[0])
-              }
-            }).catch((error) => {
-              logger.error('Failed to load chats after workflow change:', error)
-            })
+            get()
+              .loadChats()
+              .then(() => {
+                // After loading chats, select the most recent one if available
+                const { chats, currentChat } = get()
+                if (!currentChat && chats.length > 0) {
+                  // Sort by creation date to get the most recently created chat
+                  const sortedByCreation = [...chats].sort(
+                    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                  )
+                  // Select the most recently created chat for this specific workflow
+                  get().selectChat(sortedByCreation[0])
+                }
+              })
+              .catch((error) => {
+                logger.error('Failed to load chats after workflow change:', error)
+              })
           }
         }
       },
@@ -192,7 +195,7 @@ export const useCopilotStore = create<CopilotStore>()(
                 currentChat: null,
                 messages: [],
               })
-              
+
               // Select the next most recent chat if available for this workflow
               const { chats } = get()
               if (chats.length > 0) {
@@ -460,24 +463,27 @@ export const useCopilotStore = create<CopilotStore>()(
                     // Handle new chat creation - reload and select the new chat
                     if (newChatId && !get().currentChat) {
                       console.log('[CopilotStore] Handling new chat creation:', newChatId)
-                      
+
                       // Instead of reloading all chats, just fetch the specific new chat
                       try {
                         const chatResult = await getChat(newChatId)
                         if (chatResult.success && chatResult.chat) {
-                          console.log('[CopilotStore] Setting new chat as current:', chatResult.chat.title || 'Untitled')
-                          
+                          console.log(
+                            '[CopilotStore] Setting new chat as current:',
+                            chatResult.chat.title || 'Untitled'
+                          )
+
                           // Set the new chat as current
                           set({
                             currentChat: chatResult.chat,
                           })
-                          
+
                           // Add to chats list if not already there
                           set((state) => {
-                            const chatExists = state.chats.some(chat => chat.id === newChatId)
+                            const chatExists = state.chats.some((chat) => chat.id === newChatId)
                             if (!chatExists) {
                               return {
-                                chats: [chatResult.chat!, ...state.chats]
+                                chats: [chatResult.chat!, ...state.chats],
                               }
                             }
                             return state
@@ -557,17 +563,17 @@ export const useCopilotStore = create<CopilotStore>()(
               const updatedChats = state.chats.map((chat) =>
                 chat.id === result.chat!.id ? result.chat! : chat
               )
-              
+
               // If the chat doesn't exist in the list yet, add it
-              const chatExists = state.chats.some(chat => chat.id === result.chat!.id)
+              const chatExists = state.chats.some((chat) => chat.id === result.chat!.id)
               if (!chatExists) {
                 return {
-                  chats: [result.chat!, ...state.chats]
+                  chats: [result.chat!, ...state.chats],
                 }
               }
-              
+
               return {
-                chats: updatedChats
+                chats: updatedChats,
               }
             })
 

@@ -168,7 +168,9 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                   ) : (
                     // Sort chats by creation date (most recent first) for display
                     [...chats]
-                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                      .sort(
+                        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                      )
                       .map((chat) => (
                         <div key={chat.id} className='flex items-center'>
                           <DropdownMenuItem
