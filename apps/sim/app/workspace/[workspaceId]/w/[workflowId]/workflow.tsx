@@ -249,7 +249,11 @@ const WorkflowContent = React.memo(() => {
 
   // Auto-layout handler
   const handleAutoLayout = useCallback(() => {
-    if (Object.keys(blocks).length === 0) return
+    console.log('🔥 handleAutoLayout called with', Object.keys(blocks).length, 'blocks')
+    if (Object.keys(blocks).length === 0) {
+      console.log('🔥 Auto layout skipped - no blocks')
+      return
+    }
 
     // Detect the predominant handle orientation in the workflow
     const detectedOrientation = detectHandleOrientation(blocks)
@@ -299,7 +303,9 @@ const WorkflowContent = React.memo(() => {
   ])
 
   const debouncedAutoLayout = useCallback(() => {
+    console.log('🔥 debouncedAutoLayout called - setting 250ms timer')
     const debounceTimer = setTimeout(() => {
+      console.log('🔥 Debounce timer fired - calling handleAutoLayout')
       handleAutoLayout()
     }, 250)
 
@@ -342,8 +348,14 @@ const WorkflowContent = React.memo(() => {
     let cleanup: (() => void) | null = null
 
     const handleAutoLayoutEvent = () => {
+      console.log('🔥 Auto layout event received in workflow.tsx!')
       if (cleanup) cleanup()
 
+      // Call auto layout directly without debounce for copilot events
+      console.log('🔥 Calling handleAutoLayout directly (bypassing debounce)')
+      handleAutoLayout()
+      
+      // Also set up debounced version as backup
       cleanup = debouncedAutoLayout()
     }
 
