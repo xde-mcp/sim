@@ -158,10 +158,10 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
   if (isUser) {
     return (
       <div className='group flex w-full max-w-full justify-end overflow-hidden px-4 py-3'>
-        <div className='flex w-full max-w-[85%] items-start gap-3'>
-          <div className='flex min-w-0 flex-1 flex-col items-end space-y-1'>
-            <div className='w-full max-w-full overflow-hidden rounded-2xl rounded-tr-md bg-primary px-4 py-3 text-primary-foreground shadow-sm'>
-              <div className='w-full overflow-hidden whitespace-pre-wrap break-words text-sm leading-relaxed'>
+        <div className='flex max-w-[85%] items-start gap-3'>
+          <div className='flex flex-col items-end space-y-1'>
+            <div className='max-w-full overflow-hidden rounded-2xl rounded-tr-md bg-primary px-4 py-3 text-primary-foreground shadow-sm'>
+              <div className='overflow-hidden whitespace-pre-wrap break-words text-sm leading-relaxed'>
                 {message.content}
               </div>
             </div>
@@ -189,85 +189,112 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
 
   if (isAssistant) {
     return (
-      <div className='group flex w-full max-w-full justify-start overflow-hidden px-4 py-3'>
-        <div className='flex w-full max-w-[85%] items-start gap-3'>
-          <div className='flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm'>
-            <Bot className='h-4 w-4' />
-          </div>
-          <div className='flex min-w-0 flex-1 flex-col items-start space-y-1'>
-            <div className='w-full max-w-full overflow-hidden rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'>
-              {message.content ? (
-                <div
-                  className='prose prose-sm dark:prose-invert w-full max-w-none overflow-hidden'
-                  style={{
-                    maxWidth: '100%',
-                    width: '100%',
-                    overflow: 'hidden',
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                    {message.content}
-                  </ReactMarkdown>
-                </div>
-              ) : isStreaming ? (
-                <div className='flex items-center gap-2 py-1 text-muted-foreground'>
-                  <div className='flex space-x-1'>
-                    <div
-                      className='h-2 w-2 animate-bounce rounded-full bg-current'
-                      style={{ animationDelay: '0ms' }}
-                    />
-                    <div
-                      className='h-2 w-2 animate-bounce rounded-full bg-current'
-                      style={{ animationDelay: '150ms' }}
-                    />
-                    <div
-                      className='h-2 w-2 animate-bounce rounded-full bg-current'
-                      style={{ animationDelay: '300ms' }}
-                    />
-                  </div>
-                  <span className='text-sm'>Thinking...</span>
-                </div>
-              ) : null}
+      <>
+        <style>{`
+          .message-container .prose pre {
+            max-width: 100% !important;
+            overflow-x: auto !important;
+          }
+          .message-container .prose code {
+            max-width: 100% !important;
+            word-break: break-all !important;
+            white-space: pre-wrap !important;
+          }
+          .message-container div[class*="language-"] {
+            max-width: 100% !important;
+            overflow: hidden !important;
+          }
+          .message-container div[class*="language-"] > div {
+            max-width: 100% !important;
+            overflow-x: auto !important;
+          }
+          .message-container div[class*="language-"] pre {
+            max-width: 100% !important;
+            overflow-x: auto !important;
+            white-space: pre-wrap !important;
+            word-break: break-all !important;
+          }
+        `}</style>
+        <div className='message-container group flex w-full max-w-full justify-start overflow-hidden px-4 py-3'>
+          <div className='flex w-full max-w-[85%] items-start gap-3'>
+            <div className='flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm'>
+              <Bot className='h-4 w-4' />
             </div>
-            <div className='flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100'>
-              <span className='text-muted-foreground text-xs'>
-                {formatTimestamp(message.timestamp)}
-              </span>
-              {message.content && (
-                <Button
-                  variant='ghost'
-                  size='sm'
-                  onClick={handleCopyContent}
-                  className='h-6 w-6 p-0 text-muted-foreground hover:text-foreground'
-                >
-                  <Copy className='h-3 w-3' />
-                </Button>
+            <div className='flex min-w-0 flex-1 flex-col items-start space-y-1'>
+              <div className='w-full max-w-full overflow-hidden rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'>
+                {message.content ? (
+                  <div
+                    className='prose prose-sm dark:prose-invert w-full max-w-none overflow-hidden'
+                    style={{
+                      maxWidth: '100%',
+                      width: '100%',
+                      overflow: 'hidden',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : isStreaming ? (
+                  <div className='flex items-center gap-2 py-1 text-muted-foreground'>
+                    <div className='flex space-x-1'>
+                      <div
+                        className='h-2 w-2 animate-bounce rounded-full bg-current'
+                        style={{ animationDelay: '0ms' }}
+                      />
+                      <div
+                        className='h-2 w-2 animate-bounce rounded-full bg-current'
+                        style={{ animationDelay: '150ms' }}
+                      />
+                      <div
+                        className='h-2 w-2 animate-bounce rounded-full bg-current'
+                        style={{ animationDelay: '300ms' }}
+                      />
+                    </div>
+                    <span className='text-sm'>Thinking...</span>
+                  </div>
+                ) : null}
+              </div>
+              <div className='flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100'>
+                <span className='text-muted-foreground text-xs'>
+                  {formatTimestamp(message.timestamp)}
+                </span>
+                {message.content && (
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    onClick={handleCopyContent}
+                    className='h-6 w-6 p-0 text-muted-foreground hover:text-foreground'
+                  >
+                    <Copy className='h-3 w-3' />
+                  </Button>
+                )}
+              </div>
+
+              {/* Citations if available */}
+              {message.citations && message.citations.length > 0 && (
+                <div className='mt-2 max-w-full space-y-1'>
+                  <div className='font-medium text-muted-foreground text-xs'>Sources:</div>
+                  <div className='flex flex-wrap gap-1'>
+                    {message.citations.map((citation) => (
+                      <a
+                        key={citation.id}
+                        href={citation.url}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='inline-flex max-w-full items-center break-all rounded-md border bg-muted/50 px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground'
+                      >
+                        {citation.title}
+                      </a>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-
-            {/* Citations if available */}
-            {message.citations && message.citations.length > 0 && (
-              <div className='mt-2 max-w-full space-y-1'>
-                <div className='font-medium text-muted-foreground text-xs'>Sources:</div>
-                <div className='flex flex-wrap gap-1'>
-                  {message.citations.map((citation) => (
-                    <a
-                      key={citation.id}
-                      href={citation.url}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='inline-flex max-w-full items-center break-all rounded-md border bg-muted/50 px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground'
-                    >
-                      {citation.title}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
-      </div>
+      </>
     )
   }
 
