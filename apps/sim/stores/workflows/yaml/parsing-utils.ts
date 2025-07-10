@@ -93,7 +93,7 @@ export function generateBlockConnections(
   const conditionTargets: Record<string, string[]> = {}
   const loopTargets: { start: string[]; end: string[] } = { start: [], end: [] }
   const parallelTargets: { start: string[]; end: string[] } = { start: [], end: [] }
-  
+
   // Track condition ordering for clean sequential else-if naming
   const rawConditionIds: string[] = []
 
@@ -107,7 +107,7 @@ export function generateBlockConnections(
     } else if (handle.startsWith('condition-')) {
       const rawConditionId = extractConditionId(handle)
       rawConditionIds.push(rawConditionId)
-      
+
       if (!conditionTargets[rawConditionId]) {
         conditionTargets[rawConditionId] = []
       }
@@ -122,14 +122,14 @@ export function generateBlockConnections(
       parallelTargets.end.push(edge.target)
     }
   }
-  
+
   // Create clean condition mapping for timestamp-based else-if IDs
   const cleanConditionTargets: Record<string, string[]> = {}
   let elseIfCount = 0
-  
+
   Object.entries(conditionTargets).forEach(([rawId, targets]) => {
     let cleanId = rawId
-    
+
     // Convert timestamp-based else-if IDs to clean sequential format
     if (rawId.startsWith('else-if-') && /else-if-\d+$/.test(rawId)) {
       elseIfCount++
@@ -139,7 +139,7 @@ export function generateBlockConnections(
         cleanId = `else-if-${elseIfCount}`
       }
     }
-    
+
     cleanConditionTargets[cleanId] = targets
   })
 
@@ -154,7 +154,7 @@ export function generateBlockConnections(
 
   if (Object.keys(cleanConditionTargets).length > 0) {
     connections.conditions = {}
-    
+
     // Sort condition keys to maintain consistent order: if, else-if, else-if-2, ..., else
     const sortedConditionKeys = Object.keys(cleanConditionTargets).sort((a, b) => {
       // Define the order priority
@@ -162,16 +162,16 @@ export function generateBlockConnections(
         if (key === 'if') return 0
         if (key === 'else-if') return 1
         if (key.startsWith('else-if-')) {
-          const num = parseInt(key.replace('else-if-', ''), 10)
+          const num = Number.parseInt(key.replace('else-if-', ''), 10)
           return 1 + num // else-if-2 = 3, else-if-3 = 4, etc.
         }
         if (key === 'else') return 1000 // Always last
         return 500 // Other conditions in the middle
       }
-      
+
       return getOrder(a) - getOrder(b)
     })
-    
+
     // Build the connections object in the correct order
     for (const conditionId of sortedConditionKeys) {
       const targets = cleanConditionTargets[conditionId]
@@ -260,7 +260,7 @@ export function cleanConditionInputs(
 
         // Track else-if count for clean numbering
         let elseIfCount = 0
-        
+
         conditions.forEach((condition: any) => {
           if (condition.title && condition.value !== undefined) {
             // Create clean semantic keys instead of preserving timestamps
@@ -286,13 +286,13 @@ export function cleanConditionInputs(
             if (key === 'if') return 0
             if (key === 'else-if') return 1
             if (key.startsWith('else-if-')) {
-              const num = parseInt(key.replace('else-if-', ''), 10)
+              const num = Number.parseInt(key.replace('else-if-', ''), 10)
               return 1 + num // else-if-2 = 3, else-if-3 = 4, etc.
             }
             if (key === 'else') return 1000 // Always last
             return 500 // Other conditions in the middle
           }
-          
+
           return getOrder(a.key) - getOrder(b.key)
         })
 
@@ -338,7 +338,7 @@ export function expandConditionInputs(
 
     Object.entries(conditionsObj).forEach(([key, value]) => {
       const conditionId = `${blockId}-${key}`
-      
+
       // Determine display title from key
       let title = key
       if (key.startsWith('else-if')) {
@@ -358,7 +358,9 @@ export function expandConditionInputs(
     })
 
     // Add default else if not present and no existing else key
-    const hasElse = Object.keys(conditionsObj).some(key => key === 'else' || key.startsWith('else'))
+    const hasElse = Object.keys(conditionsObj).some(
+      (key) => key === 'else' || key.startsWith('else')
+    )
     if (!hasElse) {
       conditionsArray.push({
         id: `${blockId}-else`,
