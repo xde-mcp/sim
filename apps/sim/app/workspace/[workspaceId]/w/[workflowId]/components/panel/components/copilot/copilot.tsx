@@ -61,6 +61,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
       workflowId,
       mode,
       setWorkflowId,
+      validateCurrentChat,
       selectChat,
       createNewChat,
       deleteChat,
@@ -76,6 +77,14 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
         setWorkflowId(activeWorkflowId)
       }
     }, [activeWorkflowId, workflowId, setWorkflowId])
+
+    // Safety check: Clear any chat that doesn't belong to current workflow
+    useEffect(() => {
+      if (activeWorkflowId && workflowId === activeWorkflowId) {
+        // Validate that current chat belongs to this workflow
+        validateCurrentChat()
+      }
+    }, [currentChat, chats, activeWorkflowId, workflowId, validateCurrentChat])
 
     // Auto-scroll to bottom when new messages are added
     useEffect(() => {
@@ -143,7 +152,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
 
     return (
       <>
-        <div
+        <div 
           className='flex h-full max-w-full flex-col overflow-hidden'
           style={{ width: `${panelWidth}px`, maxWidth: `${panelWidth}px` }}
         >
@@ -157,7 +166,12 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                     variant='ghost'
                     className='h-8 min-w-0 flex-1 justify-start px-3 hover:bg-accent/50'
                   >
-                    <span className='truncate'>{currentChat?.title || 'New Chat'}</span>
+                    <span className='truncate'>
+                      {/* Only show chat title if we have verified workflow match */}
+                      {currentChat && workflowId === activeWorkflowId && chats.some(chat => chat.id === currentChat.id) 
+                        ? currentChat.title || 'New Chat' 
+                        : 'New Chat'}
+                    </span>
                     <ChevronDown className='ml-2 h-4 w-4 shrink-0' />
                   </Button>
                 </DropdownMenuTrigger>
@@ -264,7 +278,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
           </div>
 
           {/* Messages area */}
-          <ScrollArea ref={scrollAreaRef} className='max-w-full flex-1 overflow-hidden'>
+          <ScrollArea ref={scrollAreaRef} className='flex-1 max-w-full overflow-hidden'>
             {messages.length === 0 ? (
               <CopilotWelcome onQuestionClick={handleSubmit} />
             ) : (

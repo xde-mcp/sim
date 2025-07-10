@@ -56,6 +56,9 @@ export const useCopilotStore = create<CopilotStore>()(
       setWorkflowId: (workflowId: string | null) => {
         const currentWorkflowId = get().workflowId
         if (currentWorkflowId !== workflowId) {
+          logger.info(`Workflow ID changed from ${currentWorkflowId} to ${workflowId}. Clearing all state to prevent cross-workflow data leaks.`)
+          
+          // Immediately clear all state to prevent showing wrong workflow data
           set({
             workflowId,
             currentChat: null,
@@ -64,29 +67,42 @@ export const useCopilotStore = create<CopilotStore>()(
             error: null,
             saveError: null,
             isSaving: false,
+            isLoading: false,
+            isLoadingChats: false,
           })
 
-          // Load chats for the new workflow
+          // Load chats for the new workflow but don't auto-select any
           if (workflowId) {
             get()
               .loadChats()
-              .then(() => {
-                // After loading chats, select the most recent one if available
-                const { chats, currentChat } = get()
-                if (!currentChat && chats.length > 0) {
-                  // Sort by creation date to get the most recently created chat
-                  const sortedByCreation = [...chats].sort(
-                    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                  )
-                  // Select the most recently created chat for this specific workflow
-                  get().selectChat(sortedByCreation[0])
-                }
-              })
               .catch((error) => {
                 logger.error('Failed to load chats after workflow change:', error)
               })
           }
         }
+      },
+
+      // Validate current chat belongs to current workflow
+      validateCurrentChat: () => {
+        const { currentChat, chats, workflowId } = get()
+        
+        if (!currentChat || !workflowId) {
+          return true // No chat or workflow to validate
+        }
+
+        // Check if current chat exists in the current workflow's chat list
+        const chatBelongsToWorkflow = chats.some(chat => chat.id === currentChat.id)
+        
+        if (!chatBelongsToWorkflow) {
+          logger.warn(`Current chat ${currentChat.id} does not belong to workflow ${workflowId}. Clearing for safety.`)
+          set({
+            currentChat: null,
+            messages: [],
+          })
+          return false
+        }
+        
+        return true
       },
 
       // Load chats for current workflow
@@ -124,19 +140,36 @@ export const useCopilotStore = create<CopilotStore>()(
 
       // Select a specific chat
       selectChat: async (chat: CopilotChat) => {
+        const { workflowId } = get()
+        
+        // Critical: Verify the chat belongs to the current workflow
+        if (!workflowId) {
+          logger.error('Cannot select chat: no workflow ID set')
+          return
+        }
+
         set({ isLoading: true, error: null })
 
         try {
           const result = await getChat(chat.id)
 
           if (result.success && result.chat) {
+            // Double-check: Ensure the chat belongs to the current workflow
+            // This prevents cross-workflow data leaks
+            const currentWorkflow = get().workflowId
+            if (currentWorkflow !== workflowId) {
+              logger.warn(`Workflow changed during chat selection. Ignoring selection.`)
+              set({ isLoading: false })
+              return
+            }
+
             set({
               currentChat: result.chat,
               messages: result.chat.messages,
               isLoading: false,
             })
 
-            logger.info(`Selected chat: ${result.chat.title || 'Untitled'}`)
+            logger.info(`Selected chat: ${result.chat.title || 'Untitled'} for workflow: ${workflowId}`)
           } else {
             throw new Error(result.error || 'Failed to load chat')
           }

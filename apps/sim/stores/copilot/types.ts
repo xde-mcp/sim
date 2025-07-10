@@ -64,6 +64,7 @@ export interface CopilotActions {
 
   // Chat management
   setWorkflowId: (workflowId: string | null) => void
+  validateCurrentChat: () => boolean
   loadChats: () => Promise<void>
   selectChat: (chat: CopilotChat) => Promise<void>
   createNewChat: (options?: { title?: string; initialMessage?: string }) => Promise<void>
