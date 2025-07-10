@@ -127,7 +127,8 @@ export function CopilotModal({
                               {new Date(chat.updatedAt).toLocaleTimeString([], {
                                 hour: '2-digit',
                                 minute: '2-digit',
-                              })} • {chat.messageCount}
+                              })}{' '}
+                              • {chat.messageCount}
                             </div>
                           </div>
                         </div>
