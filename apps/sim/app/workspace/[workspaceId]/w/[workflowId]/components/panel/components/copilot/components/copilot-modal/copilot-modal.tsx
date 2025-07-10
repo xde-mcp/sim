@@ -214,19 +214,27 @@ export function CopilotModal({
         <div className='mx-auto max-w-3xl'>
           <div className='flex items-center gap-1 rounded-md border bg-muted/30 p-0.5'>
             <Button
-              variant={mode === 'ask' ? 'secondary' : 'ghost'}
+              variant='ghost'
               size='sm'
               onClick={() => onModeChange('ask')}
-              className='h-6 flex-1 font-medium text-xs'
+              className={`h-6 flex-1 font-medium text-xs ${
+                mode === 'ask'
+                  ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
+                  : 'hover:bg-muted/50'
+              }`}
               title='Ask questions and get answers. Cannot edit workflows.'
             >
               Ask
             </Button>
             <Button
-              variant={mode === 'agent' ? 'secondary' : 'ghost'}
+              variant='ghost'
               size='sm'
               onClick={() => onModeChange('agent')}
-              className='h-6 flex-1 font-medium text-xs'
+              className={`h-6 flex-1 font-medium text-xs ${
+                mode === 'agent'
+                  ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
+                  : 'hover:bg-muted/50'
+              }`}
               title='Full agent with workflow editing capabilities.'
             >
               Agent
