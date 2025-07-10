@@ -197,7 +197,7 @@ export function CopilotModal({
             variant={mode === 'ask' ? 'secondary' : 'ghost'}
             size='sm'
             onClick={() => onModeChange('ask')}
-            className='h-7 flex-1 text-xs font-medium'
+            className='h-7 flex-1 font-medium text-xs'
           >
             Ask
           </Button>
@@ -205,16 +205,15 @@ export function CopilotModal({
             variant={mode === 'agent' ? 'secondary' : 'ghost'}
             size='sm'
             onClick={() => onModeChange('agent')}
-            className='h-7 flex-1 text-xs font-medium'
+            className='h-7 flex-1 font-medium text-xs'
           >
             Agent
           </Button>
         </div>
-        <div className='mt-2 text-xs text-muted-foreground'>
-          {mode === 'ask' 
+        <div className='mt-2 text-muted-foreground text-xs'>
+          {mode === 'ask'
             ? 'Ask questions and get answers. Cannot edit workflows.'
-            : 'Full agent with workflow editing capabilities.'
-          }
+            : 'Full agent with workflow editing capabilities.'}
         </div>
       </div>
 

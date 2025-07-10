@@ -358,14 +358,12 @@ export async function generateChatResponse(
     ]
 
     // Filter tools based on mode
-    const tools = mode === 'ask' 
-      ? allTools.filter(tool => tool.id !== 'edit_workflow') 
-      : allTools
+    const tools = mode === 'ask' ? allTools.filter((tool) => tool.id !== 'edit_workflow') : allTools
 
     logger.info(`Copilot mode: ${mode}, available tools: ${tools.length}`, {
       mode,
-      toolIds: tools.map(t => t.id),
-      filteredOut: mode === 'ask' ? ['edit_workflow'] : []
+      toolIds: tools.map((t) => t.id),
+      filteredOut: mode === 'ask' ? ['edit_workflow'] : [],
     })
 
     const response = await executeProviderRequest(provider, {
