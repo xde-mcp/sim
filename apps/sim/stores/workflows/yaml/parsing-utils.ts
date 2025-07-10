@@ -93,6 +93,9 @@ export function generateBlockConnections(
   const conditionTargets: Record<string, string[]> = {}
   const loopTargets: { start: string[]; end: string[] } = { start: [], end: [] }
   const parallelTargets: { start: string[]; end: string[] } = { start: [], end: [] }
+  
+  // Track condition ordering for clean sequential else-if naming
+  const rawConditionIds: string[] = []
 
   for (const edge of outgoingEdges) {
     const handle = edge.sourceHandle ?? 'source'
@@ -102,11 +105,13 @@ export function generateBlockConnections(
     } else if (handle === 'error') {
       errorTargets.push(edge.target)
     } else if (handle.startsWith('condition-')) {
-      const conditionId = extractConditionId(handle)
-      if (!conditionTargets[conditionId]) {
-        conditionTargets[conditionId] = []
+      const rawConditionId = extractConditionId(handle)
+      rawConditionIds.push(rawConditionId)
+      
+      if (!conditionTargets[rawConditionId]) {
+        conditionTargets[rawConditionId] = []
       }
-      conditionTargets[conditionId].push(edge.target)
+      conditionTargets[rawConditionId].push(edge.target)
     } else if (handle === 'loop-start-source') {
       loopTargets.start.push(edge.target)
     } else if (handle === 'loop-end-source') {
@@ -117,6 +122,26 @@ export function generateBlockConnections(
       parallelTargets.end.push(edge.target)
     }
   }
+  
+  // Create clean condition mapping for timestamp-based else-if IDs
+  const cleanConditionTargets: Record<string, string[]> = {}
+  let elseIfCount = 0
+  
+  Object.entries(conditionTargets).forEach(([rawId, targets]) => {
+    let cleanId = rawId
+    
+    // Convert timestamp-based else-if IDs to clean sequential format
+    if (rawId.startsWith('else-if-') && /else-if-\d+$/.test(rawId)) {
+      elseIfCount++
+      if (elseIfCount === 1) {
+        cleanId = 'else-if'
+      } else {
+        cleanId = `else-if-${elseIfCount}`
+      }
+    }
+    
+    cleanConditionTargets[cleanId] = targets
+  })
 
   // Add to connections object (use single values for single targets, arrays for multiple)
   if (successTargets.length > 0) {
@@ -127,9 +152,29 @@ export function generateBlockConnections(
     connections.error = errorTargets.length === 1 ? errorTargets[0] : errorTargets
   }
 
-  if (Object.keys(conditionTargets).length > 0) {
+  if (Object.keys(cleanConditionTargets).length > 0) {
     connections.conditions = {}
-    for (const [conditionId, targets] of Object.entries(conditionTargets)) {
+    
+    // Sort condition keys to maintain consistent order: if, else-if, else-if-2, ..., else
+    const sortedConditionKeys = Object.keys(cleanConditionTargets).sort((a, b) => {
+      // Define the order priority
+      const getOrder = (key: string): number => {
+        if (key === 'if') return 0
+        if (key === 'else-if') return 1
+        if (key.startsWith('else-if-')) {
+          const num = parseInt(key.replace('else-if-', ''), 10)
+          return 1 + num // else-if-2 = 3, else-if-3 = 4, etc.
+        }
+        if (key === 'else') return 1000 // Always last
+        return 500 // Other conditions in the middle
+      }
+      
+      return getOrder(a) - getOrder(b)
+    })
+    
+    // Build the connections object in the correct order
+    for (const conditionId of sortedConditionKeys) {
+      const targets = cleanConditionTargets[conditionId]
       connections.conditions[conditionId] = targets.length === 1 ? targets[0] : targets
     }
   }
@@ -192,6 +237,7 @@ export function validateBlockStructure(
 
 /**
  * Clean up condition inputs to remove UI state and use semantic format
+ * Preserves actual condition IDs that match connections
  */
 export function cleanConditionInputs(
   blockId: string,
@@ -209,25 +255,51 @@ export function cleanConditionInputs(
           : cleanInputs.conditions
 
       if (Array.isArray(conditions)) {
-        // Convert to clean format
-        const cleanConditions: Record<string, string> = {}
+        // Convert to clean format, preserving actual IDs for connection mapping
+        const tempConditions: Array<{ key: string; value: string }> = []
 
+        // Track else-if count for clean numbering
+        let elseIfCount = 0
+        
         conditions.forEach((condition: any) => {
           if (condition.title && condition.value !== undefined) {
-            // Use semantic keys instead of UUIDs
+            // Create clean semantic keys instead of preserving timestamps
             let key = condition.title
             if (condition.title === 'else if') {
-              // Create a simple sequential else-if key
-              const elseIfCount = Object.keys(cleanConditions).filter((k) =>
-                k.startsWith('else-if')
-              ).length
-              key = elseIfCount === 0 ? 'else-if' : `else-if-${elseIfCount + 1}`
+              elseIfCount++
+              if (elseIfCount === 1) {
+                key = 'else-if'
+              } else {
+                key = `else-if-${elseIfCount}`
+              }
             }
 
             if (condition.value?.trim()) {
-              cleanConditions[key] = condition.value.trim()
+              tempConditions.push({ key, value: condition.value.trim() })
             }
           }
+        })
+
+        // Sort conditions to maintain consistent order: if, else-if, else-if-2, ..., else
+        tempConditions.sort((a, b) => {
+          const getOrder = (key: string): number => {
+            if (key === 'if') return 0
+            if (key === 'else-if') return 1
+            if (key.startsWith('else-if-')) {
+              const num = parseInt(key.replace('else-if-', ''), 10)
+              return 1 + num // else-if-2 = 3, else-if-3 = 4, etc.
+            }
+            if (key === 'else') return 1000 // Always last
+            return 500 // Other conditions in the middle
+          }
+          
+          return getOrder(a.key) - getOrder(b.key)
+        })
+
+        // Build the final ordered object
+        const cleanConditions: Record<string, string> = {}
+        tempConditions.forEach(({ key, value }) => {
+          cleanConditions[key] = value
         })
 
         // Replace the verbose format with clean format
@@ -266,8 +338,12 @@ export function expandConditionInputs(
 
     Object.entries(conditionsObj).forEach(([key, value]) => {
       const conditionId = `${blockId}-${key}`
-      // Map semantic keys back to display titles
-      const title = key.startsWith('else-if') ? 'else if' : key
+      
+      // Determine display title from key
+      let title = key
+      if (key.startsWith('else-if')) {
+        title = 'else if'
+      }
 
       conditionsArray.push({
         id: conditionId,
@@ -281,8 +357,9 @@ export function expandConditionInputs(
       })
     })
 
-    // Add default else if not present
-    if (!conditionsObj.else) {
+    // Add default else if not present and no existing else key
+    const hasElse = Object.keys(conditionsObj).some(key => key === 'else' || key.startsWith('else'))
+    if (!hasElse) {
       conditionsArray.push({
         id: `${blockId}-else`,
         title: 'else',
@@ -518,7 +595,7 @@ function createConditionHandle(blockId: string, conditionId: string, blockType?:
 
 function extractConditionId(sourceHandle: string): string {
   // Extract condition ID from handle like "condition-blockId-semantic-key"
-  // Example: "condition-e23e6318-bcdc-4572-a76b-5015e3950121-else-if-2"
+  // Example: "condition-e23e6318-bcdc-4572-a76b-5015e3950121-else-if-1752111795510"
 
   if (!sourceHandle.startsWith('condition-')) {
     return sourceHandle
@@ -533,7 +610,7 @@ function extractConditionId(sourceHandle: string): string {
   const match = withoutPrefix.match(uuidRegex)
 
   if (match) {
-    // Extract everything after the UUID
+    // Extract everything after the UUID - return raw ID for further processing
     return match[1]
   }
 
