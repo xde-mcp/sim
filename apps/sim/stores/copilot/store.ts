@@ -56,7 +56,20 @@ export const useCopilotStore = create<CopilotStore>()(
 
           // Load chats for the new workflow
           if (workflowId) {
-            get().loadChats()
+            get().loadChats().then(() => {
+              // After loading chats, select the most recent one if available
+              const { chats, currentChat } = get()
+              if (!currentChat && chats.length > 0) {
+                // Sort by creation date to get the most recently created chat
+                const sortedByCreation = [...chats].sort(
+                  (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                )
+                // Select the most recently created chat for this specific workflow
+                get().selectChat(sortedByCreation[0])
+              }
+            }).catch((error) => {
+              logger.error('Failed to load chats after workflow change:', error)
+            })
           }
         }
       },
@@ -80,13 +93,7 @@ export const useCopilotStore = create<CopilotStore>()(
               isLoadingChats: false,
             })
 
-            // If no current chat and we have chats, optionally select the most recent one
-            const { currentChat } = get()
-            if (!currentChat && result.chats.length > 0) {
-              // Auto-select most recent chat
-              await get().selectChat(result.chats[0])
-            }
-
+            // NO auto-selection here - let the caller decide what to select
             logger.info(`Loaded ${result.chats.length} chats for workflow ${workflowId}`)
           } else {
             throw new Error(result.error || 'Failed to load chats')
@@ -141,14 +148,17 @@ export const useCopilotStore = create<CopilotStore>()(
           const result = await createChat(workflowId, options)
 
           if (result.success && result.chat) {
+            // Clear messages and set the new chat as current
             set({
               currentChat: result.chat,
               messages: result.chat.messages,
               isLoading: false,
             })
 
-            // Reload chats to include the new one
-            await get().loadChats()
+            // Add the new chat to the chats list manually instead of reloading
+            set((state) => ({
+              chats: [result.chat!, ...state.chats],
+            }))
 
             logger.info(`Created new chat: ${result.chat.id}`)
           } else {
@@ -176,12 +186,21 @@ export const useCopilotStore = create<CopilotStore>()(
               chats: state.chats.filter((chat) => chat.id !== chatId),
             }))
 
-            // If this was the current chat, clear it
+            // If this was the current chat, clear it and select another one
             if (currentChat?.id === chatId) {
               set({
                 currentChat: null,
                 messages: [],
               })
+              
+              // Select the next most recent chat if available for this workflow
+              const { chats } = get()
+              if (chats.length > 0) {
+                const sortedByCreation = [...chats].sort(
+                  (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                )
+                await get().selectChat(sortedByCreation[0])
+              }
             }
 
             logger.info(`Deleted chat: ${chatId}`)
@@ -410,7 +429,7 @@ export const useCopilotStore = create<CopilotStore>()(
                       ),
                     }))
                     console.log('[CopilotStore] Updated message state with content')
-                  } else if (data.type === 'done' || data.type === 'complete') {
+                  } else if (data.type === 'complete') {
                     console.log('[CopilotStore] Received completion marker:', data.type)
                     // Final update
                     set((state) => ({
@@ -438,11 +457,37 @@ export const useCopilotStore = create<CopilotStore>()(
                       }
                     }
 
-                    // Handle new chat creation
+                    // Handle new chat creation - reload and select the new chat
                     if (newChatId && !get().currentChat) {
-                      console.log('[CopilotStore] Reloading chats for new chat:', newChatId)
-                      // Reload chats to get the updated list
-                      await get().loadChats()
+                      console.log('[CopilotStore] Handling new chat creation:', newChatId)
+                      
+                      // Instead of reloading all chats, just fetch the specific new chat
+                      try {
+                        const chatResult = await getChat(newChatId)
+                        if (chatResult.success && chatResult.chat) {
+                          console.log('[CopilotStore] Setting new chat as current:', chatResult.chat.title || 'Untitled')
+                          
+                          // Set the new chat as current
+                          set({
+                            currentChat: chatResult.chat,
+                          })
+                          
+                          // Add to chats list if not already there
+                          set((state) => {
+                            const chatExists = state.chats.some(chat => chat.id === newChatId)
+                            if (!chatExists) {
+                              return {
+                                chats: [chatResult.chat!, ...state.chats]
+                              }
+                            }
+                            return state
+                          })
+                        }
+                      } catch (error) {
+                        logger.error('Failed to fetch new chat after creation:', error)
+                        // Fallback: reload all chats
+                        await get().loadChats()
+                      }
                     }
 
                     streamComplete = true
@@ -483,6 +528,7 @@ export const useCopilotStore = create<CopilotStore>()(
           messages: [],
           error: null,
         })
+        logger.info('Cleared current chat and messages for new conversation')
       },
 
       // Save chat messages to database
@@ -506,8 +552,27 @@ export const useCopilotStore = create<CopilotStore>()(
               saveError: null,
             })
 
+            // Update the chat in the chats list to ensure title synchronization
+            set((state) => {
+              const updatedChats = state.chats.map((chat) =>
+                chat.id === result.chat!.id ? result.chat! : chat
+              )
+              
+              // If the chat doesn't exist in the list yet, add it
+              const chatExists = state.chats.some(chat => chat.id === result.chat!.id)
+              if (!chatExists) {
+                return {
+                  chats: [result.chat!, ...state.chats]
+                }
+              }
+              
+              return {
+                chats: updatedChats
+              }
+            })
+
             logger.info(
-              `Successfully saved chat ${chatId} with ${result.chat.messages.length} messages`
+              `Successfully saved chat ${chatId} with title: "${result.chat.title}" and ${result.chat.messages.length} messages`
             )
           } else {
             const errorMessage = result.error || 'Failed to save chat'

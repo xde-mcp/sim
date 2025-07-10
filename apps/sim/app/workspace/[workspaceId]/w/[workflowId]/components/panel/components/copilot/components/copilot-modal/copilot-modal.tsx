@@ -100,40 +100,49 @@ export function CopilotModal({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align='start' className='z-[110] w-64' sideOffset={8}>
-              {chats.map((chat) => (
-                <div key={chat.id} className='flex items-center'>
-                  <DropdownMenuItem
-                    onClick={() => onSelectChat(chat)}
-                    className='flex-1 cursor-pointer'
-                  >
-                    <div className='min-w-0 flex-1'>
-                      <div className='truncate font-medium text-sm'>
-                        {chat.title || 'Untitled Chat'}
-                      </div>
-                      <div className='text-muted-foreground text-xs'>
-                        {chat.messageCount} messages •{' '}
-                        {new Date(chat.updatedAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant='ghost' size='sm' className='h-8 w-8 shrink-0 p-0'>
-                        <MoreHorizontal className='h-4 w-4' />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align='end' className='z-[120]'>
+              {chats.length === 0 ? (
+                <div className='px-3 py-2 text-muted-foreground text-sm'>No chats yet</div>
+              ) : (
+                // Sort chats by creation date (most recent first) for display
+                [...chats]
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .map((chat) => (
+                    <div key={chat.id} className='flex items-center'>
                       <DropdownMenuItem
-                        onClick={() => onDeleteChat(chat.id)}
-                        className='cursor-pointer text-destructive'
+                        onClick={() => onSelectChat(chat)}
+                        className={`flex-1 cursor-pointer ${
+                          currentChat?.id === chat.id ? 'bg-accent' : ''
+                        }`}
                       >
-                        <Trash2 className='mr-2 h-4 w-4' />
-                        Delete
+                        <div className='min-w-0 flex-1'>
+                          <div className='truncate font-medium text-sm'>
+                            {chat.title || 'Untitled Chat'}
+                          </div>
+                          <div className='text-muted-foreground text-xs'>
+                            {chat.messageCount} messages •{' '}
+                            {new Date(chat.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
                       </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ))}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant='ghost' size='sm' className='h-8 w-8 shrink-0 p-0'>
+                            <MoreHorizontal className='h-4 w-4' />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align='end' className='z-[120]'>
+                          <DropdownMenuItem
+                            onClick={() => onDeleteChat(chat.id)}
+                            className='cursor-pointer text-destructive'
+                          >
+                            <Trash2 className='mr-2 h-4 w-4' />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  ))
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

@@ -521,7 +521,7 @@ export async function listChats(
       .select()
       .from(copilotChats)
       .where(and(eq(copilotChats.userId, userId), eq(copilotChats.workflowId, workflowId)))
-      .orderBy(desc(copilotChats.updatedAt))
+      .orderBy(desc(copilotChats.createdAt))
       .limit(limit)
       .offset(offset)
 
