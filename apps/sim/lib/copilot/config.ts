@@ -91,14 +91,14 @@ export interface CopilotConfig {
 export const DEFAULT_COPILOT_CONFIG: CopilotConfig = {
   chat: {
     defaultProvider: 'anthropic',
-    defaultModel: 'claude-3-7-sonnet-latest',
+    defaultModel: 'claude-sonnet-4-0',
     temperature: 0.1,
     maxTokens: 4000,
     systemPrompt: MAIN_CHAT_SYSTEM_PROMPT,
   },
   rag: {
     defaultProvider: 'anthropic',
-    defaultModel: 'claude-3-7-sonnet-latest',
+    defaultModel: 'claude-sonnet-4-0',
     temperature: 0.1,
     maxTokens: 2000,
     embeddingModel: 'text-embedding-3-small',

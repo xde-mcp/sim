@@ -267,6 +267,101 @@ my-agent:
     error: error-handler
 \`\`\`
 
+### Agent Block with Tools
+\`\`\`yaml
+search-agent:
+  type: agent
+  name: Recipe Searcher
+  inputs:
+    systemPrompt: "The user will pass in a dish name. Your job is to conduct a search to get the recipe for the dish."
+    userPrompt: <start.input>
+    model: claude-sonnet-4-0
+    temperature: 0.1
+    apiKey: '{{ANTHROPIC_KEY}}'
+    tools:
+      - type: serper
+        title: Serper
+        params:
+          apiKey: '{{SERPER_API_KEY}}'
+        isExpanded: false
+        usageControl: auto
+      - type: exa
+        title: Exa
+        params:
+          apiKey: '{{EXA_API_KEY}}'
+        isExpanded: true
+        operation: exa_search
+        usageControl: auto
+  connections:
+    success: next-block
+    error: error-handler
+\`\`\`
+
+## Tool Configuration (For Agent Blocks)
+
+Tools provide agents with access to external services and capabilities. Each tool in the \`tools\` array has the following structure:
+
+**Tool Properties:**
+- \`type\`: The tool identifier (e.g., "serper", "exa", "gmail", "slack")
+- \`title\`: Display name for the tool in the UI
+- \`params\`: Configuration parameters specific to the tool (often API keys)
+- \`isExpanded\`: Boolean controlling UI display state
+- \`operation\`: Specific operation for tools that support multiple operations
+- \`usageControl\`: Control how the agent uses the tool ("auto", "manual")
+
+**Common Tool Examples:**
+\`\`\`yaml
+tools:
+  # Search tools
+  - type: serper
+    title: Google Search
+    params:
+      apiKey: '{{SERPER_API_KEY}}'
+    isExpanded: false
+    usageControl: auto
+    
+  - type: exa
+    title: Exa Search
+    params:
+      apiKey: '{{EXA_API_KEY}}'
+    isExpanded: true
+    operation: exa_search
+    usageControl: auto
+    
+  # Communication tools
+  - type: gmail
+    title: Gmail
+    params:
+      apiKey: '{{GMAIL_API_KEY}}'
+    isExpanded: false
+    usageControl: auto
+    
+  - type: slack
+    title: Slack Bot
+    params:
+      token: '{{SLACK_BOT_TOKEN}}'
+    isExpanded: false
+    usageControl: auto
+    
+  # File tools
+  - type: google_drive
+    title: Google Drive
+    params:
+      apiKey: '{{GOOGLE_DRIVE_API_KEY}}'
+    isExpanded: false
+    usageControl: auto
+\`\`\`
+
+**Tool Usage Control:**
+- \`auto\`: Agent can use the tool automatically when needed
+- \`manual\`: Agent must ask user permission before using the tool
+
+**Tool-Specific Operations:**
+Some tools support multiple operations via the \`operation\` field:
+- \`exa\`: "exa_search", "exa_contents", "exa_find_similar"
+- \`google_drive\`: "list_files", "download_file", "upload_file"
+- \`gmail\`: "send_email", "read_emails", "search_emails"
+
 ### Condition Block (Critical Syntax)
 \`\`\`yaml
 my-condition:
@@ -509,6 +604,7 @@ blocks:
 4. **Environment variables** → \`{{VARIABLE_NAME}}\`
 5. **Version** → must be \`'1.0'\` with quotes
 6. **Indentation** → 2 spaces consistently
+7. **Tools** → array of objects with type, title, params, isExpanded, usageControl, and optional operation
 
 ## Common Block Types
 - \`starter\` - Always required, one per workflow
