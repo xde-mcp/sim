@@ -7,9 +7,7 @@ import {
   Loader2,
   MessageSquarePlus,
   MoreHorizontal,
-  Send,
   Trash2,
-  User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,6 +23,8 @@ import { useCopilotStore } from '@/stores/copilot/store'
 import type { CopilotMessage } from '@/stores/copilot/types'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
 import { CopilotModal } from './components/copilot-modal/copilot-modal'
+import { ProfessionalMessage } from './components/professional-message/professional-message'
+import { ProfessionalInput } from './components/professional-input/professional-input'
 
 const logger = createLogger('Copilot')
 
@@ -52,7 +52,6 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
     },
     ref
   ) => {
-    const inputRef = useRef<HTMLInputElement>(null)
     const scrollAreaRef = useRef<HTMLDivElement>(null)
 
     const { activeWorkflowId } = useWorkflowRegistry()
@@ -126,16 +125,8 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
 
     // Handle message submission
     const handleSubmit = useCallback(
-      async (e?: React.FormEvent, message?: string) => {
-        e?.preventDefault()
-
-        const query = message || inputRef.current?.value?.trim() || ''
+      async (query: string) => {
         if (!query || isSendingMessage || !activeWorkflowId) return
-
-        // Clear input if using the form input
-        if (!message && inputRef.current) {
-          inputRef.current.value = ''
-        }
 
         try {
           await sendMessage(query, { stream: true })
@@ -147,102 +138,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
       [isSendingMessage, activeWorkflowId, sendMessage]
     )
 
-    // Format timestamp for display
-    const formatTimestamp = (timestamp: string) => {
-      return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
 
-    // Function to render content with basic markdown (including direct links from LLM)
-    const renderMarkdownContent = (content: string) => {
-      if (!content) return content
-
-      let processedContent = content
-
-      // Process markdown links: [text](url)
-      processedContent = processedContent.replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 font-semibold underline transition-colors">$1</a>'
-      )
-
-      // Basic markdown processing
-      processedContent = processedContent
-        .replace(
-          /```(\w+)?\n([\s\S]*?)```/g,
-          '<pre class="bg-muted p-3 rounded-lg overflow-x-auto my-3 text-sm"><code>$2</code></pre>'
-        )
-        .replace(
-          /`([^`]+)`/g,
-          '<code class="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">$1</code>'
-        )
-        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-        .replace(/^### (.*$)/gm, '<h3 class="font-semibold text-base mt-4 mb-2">$1</h3>')
-        .replace(/^## (.*$)/gm, '<h2 class="font-semibold text-lg mt-4 mb-2">$1</h2>')
-        .replace(/^# (.*$)/gm, '<h1 class="font-bold text-xl mt-4 mb-3">$1</h1>')
-        .replace(/^\* (.*$)/gm, '<li class="ml-4">• $1</li>')
-        .replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
-        .replace(/\n\n+/g, '</p><p class="mt-2">')
-        .replace(/\n/g, '<br>')
-
-      // Wrap in paragraph tags if needed
-      if (
-        !processedContent.includes('<p>') &&
-        !processedContent.includes('<h1>') &&
-        !processedContent.includes('<h2>') &&
-        !processedContent.includes('<h3>')
-      ) {
-        processedContent = `<p>${processedContent}</p>`
-      }
-
-      return processedContent
-    }
-
-    // Render individual message
-    const renderMessage = (message: CopilotMessage) => {
-      return (
-        <div key={message.id} className='group flex gap-3 p-4 hover:bg-muted/30'>
-          <div
-            className={`flex h-8 w-8 items-center justify-center rounded-full ${
-              message.role === 'user' ? 'bg-muted' : 'bg-primary'
-            }`}
-          >
-            {message.role === 'user' ? (
-              <User className='h-4 w-4 text-muted-foreground' />
-            ) : (
-              <Bot className='h-4 w-4 text-primary-foreground' />
-            )}
-          </div>
-          <div className='min-w-0 flex-1'>
-            <div className='mb-3 flex items-center gap-2'>
-              <span className='font-medium text-sm'>
-                {message.role === 'user' ? 'You' : 'Copilot'}
-              </span>
-              <span className='text-muted-foreground text-xs'>
-                {formatTimestamp(message.timestamp)}
-              </span>
-            </div>
-
-            {/* Enhanced content rendering with markdown links */}
-            <div className='prose prose-sm dark:prose-invert max-w-none'>
-              <div
-                className='text-foreground text-sm leading-normal'
-                dangerouslySetInnerHTML={{
-                  __html: renderMarkdownContent(message.content),
-                }}
-              />
-            </div>
-
-            {/* Streaming cursor */}
-            {!message.content && (
-              <div className='flex items-center gap-2 text-muted-foreground'>
-                <Loader2 className='h-4 w-4 animate-spin' />
-                <span className='text-sm'>Thinking...</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )
-    }
 
     // Convert messages for modal (role -> type)
     const modalMessages = messages.map((msg) => ({
@@ -256,7 +152,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
     // Handle modal message sending
     const handleModalSendMessage = useCallback(
       async (message: string) => {
-        await handleSubmit(undefined, message)
+        await handleSubmit(message)
       },
       [handleSubmit]
     )
@@ -371,29 +267,23 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                 </div>
               </div>
             ) : (
-              messages.map(renderMessage)
+              messages.map((message) => (
+                <ProfessionalMessage
+                  key={message.id}
+                  message={message}
+                  isStreaming={isSendingMessage && message.id === messages[messages.length - 1]?.id}
+                />
+              ))
             )}
           </ScrollArea>
 
           {/* Input area */}
-          <div className='border-t p-4'>
-            <form onSubmit={handleSubmit} className='flex gap-2'>
-              <Input
-                ref={inputRef}
-                placeholder='Ask about Sim Studio documentation...'
-                disabled={isSendingMessage}
-                className='flex-1'
-                autoComplete='off'
-              />
-              <Button type='submit' size='icon' disabled={isSendingMessage} className='h-10 w-10'>
-                {isSendingMessage ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                ) : (
-                  <Send className='h-4 w-4' />
-                )}
-              </Button>
-            </form>
-          </div>
+          <ProfessionalInput
+            onSubmit={handleSubmit}
+            disabled={!activeWorkflowId}
+            isLoading={isSendingMessage}
+            placeholder="Ask about Sim Studio documentation..."
+          />
         </div>
 
         {/* Fullscreen Modal */}

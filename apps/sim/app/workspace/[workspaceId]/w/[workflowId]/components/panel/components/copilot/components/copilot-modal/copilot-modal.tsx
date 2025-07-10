@@ -1,8 +1,7 @@
 'use client'
 
-import { type KeyboardEvent, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import {
-  ArrowUp,
   Bot,
   ChevronDown,
   MessageSquarePlus,
@@ -20,6 +19,9 @@ import {
 import { Input } from '@/components/ui/input'
 import type { CopilotChat } from '@/lib/copilot/api'
 import { createLogger } from '@/lib/logs/console-logger'
+import { ProfessionalMessage } from '../professional-message/professional-message'
+import { ProfessionalInput } from '../professional-input/professional-input'
+import type { CopilotMessage } from '@/stores/copilot/types'
 
 const logger = createLogger('CopilotModal')
 
@@ -35,93 +37,7 @@ interface Message {
   }>
 }
 
-interface CopilotModalMessage {
-  message: Message
-}
 
-// Modal-specific message component
-function ModalCopilotMessage({ message }: CopilotModalMessage) {
-  const renderMarkdown = (text: string) => {
-    let processedText = text
-
-    // Process markdown links: [text](url)
-    processedText = processedText.replace(
-      /\[([^\]]+)\]\(([^)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 font-semibold underline transition-colors">$1</a>'
-    )
-
-    // Handle code blocks
-    processedText = processedText.replace(
-      /```(\w+)?\n([\s\S]*?)\n```/g,
-      '<pre class="bg-muted rounded-md p-3 my-2 overflow-x-auto"><code class="text-sm">$2</code></pre>'
-    )
-
-    // Handle inline code
-    processedText = processedText.replace(
-      /`([^`]+)`/g,
-      '<code class="bg-muted px-1 rounded text-sm">$1</code>'
-    )
-
-    // Handle headers
-    processedText = processedText.replace(
-      /^### (.*$)/gm,
-      '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>'
-    )
-    processedText = processedText.replace(
-      /^## (.*$)/gm,
-      '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>'
-    )
-    processedText = processedText.replace(
-      /^# (.*$)/gm,
-      '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>'
-    )
-
-    // Handle bold
-    processedText = processedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-
-    // Handle lists
-    processedText = processedText.replace(/^- (.*$)/gm, '<li class="ml-4">• $1</li>')
-
-    // Handle line breaks (reduce spacing)
-    processedText = processedText.replace(/\n\n+/g, '</p><p class="mt-2">')
-    processedText = processedText.replace(/\n/g, '<br>')
-
-    return processedText
-  }
-
-  // For user messages (on the right)
-  if (message.type === 'user') {
-    return (
-      <div className='px-4 py-5'>
-        <div className='mx-auto max-w-3xl'>
-          <div className='flex justify-end'>
-            <div className='max-w-[80%] rounded-3xl bg-[#F4F4F4] px-4 py-3 shadow-sm dark:bg-primary/10'>
-              <div className='whitespace-pre-wrap break-words text-[#0D0D0D] text-base leading-relaxed dark:text-white'>
-                {message.content}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // For assistant messages (on the left)
-  return (
-    <div className='px-4 py-5'>
-      <div className='mx-auto max-w-3xl'>
-        <div className='flex'>
-          <div className='max-w-[80%]'>
-            <div
-              className='prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap break-words text-base leading-normal'
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 interface CopilotModalProps {
   open: boolean
@@ -155,7 +71,6 @@ export function CopilotModal({
 }: CopilotModalProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -164,37 +79,7 @@ export function CopilotModal({
     }
   }, [messages])
 
-  // Focus input when modal opens
-  useEffect(() => {
-    if (open && inputRef.current) {
-      inputRef.current.focus()
-    }
-  }, [open])
 
-  // Handle send message
-  const handleSendMessage = async () => {
-    if (!copilotMessage.trim() || isLoading) return
-
-    try {
-      await onSendMessage(copilotMessage.trim())
-      setCopilotMessage('')
-
-      // Ensure input stays focused
-      if (inputRef.current) {
-        inputRef.current.focus()
-      }
-    } catch (error) {
-      logger.error('Failed to send message', error)
-    }
-  }
-
-  // Handle key press
-  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
-    }
-  }
 
   if (!open) return null
 
@@ -318,7 +203,23 @@ export function CopilotModal({
               </div>
             </div>
           ) : (
-            messages.map((message) => <ModalCopilotMessage key={message.id} message={message} />)
+            messages.map((message) => {
+              // Convert modal message format to CopilotMessage format
+              const copilotMessage: CopilotMessage = {
+                id: message.id,
+                role: message.type === 'user' ? 'user' : 'assistant',
+                content: message.content,
+                timestamp: message.timestamp.toISOString(),
+                citations: message.citations,
+              }
+              return (
+                <ProfessionalMessage
+                  key={message.id}
+                  message={copilotMessage}
+                  isStreaming={false}
+                />
+              )
+            })
           )}
 
           {/* Loading indicator (shows only when loading) */}
@@ -340,34 +241,16 @@ export function CopilotModal({
         </div>
       </div>
 
-      {/* Input area (fixed at bottom) */}
-      <div className='bg-background p-4'>
-        <div className='mx-auto max-w-3xl'>
-          <div className='relative rounded-2xl border bg-background shadow-sm'>
-            <Input
-              ref={inputRef}
-              value={copilotMessage}
-              onChange={(e) => setCopilotMessage(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder='Ask about Sim Studio documentation...'
-              className='min-h-[50px] flex-1 rounded-2xl border-0 bg-transparent py-7 pr-16 pl-6 text-base focus-visible:ring-0 focus-visible:ring-offset-0'
-              disabled={isLoading}
-            />
-            <Button
-              onClick={handleSendMessage}
-              size='icon'
-              disabled={!copilotMessage.trim() || isLoading}
-              className='-translate-y-1/2 absolute top-1/2 right-3 h-10 w-10 rounded-xl bg-black p-0 text-white hover:bg-gray-800 dark:bg-primary dark:hover:bg-primary/80'
-            >
-              <ArrowUp className='h-4 w-4 dark:text-black' />
-            </Button>
-          </div>
-
-          <div className='mt-2 text-center text-muted-foreground text-xs'>
-            <p>Ask questions about Sim Studio documentation and features</p>
-          </div>
-        </div>
-      </div>
+      {/* Input area */}
+      <ProfessionalInput
+        onSubmit={async (message) => {
+          await onSendMessage(message)
+          setCopilotMessage('')
+        }}
+        disabled={false}
+        isLoading={isLoading}
+        placeholder="Ask about Sim Studio documentation..."
+      />
     </div>
   )
 }
