@@ -19,9 +19,7 @@ export function CopilotWelcome() {
             <div className='rounded bg-muted/50 px-2 py-1 text-xs'>
               "How do I create a workflow?"
             </div>
-            <div className='rounded bg-muted/50 px-2 py-1 text-xs'>
-              "What tools are available?"
-            </div>
+            <div className='rounded bg-muted/50 px-2 py-1 text-xs'>"What tools are available?"</div>
             <div className='rounded bg-muted/50 px-2 py-1 text-xs'>
               "Help me with my current workflow"
             </div>
@@ -30,4 +28,4 @@ export function CopilotWelcome() {
       </div>
     </div>
   )
-} 
+}

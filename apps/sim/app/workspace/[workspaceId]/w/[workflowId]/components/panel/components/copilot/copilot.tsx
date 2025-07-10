@@ -1,7 +1,7 @@
 'use client'
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
-import { Bot, ChevronDown, MessageSquarePlus, MoreHorizontal, Trash2 } from 'lucide-react'
+import { ChevronDown, MessageSquarePlus, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

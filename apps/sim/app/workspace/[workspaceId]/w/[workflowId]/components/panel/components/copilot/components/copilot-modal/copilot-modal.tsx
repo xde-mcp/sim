@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { Bot, ChevronDown, MessageSquarePlus, MoreHorizontal, Trash2, X } from 'lucide-react'
+import { ChevronDown, MessageSquarePlus, MoreHorizontal, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
