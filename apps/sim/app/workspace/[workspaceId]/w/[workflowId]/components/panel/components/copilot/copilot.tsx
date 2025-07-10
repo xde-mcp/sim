@@ -131,15 +131,6 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
       [isSendingMessage, activeWorkflowId, sendMessage]
     )
 
-    // Convert messages for modal (role -> type)
-    const modalMessages = messages.map((msg) => ({
-      id: msg.id,
-      content: msg.content,
-      type: msg.role as 'user' | 'assistant',
-      timestamp: new Date(msg.timestamp),
-      citations: msg.citations,
-    }))
-
     // Handle modal message sending
     const handleModalSendMessage = useCallback(
       async (message: string) => {
@@ -296,7 +287,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
           onOpenChange={(open) => onFullscreenToggle?.(open)}
           copilotMessage={fullscreenInput}
           setCopilotMessage={(message) => onFullscreenInputChange?.(message)}
-          messages={modalMessages}
+          messages={messages}
           onSendMessage={handleModalSendMessage}
           isLoading={isSendingMessage}
           chats={chats}

@@ -18,24 +18,12 @@ import { CopilotWelcome } from '../welcome/welcome'
 
 const logger = createLogger('CopilotModal')
 
-interface Message {
-  id: string
-  content: string
-  type: 'user' | 'assistant'
-  timestamp: Date
-  citations?: Array<{
-    id: number
-    title: string
-    url: string
-  }>
-}
-
 interface CopilotModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   copilotMessage: string
   setCopilotMessage: (message: string) => void
-  messages: Message[]
+  messages: CopilotMessage[]
   onSendMessage: (message: string) => Promise<void>
   isLoading: boolean
   // Chat management props
@@ -203,38 +191,13 @@ export function CopilotModal({
           {messages.length === 0 ? (
             <CopilotWelcome onQuestionClick={onSendMessage} />
           ) : (
-            messages.map((message) => {
-              // Convert modal message format to CopilotMessage format
-              const copilotMessage: CopilotMessage = {
-                id: message.id,
-                role: message.type === 'user' ? 'user' : 'assistant',
-                content: message.content,
-                timestamp: message.timestamp.toISOString(),
-                citations: message.citations,
-              }
-              return (
-                <ProfessionalMessage
-                  key={message.id}
-                  message={copilotMessage}
-                  isStreaming={false}
-                />
-              )
-            })
-          )}
-
-          {/* Loading indicator (shows only when loading) */}
-          {isLoading && (
-            <div className='px-4 py-5'>
-              <div className='mx-auto max-w-3xl'>
-                <div className='flex'>
-                  <div className='max-w-[80%]'>
-                    <div className='flex h-6 items-center'>
-                      <div className='loading-dot h-3 w-3 rounded-full bg-black dark:bg-black' />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            messages.map((message) => (
+              <ProfessionalMessage
+                key={message.id}
+                message={message}
+                isStreaming={isLoading && message.id === messages[messages.length - 1]?.id}
+              />
+            ))
           )}
 
           <div ref={messagesEndRef} className='h-1' />
