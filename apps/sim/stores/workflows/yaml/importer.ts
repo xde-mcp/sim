@@ -593,15 +593,17 @@ export async function importWorkflowFromYaml(
       }
     } else {
       // Text editor case: Clean workflow except for start block, use smart ID mapping for start block only
-      logger.info('Text editor case: Cleaning workflow except for start block, repurposing start block')
+      logger.info(
+        'Text editor case: Cleaning workflow except for start block, repurposing start block'
+      )
       existingBlocks = workflowActions.getExistingBlocks()
-      
+
       // Find existing starter block
       const existingStarterEntry = Object.entries(existingBlocks).find(
         ([_, block]) => block.type === 'starter'
       )
       const existingStarterId = existingStarterEntry?.[0]
-      
+
       logger.info(
         `Got existing blocks from workflow store for active workflow ${activeWorkflowId}`,
         {
@@ -610,7 +612,7 @@ export async function importWorkflowFromYaml(
           existingStarterId,
         }
       )
-      
+
       // Create ID mapping - preserve only the starter block ID, generate new IDs for everything else
       yamlIdToActualId = new Map()
       for (const block of blocks) {
@@ -738,9 +740,7 @@ export async function importWorkflowFromYaml(
           source: sourceId,
           target: targetId,
         }
-        logger.debug(
-          `Creating YAML edge: ${edge.source} -> ${edge.target} with ID ${newEdgeId}`
-        )
+        logger.debug(`Creating YAML edge: ${edge.source} -> ${edge.target} with ID ${newEdgeId}`)
         completeEdges.push(newEdge)
       } else {
         logger.warn(`Skipping edge - missing blocks: ${edge.source} -> ${edge.target}`)
@@ -818,7 +818,9 @@ export async function importWorkflowFromYaml(
 
     // Calculate summary for YAML editor case
     const totalBlocksInWorkflow = Object.keys(completeBlocks).length
-    const starterBlocksCount = Object.values(completeBlocks).filter((b: any) => b.type === 'starter').length
+    const starterBlocksCount = Object.values(completeBlocks).filter(
+      (b: any) => b.type === 'starter'
+    ).length
     const newBlocksCount = totalBlocksInWorkflow - starterBlocksCount
 
     return {
