@@ -32,6 +32,9 @@ interface CopilotModalProps {
   onSelectChat: (chat: CopilotChat) => void
   onStartNewChat: () => void
   onDeleteChat: (chatId: string) => void
+  // Mode props
+  mode: 'ask' | 'agent'
+  onModeChange: (mode: 'ask' | 'agent') => void
 }
 
 export function CopilotModal({
@@ -47,6 +50,8 @@ export function CopilotModal({
   onSelectChat,
   onStartNewChat,
   onDeleteChat,
+  mode,
+  onModeChange,
 }: CopilotModalProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -183,6 +188,34 @@ export function CopilotModal({
           <X className='h-4 w-4' />
           <span className='sr-only'>Close</span>
         </Button>
+      </div>
+
+      {/* Mode Selector Row */}
+      <div className='border-b px-4 py-3'>
+        <div className='flex items-center gap-1 rounded-lg border bg-muted/30 p-1'>
+          <Button
+            variant={mode === 'ask' ? 'secondary' : 'ghost'}
+            size='sm'
+            onClick={() => onModeChange('ask')}
+            className='h-7 flex-1 text-xs font-medium'
+          >
+            Ask
+          </Button>
+          <Button
+            variant={mode === 'agent' ? 'secondary' : 'ghost'}
+            size='sm'
+            onClick={() => onModeChange('agent')}
+            className='h-7 flex-1 text-xs font-medium'
+          >
+            Agent
+          </Button>
+        </div>
+        <div className='mt-2 text-xs text-muted-foreground'>
+          {mode === 'ask' 
+            ? 'Ask questions and get answers. Cannot edit workflows.'
+            : 'Full agent with workflow editing capabilities.'
+          }
+        </div>
       </div>
 
       {/* Messages container */}

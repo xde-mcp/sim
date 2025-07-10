@@ -20,6 +20,7 @@ const logger = createLogger('CopilotStore')
  * Initial state for the copilot store
  */
 const initialState = {
+  mode: 'ask' as const,
   currentChat: null,
   chats: [],
   messages: [],
@@ -39,6 +40,12 @@ export const useCopilotStore = create<CopilotStore>()(
   devtools(
     (set, get) => ({
       ...initialState,
+
+      // Set chat mode
+      setMode: (mode) => {
+        set({ mode })
+        logger.info(`Copilot mode changed to: ${mode}`)
+      },
 
       // Set current workflow ID
       setWorkflowId: (workflowId: string | null) => {
@@ -220,12 +227,13 @@ export const useCopilotStore = create<CopilotStore>()(
 
       // Send a regular message
       sendMessage: async (message: string, options = {}) => {
-        const { workflowId, currentChat } = get()
+        const { workflowId, currentChat, mode } = get()
         const { stream = true } = options
 
         console.log('[CopilotStore] sendMessage called:', {
           message,
           workflowId,
+          mode,
           hasCurrentChat: !!currentChat,
           stream,
         })
@@ -269,6 +277,7 @@ export const useCopilotStore = create<CopilotStore>()(
             message,
             chatId: currentChat?.id,
             workflowId,
+            mode,
             createNewChat: !currentChat,
             stream,
           })

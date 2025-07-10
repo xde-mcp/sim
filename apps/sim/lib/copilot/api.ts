@@ -38,6 +38,7 @@ export interface SendMessageRequest {
   message: string
   chatId?: string
   workflowId?: string
+  mode?: 'ask' | 'agent'
   createNewChat?: boolean
   stream?: boolean
 }

@@ -46,6 +46,7 @@ export interface SendMessageRequest {
   message: string
   chatId?: string
   workflowId?: string
+  mode?: 'ask' | 'agent'
   createNewChat?: boolean
   stream?: boolean
   userId: string
@@ -191,11 +192,12 @@ export async function generateChatResponse(
     stream?: boolean
     workflowId?: string
     requestId?: string
+    mode?: 'ask' | 'agent'
   } = {}
 ): Promise<string | ReadableStream> {
   const config = getCopilotConfig()
   const { provider, model } = getCopilotModel('chat')
-  const { stream = config.general.streamingEnabled } = options
+  const { stream = config.general.streamingEnabled, mode = 'ask' } = options
 
   try {
     let apiKey: string
@@ -234,8 +236,8 @@ export async function generateChatResponse(
       content: message,
     })
 
-    // Define the tools available to the LLM
-    const tools: ProviderToolConfig[] = [
+    // Define the base tools available to the LLM
+    const allTools: ProviderToolConfig[] = [
       {
         id: 'docs_search_internal',
         name: 'Search Documentation',
@@ -354,6 +356,17 @@ export async function generateChatResponse(
         },
       },
     ]
+
+    // Filter tools based on mode
+    const tools = mode === 'ask' 
+      ? allTools.filter(tool => tool.id !== 'edit_workflow') 
+      : allTools
+
+    logger.info(`Copilot mode: ${mode}, available tools: ${tools.length}`, {
+      mode,
+      toolIds: tools.map(t => t.id),
+      filteredOut: mode === 'ask' ? ['edit_workflow'] : []
+    })
 
     const response = await executeProviderRequest(provider, {
       model,
@@ -616,7 +629,7 @@ export async function sendMessage(request: SendMessageRequest): Promise<{
   response: string | ReadableStream | any
   chatId?: string
 }> {
-  const { message, chatId, workflowId, createNewChat, stream, userId } = request
+  const { message, chatId, workflowId, mode, createNewChat, stream, userId } = request
 
   try {
     // Handle chat context
@@ -638,6 +651,7 @@ export async function sendMessage(request: SendMessageRequest): Promise<{
     const response = await generateChatResponse(message, conversationHistory, {
       stream,
       workflowId,
+      mode,
     })
 
     // No need to extract citations - LLM generates direct markdown links

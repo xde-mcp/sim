@@ -1,5 +1,5 @@
 /**
- * Message interface for copilot conversations
+ * Copilot message structure
  */
 export interface CopilotMessage {
   id: string
@@ -10,9 +10,13 @@ export interface CopilotMessage {
     id: number
     title: string
     url: string
-    similarity?: number
   }>
 }
+
+/**
+ * Chat mode types
+ */
+export type CopilotMode = 'ask' | 'agent'
 
 /**
  * Chat interface for copilot conversations
@@ -31,35 +35,33 @@ export interface CopilotChat {
  * Copilot store state
  */
 export interface CopilotState {
-  // Current active chat
+  // Current mode
+  mode: CopilotMode
+
+  // Chat management
   currentChat: CopilotChat | null
-
-  // List of available chats for current workflow
   chats: CopilotChat[]
-
-  // Current messages (from active chat)
   messages: CopilotMessage[]
+  workflowId: string | null
 
   // Loading states
   isLoading: boolean
   isLoadingChats: boolean
   isSendingMessage: boolean
-
-  // Error state
-  error: string | null
-
-  // Save operation error (separate from general errors)
-  saveError: string | null
   isSaving: boolean
 
-  // Current workflow ID (for chat context)
-  workflowId: string | null
+  // Error states
+  error: string | null
+  saveError: string | null
 }
 
 /**
  * Copilot store actions
  */
 export interface CopilotActions {
+  // Mode management
+  setMode: (mode: CopilotMode) => void
+
   // Chat management
   setWorkflowId: (workflowId: string | null) => void
   loadChats: () => Promise<void>
