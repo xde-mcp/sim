@@ -78,7 +78,7 @@ const ProfessionalInput: FC<ProfessionalInputProps> = ({
               className={cn(
                 'absolute right-2 bottom-2 h-8 w-8 rounded-xl transition-all',
                 canSubmit
-                  ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
+                  ? 'bg-[#802FFF] text-white shadow-sm hover:bg-[#7028E6]'
                   : 'cursor-not-allowed bg-muted text-muted-foreground'
               )}
             >
@@ -88,13 +88,6 @@ const ProfessionalInput: FC<ProfessionalInputProps> = ({
                 <ArrowUp className='h-4 w-4' />
               )}
             </Button>
-          </div>
-
-          {/* Helper text */}
-          <div className='mt-2 px-1'>
-            <p className='text-muted-foreground text-xs'>
-              Press Enter to send, Shift + Enter for new line
-            </p>
           </div>
         </div>
       </div>
