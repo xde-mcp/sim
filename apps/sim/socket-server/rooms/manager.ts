@@ -165,7 +165,7 @@ export class RoomManager {
 
     const timestamp = Date.now()
 
-        // Emit special event for copilot edits that tells clients to rehydrate from database
+    // Emit special event for copilot edits that tells clients to rehydrate from database
     this.io.to(workflowId).emit('copilot-workflow-edit', {
       workflowId,
       description,

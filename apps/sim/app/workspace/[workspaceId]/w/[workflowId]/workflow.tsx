@@ -341,12 +341,12 @@ const WorkflowContent = React.memo(() => {
   useEffect(() => {
     let cleanup: (() => void) | null = null
 
-        const handleAutoLayoutEvent = () => {
+    const handleAutoLayoutEvent = () => {
       if (cleanup) cleanup()
 
       // Call auto layout directly without debounce for copilot events
       handleAutoLayout()
-      
+
       // Also set up debounced version as backup
       cleanup = debouncedAutoLayout()
     }

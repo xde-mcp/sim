@@ -419,8 +419,6 @@ export function SocketProvider({ children, user }: SocketProviderProps) {
           logger.debug('Operation confirmed:', data)
         })
 
-
-
         socketInstance.on('workflow-state', (workflowData) => {
           logger.info('Received workflow state from server:', workflowData)
 
