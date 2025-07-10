@@ -11,8 +11,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { CopilotChat } from '@/lib/copilot/api'
 import { createLogger } from '@/lib/logs/console-logger'
-import { useSidebarStore } from '@/stores/sidebar/store'
 import type { CopilotMessage } from '@/stores/copilot/types'
+import { useSidebarStore } from '@/stores/sidebar/store'
 import { CheckpointPanel } from '../checkpoint-panel'
 import { ProfessionalInput } from '../professional-input/professional-input'
 import { ProfessionalMessage } from '../professional-message/professional-message'
@@ -59,13 +59,13 @@ export function CopilotModal({
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [showCheckpoints, setShowCheckpoints] = useState(false)
-  
+
   // Get sidebar state to determine left position
   const { mode: sidebarMode, isExpanded } = useSidebarStore()
-  
+
   // Calculate sidebar width based on mode and state
-  const sidebarWidth = 
-    sidebarMode === 'collapsed' || (sidebarMode === 'hover' && !isExpanded) 
+  const sidebarWidth =
+    sidebarMode === 'collapsed' || (sidebarMode === 'hover' && !isExpanded)
       ? 56 // w-14 (collapsed)
       : 240 // w-60 (expanded)
 
@@ -79,7 +79,7 @@ export function CopilotModal({
   if (!open) return null
 
   return (
-    <div 
+    <div
       className='fixed inset-y-0 right-0 z-[100] flex flex-col bg-background'
       style={{ left: `${sidebarWidth}px` }}
     >
