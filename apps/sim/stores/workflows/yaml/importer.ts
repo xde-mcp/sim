@@ -577,6 +577,18 @@ export async function importWorkflowFromYaml(
           }
         })
 
+        // Also ensure we have subBlocks for any YAML inputs that might not be in the config
+        // This handles cases where hidden fields or dynamic configurations exist
+        Object.keys(block.inputs).forEach((inputKey) => {
+          if (!subBlocks[inputKey]) {
+            subBlocks[inputKey] = {
+              id: inputKey,
+              type: 'short-input', // Default type for dynamic inputs
+              value: null,
+            }
+          }
+        })
+
         completeBlocks[actualId] = {
           id: actualId,
           type: block.type,

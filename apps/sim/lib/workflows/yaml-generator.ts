@@ -90,11 +90,13 @@ function extractBlockInputs(
   blockConfig.subBlocks.forEach((subBlockConfig: SubBlockConfig) => {
     const subBlockId = subBlockConfig.id
 
-    // Skip hidden or conditional fields that aren't active
-    if (subBlockConfig.hidden) return
-
     // Get value from provided values or fallback to block state
     const value = blockSubBlockValues[subBlockId] ?? blockState.subBlocks[subBlockId]?.value
+
+    // Skip hidden fields ONLY if they have no value (don't skip configured hidden fields)
+    if (subBlockConfig.hidden && (value === undefined || value === null || value === '')) {
+      return
+    }
 
     // Include value if it exists and isn't empty
     if (value !== undefined && value !== null && value !== '') {
