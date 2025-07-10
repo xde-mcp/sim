@@ -37,8 +37,8 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
       if (!inline && language) {
         return (
           <div className='group relative my-3 w-full max-w-full overflow-hidden rounded-lg border bg-muted/30'>
-            <div 
-              className='w-full max-w-full overflow-x-auto' 
+            <div
+              className='w-full max-w-full overflow-x-auto'
               style={{ maxWidth: '100%', width: '100%' }}
             >
               <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
@@ -66,7 +66,7 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
                       overflow: 'hidden',
                       wordBreak: 'break-all',
                       whiteSpace: 'pre-wrap',
-                    }
+                    },
                   }}
                   {...props}
                 >
@@ -96,7 +96,9 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
       )
     },
     pre: ({ children }: any) => (
-      <div className='my-3 w-full max-w-full overflow-x-auto rounded-lg border bg-muted/30'>{children}</div>
+      <div className='my-3 w-full max-w-full overflow-x-auto rounded-lg border bg-muted/30'>
+        {children}
+      </div>
     ),
     h1: ({ children }: any) => (
       <h1 className='mt-6 mb-3 break-words border-b pb-2 font-bold text-foreground text-xl'>
@@ -195,7 +197,7 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
           <div className='flex min-w-0 flex-1 flex-col items-start space-y-1'>
             <div className='w-full max-w-full overflow-hidden rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'>
               {message.content ? (
-                <div 
+                <div
                   className='prose prose-sm dark:prose-invert w-full max-w-none overflow-hidden'
                   style={{
                     maxWidth: '100%',

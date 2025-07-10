@@ -151,7 +151,7 @@ export function Panel() {
         </div>
 
         {/* Panel Content */}
-        <div className='flex-1 w-full max-w-full overflow-hidden'>
+        <div className='w-full max-w-full flex-1 overflow-hidden'>
           {activeTab === 'chat' ? (
             <Chat panelWidth={width} chatMessage={chatMessage} setChatMessage={setChatMessage} />
           ) : activeTab === 'console' ? (
