@@ -151,18 +151,18 @@ export function generateBlockConnections(
   // If we have more than the expected number of else-if conditions, the last one should be else
   const conditionKeys = Object.keys(cleanConditionTargets)
   const hasElse = conditionKeys.includes('else')
-  const elseIfKeys = conditionKeys.filter(key => key.startsWith('else-if'))
-  
+  const elseIfKeys = conditionKeys.filter((key) => key.startsWith('else-if'))
+
   if (!hasElse && elseIfKeys.length > 0) {
     // Find the highest numbered else-if and convert it to else
     const highestElseIf = elseIfKeys.sort((a, b) => {
-      const aNum = a === 'else-if' ? 1 : parseInt(a.replace('else-if-', ''))
-      const bNum = b === 'else-if' ? 1 : parseInt(b.replace('else-if-', ''))
+      const aNum = a === 'else-if' ? 1 : Number.parseInt(a.replace('else-if-', ''))
+      const bNum = b === 'else-if' ? 1 : Number.parseInt(b.replace('else-if-', ''))
       return bNum - aNum
     })[0]
-    
+
     // Move the targets from the highest else-if to else
-    cleanConditionTargets['else'] = cleanConditionTargets[highestElseIf]
+    cleanConditionTargets.else = cleanConditionTargets[highestElseIf]
     delete cleanConditionTargets[highestElseIf]
   }
 
@@ -381,9 +381,7 @@ export function expandConditionInputs(
     })
 
     // Add default else if not present and no existing else key
-    const hasElse = Object.keys(conditionsObj).some(
-      (key) => key === 'else'
-    )
+    const hasElse = Object.keys(conditionsObj).some((key) => key === 'else')
     if (!hasElse) {
       conditionsArray.push({
         id: `${blockId}-else`,
