@@ -302,7 +302,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
           ) : (
             <ScrollArea ref={scrollAreaRef} className='max-w-full flex-1 overflow-hidden'>
               {messages.length === 0 ? (
-                <CopilotWelcome onQuestionClick={handleSubmit} />
+                <CopilotWelcome onQuestionClick={handleSubmit} mode={mode} />
               ) : (
                 messages.map((message) => (
                   <ProfessionalMessage

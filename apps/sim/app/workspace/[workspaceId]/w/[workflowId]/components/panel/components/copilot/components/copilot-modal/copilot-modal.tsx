@@ -216,7 +216,7 @@ export function CopilotModal({
         <div ref={messagesContainerRef} className='flex-1 overflow-y-auto'>
           <div className='mx-auto max-w-3xl'>
             {messages.length === 0 ? (
-              <CopilotWelcome onQuestionClick={onSendMessage} />
+              <CopilotWelcome onQuestionClick={onSendMessage} mode={mode} />
             ) : (
               messages.map((message) => (
                 <ProfessionalMessage
