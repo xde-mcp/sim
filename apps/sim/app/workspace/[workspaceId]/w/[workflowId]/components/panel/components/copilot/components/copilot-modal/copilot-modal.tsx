@@ -174,7 +174,7 @@ export function CopilotModal({
       <div ref={messagesContainerRef} className='flex-1 overflow-y-auto'>
         <div className='mx-auto max-w-3xl'>
           {messages.length === 0 ? (
-            <CopilotWelcome />
+            <CopilotWelcome onQuestionClick={onSendMessage} />
           ) : (
             messages.map((message) => {
               // Convert modal message format to CopilotMessage format

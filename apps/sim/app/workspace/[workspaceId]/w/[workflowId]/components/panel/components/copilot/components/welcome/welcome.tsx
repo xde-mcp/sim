@@ -2,10 +2,24 @@
 
 import { Bot } from 'lucide-react'
 
-export function CopilotWelcome() {
+interface CopilotWelcomeProps {
+  onQuestionClick?: (question: string) => void
+}
+
+export function CopilotWelcome({ onQuestionClick }: CopilotWelcomeProps) {
+  const exampleQuestions = [
+    "How do I create a workflow?",
+    "What tools are available?",
+    "Help me with my current workflow"
+  ]
+
+  const handleQuestionClick = (question: string) => {
+    onQuestionClick?.(question)
+  }
+
   return (
     <div className='flex h-full flex-col items-center justify-center px-4 py-10'>
-      <div className='space-y-4 text-center'>
+      <div className='space-y-6 text-center'>
         <Bot className='mx-auto h-12 w-12 text-muted-foreground' />
         <div className='space-y-2'>
           <h3 className='font-medium text-lg'>How can I help you today?</h3>
@@ -13,16 +27,18 @@ export function CopilotWelcome() {
             Ask me anything about your workflows, available tools, or how to get started.
           </p>
         </div>
-        <div className='mx-auto max-w-xs space-y-2 text-left'>
-          <div className='text-muted-foreground text-xs'>Try asking:</div>
-          <div className='space-y-1'>
-            <div className='rounded bg-muted/50 px-2 py-1 text-xs'>
-              "How do I create a workflow?"
-            </div>
-            <div className='rounded bg-muted/50 px-2 py-1 text-xs'>"What tools are available?"</div>
-            <div className='rounded bg-muted/50 px-2 py-1 text-xs'>
-              "Help me with my current workflow"
-            </div>
+        <div className='mx-auto max-w-sm space-y-3'>
+          <div className='text-muted-foreground text-xs font-medium'>Try asking:</div>
+          <div className='flex flex-wrap gap-2 justify-center'>
+            {exampleQuestions.map((question, index) => (
+              <button
+                key={index}
+                className='inline-flex items-center rounded-full bg-muted/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95 cursor-pointer'
+                onClick={() => handleQuestionClick(question)}
+              >
+                {question}
+              </button>
+            ))}
           </div>
         </div>
       </div>

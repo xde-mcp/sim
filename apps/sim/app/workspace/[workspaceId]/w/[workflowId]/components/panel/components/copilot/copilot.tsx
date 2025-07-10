@@ -243,7 +243,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
           {/* Messages area */}
           <ScrollArea ref={scrollAreaRef} className='flex-1'>
             {messages.length === 0 ? (
-              <CopilotWelcome />
+              <CopilotWelcome onQuestionClick={handleSubmit} />
             ) : (
               messages.map((message) => (
                 <ProfessionalMessage
