@@ -167,10 +167,10 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                   ) : chats.length === 0 ? (
                     <div className='px-4 py-3 text-muted-foreground text-sm'>No chats yet</div>
                   ) : (
-                    // Sort chats by creation date (most recent first) for display
+                    // Sort chats by updated date (most recent first) for display
                     [...chats]
                       .sort(
-                        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
                       )
                       .map((chat) => (
                         <div key={chat.id} className='group flex items-center gap-2 px-2 py-1'>
@@ -191,12 +191,11 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                                   {chat.title || 'Untitled Chat'}
                                 </div>
                                 <div className='mt-0.5 truncate text-muted-foreground text-xs'>
-                                  {chat.messageCount} messages •{' '}
                                   {new Date(chat.updatedAt).toLocaleDateString()} at{' '}
                                   {new Date(chat.updatedAt).toLocaleTimeString([], {
                                     hour: '2-digit',
                                     minute: '2-digit',
-                                  })}
+                                  })} • {chat.messageCount}
                                 </div>
                               </div>
                             </div>
