@@ -82,4 +82,24 @@ export const searchVectorTool: ToolConfig<QdrantSearchParams, QdrantResponse> = 
       },
     }
   },
+
+  transformError: (error: any) => {
+    if (error.error && typeof error.error === 'string') {
+      return error.error
+    }
+
+    if (error.status?.error) {
+      return error.status.error
+    }
+
+    if (error.message) {
+      return error.message
+    }
+
+    if (typeof error === 'string') {
+      return error
+    }
+
+    return 'Qdrant search failed'
+  },
 }
