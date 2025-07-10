@@ -23,7 +23,7 @@ export async function applyWorkflowDiff(
   format: EditorFormat
 ): Promise<ApplyResult> {
   console.log('🔥 applyWorkflowDiff called!', { format, contentLength: content.length })
-  
+
   try {
     const { activeWorkflowId } = useWorkflowRegistry.getState()
 
@@ -36,17 +36,17 @@ export async function applyWorkflowDiff(
       }
     }
 
-    logger.info('Starting applyWorkflowDiff', { 
-      format, 
-      activeWorkflowId, 
-      contentLength: content.length 
+    logger.info('Starting applyWorkflowDiff', {
+      format,
+      activeWorkflowId,
+      contentLength: content.length,
     })
 
     if (format === 'yaml') {
       console.log('🔥 Processing YAML format!')
-      
+
       logger.info('Processing YAML format - calling importWorkflowFromYaml')
-      
+
       // Use the existing YAML importer which handles ID mapping and complete state replacement
       const workflowActions = {
         addBlock: () => {}, // Not used in this path
@@ -58,9 +58,9 @@ export async function applyWorkflowDiff(
         setSubBlockValue: () => {}, // Not used in this path
         getExistingBlocks: () => {
           const blocks = useWorkflowStore.getState().blocks
-          logger.info('getExistingBlocks called', { 
+          logger.info('getExistingBlocks called', {
             blockCount: Object.keys(blocks).length,
-            blockIds: Object.keys(blocks)
+            blockIds: Object.keys(blocks),
           })
           return blocks
         },
@@ -69,10 +69,10 @@ export async function applyWorkflowDiff(
       try {
         logger.info('About to call importWorkflowFromYaml')
         const result = await importWorkflowFromYaml(content, workflowActions)
-        logger.info('importWorkflowFromYaml completed', { 
+        logger.info('importWorkflowFromYaml completed', {
           success: result.success,
           errors: result.errors,
-          warnings: result.warnings
+          warnings: result.warnings,
         })
 
         return {
@@ -85,7 +85,9 @@ export async function applyWorkflowDiff(
         logger.error('importWorkflowFromYaml threw an error', importError)
         return {
           success: false,
-          errors: [`YAML import failed: ${importError instanceof Error ? importError.message : 'Unknown error'}`],
+          errors: [
+            `YAML import failed: ${importError instanceof Error ? importError.message : 'Unknown error'}`,
+          ],
           warnings: [],
           appliedOperations: 0,
         }

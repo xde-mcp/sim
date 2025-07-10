@@ -61,12 +61,12 @@ export function WorkflowTextEditorModal({
   // Handle save operation
   const handleSave = useCallback(
     async (content: string, contentFormat: EditorFormat) => {
-      console.log('🔥 WorkflowTextEditorModal.handleSave called!', { 
-        contentFormat, 
+      console.log('🔥 WorkflowTextEditorModal.handleSave called!', {
+        contentFormat,
         contentLength: content.length,
-        activeWorkflowId 
+        activeWorkflowId,
       })
-      
+
       if (!activeWorkflowId) {
         return { success: false, errors: ['No active workflow'] }
       }
@@ -75,10 +75,10 @@ export function WorkflowTextEditorModal({
         logger.info('Applying workflow changes from text editor', { format: contentFormat })
 
         console.log('🔥 About to call applyWorkflowDiff!', { contentFormat })
-        
+
         // Apply changes using the simplified approach
         const applyResult = await applyWorkflowDiff(content, contentFormat)
-        
+
         console.log('🔥 applyWorkflowDiff returned!', { success: applyResult.success })
 
         if (applyResult.success) {
