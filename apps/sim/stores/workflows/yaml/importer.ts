@@ -462,8 +462,97 @@ export async function importWorkflowFromYaml(
       return { success: false, errors: parseErrors, warnings: [] }
     }
 
+    // For YAML editor case: reconcile starter blocks to avoid duplicates
+    let processedWorkflow = yamlWorkflow
+    if (!targetWorkflowId) {
+      const existingBlocks = workflowActions.getExistingBlocks()
+      
+      // Find starter blocks in YAML
+      const yamlStarterEntries = Object.entries(yamlWorkflow.blocks)
+        .filter(([_, block]) => block.type === 'starter')
+      
+      // Find existing starter block
+      const existingStarterEntry = Object.entries(existingBlocks)
+        .find(([_, block]) => block.type === 'starter')
+      const existingStarterId = existingStarterEntry?.[0]
+      
+      // If we have starter blocks in YAML, reconcile them
+      if (yamlStarterEntries.length > 0) {
+        const targetStarterId = existingStarterId || yamlStarterEntries[0][0]
+        
+        // Merge all YAML starter properties
+        const mergedInputs = {}
+        const mergedConnections = {}
+        let mergedName = 'Start'
+        
+        yamlStarterEntries.forEach(([_, starterBlock]) => {
+          Object.assign(mergedInputs, starterBlock.inputs || {})
+          Object.assign(mergedConnections, starterBlock.connections || {})
+          if (starterBlock.name && starterBlock.name !== 'Start') {
+            mergedName = starterBlock.name
+          }
+        })
+        
+        // Create reconciled blocks
+        const reconciledBlocks = { ...yamlWorkflow.blocks }
+        
+        // Remove all YAML starter blocks
+        yamlStarterEntries.forEach(([starterId]) => {
+          delete reconciledBlocks[starterId]
+        })
+        
+        // Add merged starter with target ID
+        reconciledBlocks[targetStarterId] = {
+          type: 'starter',
+          name: mergedName,
+          inputs: mergedInputs,
+          connections: mergedConnections
+        }
+        
+        // Update connections that pointed to removed starters
+        const removedStarterIds = yamlStarterEntries
+          .map(([id]) => id)
+          .filter(id => id !== targetStarterId)
+        
+        if (removedStarterIds.length > 0) {
+          Object.entries(reconciledBlocks).forEach(([blockId, block]) => {
+            if (block.connections) {
+              const updateConnections = (connections: any): any => {
+                if (typeof connections === 'string') {
+                  return removedStarterIds.includes(connections) ? targetStarterId : connections
+                }
+                if (Array.isArray(connections)) {
+                  return connections.map(conn => 
+                    removedStarterIds.includes(conn) ? targetStarterId : conn
+                  )
+                }
+                if (typeof connections === 'object' && connections !== null) {
+                  const updated: any = {}
+                  Object.entries(connections).forEach(([key, value]) => {
+                    updated[key] = updateConnections(value)
+                  })
+                  return updated
+                }
+                return connections
+              }
+              
+              reconciledBlocks[blockId] = {
+                ...block,
+                connections: updateConnections(block.connections)
+              }
+            }
+          })
+        }
+        
+        processedWorkflow = {
+          ...yamlWorkflow,
+          blocks: reconciledBlocks
+        }
+      }
+    }
+
     // Convert to importable format
-    const { blocks, edges, errors, warnings } = convertYamlToWorkflow(yamlWorkflow)
+    const { blocks, edges, errors, warnings } = convertYamlToWorkflow(processedWorkflow)
 
     if (errors.length > 0) {
       return { success: false, errors, warnings }
