@@ -143,7 +143,10 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
 
     return (
       <>
-        <div className='flex h-full flex-col'>
+        <div 
+          className='flex h-full max-w-full flex-col overflow-hidden'
+          style={{ width: `${panelWidth}px`, maxWidth: `${panelWidth}px` }}
+        >
           {/* Header with Chat Title and Management */}
           <div className='border-b p-4'>
             <div className='flex items-center justify-between'>
@@ -261,7 +264,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
           </div>
 
           {/* Messages area */}
-          <ScrollArea ref={scrollAreaRef} className='flex-1'>
+          <ScrollArea ref={scrollAreaRef} className='flex-1 max-w-full overflow-hidden'>
             {messages.length === 0 ? (
               <CopilotWelcome onQuestionClick={handleSubmit} />
             ) : (

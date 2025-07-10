@@ -57,10 +57,10 @@ const ProfessionalInput: FC<ProfessionalInputProps> = ({
   const canSubmit = message.trim().length > 0 && !disabled && !isLoading
 
   return (
-    <div className={cn('border-t bg-background p-4', className)}>
-      <div className='mx-auto max-w-4xl'>
-        <div className='relative'>
-          <div className='relative flex items-end rounded-2xl border border-border bg-background shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary'>
+    <div className={cn('w-full max-w-full border-t bg-background p-4 overflow-hidden', className)}>
+      <div className='mx-auto w-full max-w-full'>
+        <div className='relative w-full max-w-full'>
+          <div className='relative flex w-full max-w-full items-end rounded-2xl border border-border bg-background shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary'>
             <Textarea
               ref={textareaRef}
               value={message}
@@ -68,7 +68,7 @@ const ProfessionalInput: FC<ProfessionalInputProps> = ({
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               disabled={disabled || isLoading}
-              className='max-h-[120px] min-h-[50px] resize-none border-0 bg-transparent px-4 py-3 pr-12 text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0'
+              className='w-full max-w-full max-h-[120px] min-h-[50px] resize-none border-0 bg-transparent px-4 py-3 pr-12 text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0'
               rows={1}
             />
             <Button

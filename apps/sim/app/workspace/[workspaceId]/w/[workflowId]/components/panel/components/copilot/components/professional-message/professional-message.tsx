@@ -36,20 +36,43 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
 
       if (!inline && language) {
         return (
-          <div className='group relative my-3 overflow-hidden rounded-lg border bg-muted/30'>
-            <div className='overflow-x-auto'>
-              <SyntaxHighlighter
-                style={theme === 'dark' ? oneDark : oneLight}
-                language={language}
-                PreTag='div'
-                className='!m-0 !bg-transparent'
-                showLineNumbers={language !== 'bash' && language !== 'shell'}
-                wrapLines={true}
-                wrapLongLines={true}
-                {...props}
-              >
-                {String(children).replace(/\n$/, '')}
-              </SyntaxHighlighter>
+          <div className='group relative my-3 w-full max-w-full overflow-hidden rounded-lg border bg-muted/30'>
+            <div 
+              className='w-full max-w-full overflow-x-auto' 
+              style={{ maxWidth: '100%', width: '100%' }}
+            >
+              <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
+                <SyntaxHighlighter
+                  style={theme === 'dark' ? oneDark : oneLight}
+                  language={language}
+                  PreTag='div'
+                  className='!m-0 !bg-transparent !max-w-full !w-full'
+                  showLineNumbers={language !== 'bash' && language !== 'shell'}
+                  wrapLines={true}
+                  wrapLongLines={true}
+                  customStyle={{
+                    margin: '0 !important',
+                    padding: '1rem',
+                    fontSize: '0.875rem',
+                    maxWidth: '100% !important',
+                    width: '100% !important',
+                    overflow: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                  }}
+                  codeTagProps={{
+                    style: {
+                      maxWidth: '100%',
+                      overflow: 'hidden',
+                      wordBreak: 'break-all',
+                      whiteSpace: 'pre-wrap',
+                    }
+                  }}
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              </div>
             </div>
             <Button
               variant='ghost'
@@ -73,7 +96,7 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
       )
     },
     pre: ({ children }: any) => (
-      <div className='my-3 overflow-x-auto rounded-lg border bg-muted/30'>{children}</div>
+      <div className='my-3 w-full max-w-full overflow-x-auto rounded-lg border bg-muted/30'>{children}</div>
     ),
     h1: ({ children }: any) => (
       <h1 className='mt-6 mb-3 break-words border-b pb-2 font-bold text-foreground text-xl'>
@@ -116,7 +139,7 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
       </blockquote>
     ),
     table: ({ children }: any) => (
-      <div className='my-3 overflow-x-auto rounded-lg border'>
+      <div className='my-3 w-full max-w-full overflow-x-auto rounded-lg border'>
         <table className='w-full text-sm'>{children}</table>
       </div>
     ),
@@ -132,11 +155,11 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
 
   if (isUser) {
     return (
-      <div className='group flex justify-end px-4 py-3'>
-        <div className='flex max-w-[85%] items-start gap-3'>
-          <div className='flex flex-col items-end space-y-1'>
-            <div className='max-w-full rounded-2xl rounded-tr-md bg-primary px-4 py-3 text-primary-foreground shadow-sm'>
-              <div className='overflow-hidden whitespace-pre-wrap break-words text-sm leading-relaxed'>
+      <div className='group flex w-full max-w-full justify-end overflow-hidden px-4 py-3'>
+        <div className='flex w-full max-w-[85%] items-start gap-3'>
+          <div className='flex min-w-0 flex-1 flex-col items-end space-y-1'>
+            <div className='w-full max-w-full overflow-hidden rounded-2xl rounded-tr-md bg-primary px-4 py-3 text-primary-foreground shadow-sm'>
+              <div className='w-full overflow-hidden whitespace-pre-wrap break-words text-sm leading-relaxed'>
                 {message.content}
               </div>
             </div>
@@ -164,15 +187,23 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
 
   if (isAssistant) {
     return (
-      <div className='group flex justify-start px-4 py-3'>
-        <div className='flex max-w-[85%] items-start gap-3'>
+      <div className='group flex w-full max-w-full justify-start overflow-hidden px-4 py-3'>
+        <div className='flex w-full max-w-[85%] items-start gap-3'>
           <div className='flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm'>
             <Bot className='h-4 w-4' />
           </div>
           <div className='flex min-w-0 flex-1 flex-col items-start space-y-1'>
-            <div className='w-full max-w-full rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'>
+            <div className='w-full max-w-full overflow-hidden rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'>
               {message.content ? (
-                <div className='prose prose-sm dark:prose-invert max-w-none overflow-hidden'>
+                <div 
+                  className='prose prose-sm dark:prose-invert w-full max-w-none overflow-hidden'
+                  style={{
+                    maxWidth: '100%',
+                    width: '100%',
+                    overflow: 'hidden',
+                    wordBreak: 'break-word',
+                  }}
+                >
                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                     {message.content}
                   </ReactMarkdown>
