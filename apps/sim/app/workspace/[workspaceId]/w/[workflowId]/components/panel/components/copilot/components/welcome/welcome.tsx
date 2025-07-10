@@ -8,9 +8,9 @@ interface CopilotWelcomeProps {
 
 export function CopilotWelcome({ onQuestionClick }: CopilotWelcomeProps) {
   const exampleQuestions = [
-    "How do I create a workflow?",
-    "What tools are available?",
-    "Help me with my current workflow"
+    'How do I create a workflow?',
+    'What tools are available?',
+    'Help me with my current workflow',
   ]
 
   const handleQuestionClick = (question: string) => {
@@ -28,12 +28,12 @@ export function CopilotWelcome({ onQuestionClick }: CopilotWelcomeProps) {
           </p>
         </div>
         <div className='mx-auto max-w-sm space-y-3'>
-          <div className='text-muted-foreground text-xs font-medium'>Try asking:</div>
-          <div className='flex flex-wrap gap-2 justify-center'>
+          <div className='font-medium text-muted-foreground text-xs'>Try asking:</div>
+          <div className='flex flex-wrap justify-center gap-2'>
             {exampleQuestions.map((question, index) => (
               <button
                 key={index}
-                className='inline-flex items-center rounded-full bg-muted/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95 cursor-pointer'
+                className='inline-flex cursor-pointer items-center rounded-full bg-muted/60 px-3 py-1.5 font-medium text-muted-foreground text-xs transition-all hover:scale-105 hover:bg-muted hover:text-foreground active:scale-95'
                 onClick={() => handleQuestionClick(question)}
               >
                 {question}
