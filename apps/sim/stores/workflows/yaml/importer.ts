@@ -577,7 +577,7 @@ export async function importWorkflowFromYaml(
 
     // Handle two different cases:
     // 1. Import button (targetWorkflowId provided): Everything should be fresh, no preservation
-    // 2. Text editor (no targetWorkflowId): Smart ID mapping and preservation
+    // 2. Text editor (no targetWorkflowId): Clean workflow except for start block, repurpose start block
 
     let existingBlocks: Record<string, any> = {}
     let yamlIdToActualId: Map<string, string>
@@ -592,46 +592,49 @@ export async function importWorkflowFromYaml(
         logger.debug(`Import: ${block.id} -> ${newId}`)
       }
     } else {
-      // Text editor case: Smart ID mapping and preservation
-      logger.info('Text editor case: Using smart ID mapping')
+      // Text editor case: Clean workflow except for start block, use smart ID mapping for start block only
+      logger.info('Text editor case: Cleaning workflow except for start block, repurposing start block')
       existingBlocks = workflowActions.getExistingBlocks()
+      
+      // Find existing starter block
+      const existingStarterEntry = Object.entries(existingBlocks).find(
+        ([_, block]) => block.type === 'starter'
+      )
+      const existingStarterId = existingStarterEntry?.[0]
+      
       logger.info(
         `Got existing blocks from workflow store for active workflow ${activeWorkflowId}`,
         {
           blockCount: Object.keys(existingBlocks).length,
           blockIds: Object.keys(existingBlocks),
+          existingStarterId,
         }
       )
-      yamlIdToActualId = createSmartIdMapping(blocks, existingBlocks, activeWorkflowId, false)
+      
+      // Create ID mapping - preserve only the starter block ID, generate new IDs for everything else
+      yamlIdToActualId = new Map()
+      for (const block of blocks) {
+        if (block.type === 'starter' && existingStarterId) {
+          // Preserve existing starter block ID
+          yamlIdToActualId.set(block.id, existingStarterId)
+          logger.info(`Preserving existing starter block ID: ${block.id} -> ${existingStarterId}`)
+        } else {
+          // Generate new ID for all other blocks
+          const newId = crypto.randomUUID()
+          yamlIdToActualId.set(block.id, newId)
+          logger.debug(`Creating new block: ${block.id} -> ${newId}`)
+        }
+      }
     }
 
     // Build complete blocks object
     const completeBlocks: Record<string, any> = {}
     const completeSubBlockValues: Record<string, Record<string, any>> = {}
 
-    if (!targetWorkflowId) {
-      // Text editor case: Preserve existing blocks that aren't mentioned in YAML
-      const yamlBlockIds = new Set(blocks.map((b) => b.id))
-      for (const [existingId, existingBlock] of Object.entries(existingBlocks)) {
-        if (!yamlBlockIds.has(existingId)) {
-          // This existing block is not in the YAML - preserve it completely
-          completeBlocks[existingId] = { ...existingBlock }
+    // For both import and YAML editor cases: Only create blocks from YAML, no preservation
+    // This is the key change - YAML editor now behaves like import in terms of cleaning the workflow
 
-          // Also preserve its current subblock values
-          const currentValues = currentWorkflowState.blocks[existingId]?.subBlocks || {}
-          completeSubBlockValues[existingId] = Object.fromEntries(
-            Object.entries(currentValues).map(([key, subBlock]: [string, any]) => [
-              key,
-              subBlock.value,
-            ])
-          )
-          logger.debug(`Preserving existing block not in YAML: ${existingId}`)
-        }
-      }
-    }
-    // For import case: No preservation needed - only create blocks from YAML
-
-    // Process blocks from YAML - these will update/add blocks
+    // Process blocks from YAML - these will replace all existing blocks
     for (const block of blocks) {
       const actualId = yamlIdToActualId.get(block.id)
       if (!actualId) {
@@ -720,74 +723,27 @@ export async function importWorkflowFromYaml(
     // Handle edges based on the use case
     const completeEdges: any[] = []
 
-    if (targetWorkflowId) {
-      // Import button case: Only create edges from YAML, no preservation
-      logger.info('Import case: Creating only YAML edges, no preservation')
-      for (const edge of edges) {
-        const sourceId = yamlIdToActualId.get(edge.source)
-        const targetId = yamlIdToActualId.get(edge.target)
+    // For both import and YAML editor cases: Only create edges from YAML, no preservation
+    // This ensures clean workflow state for both cases
+    logger.info('Creating only YAML edges, no preservation')
+    for (const edge of edges) {
+      const sourceId = yamlIdToActualId.get(edge.source)
+      const targetId = yamlIdToActualId.get(edge.target)
 
-        if (sourceId && targetId) {
-          const newEdgeId = crypto.randomUUID()
-          const newEdge = {
-            ...edge,
-            id: newEdgeId,
-            source: sourceId,
-            target: targetId,
-          }
-          logger.debug(
-            `Creating import edge: ${edge.source} -> ${edge.target} with ID ${newEdgeId}`
-          )
-          completeEdges.push(newEdge)
-        } else {
-          logger.warn(`Skipping edge - missing blocks: ${edge.source} -> ${edge.target}`)
+      if (sourceId && targetId) {
+        const newEdgeId = crypto.randomUUID()
+        const newEdge = {
+          ...edge,
+          id: newEdgeId,
+          source: sourceId,
+          target: targetId,
         }
-      }
-    } else {
-      // Text editor case: Preserve existing edges + add YAML edges
-      logger.info('Text editor case: Preserving existing edges + adding YAML edges')
-      const yamlBlockActualIdSet = new Set(
-        blocks.map((b) => yamlIdToActualId.get(b.id)).filter(Boolean)
-      )
-      const existingEdges = currentWorkflowState.edges || []
-
-      // Preserve edges that don't involve any blocks from YAML
-      for (const edge of existingEdges) {
-        const sourceInYaml = yamlBlockActualIdSet.has(edge.source)
-        const targetInYaml = yamlBlockActualIdSet.has(edge.target)
-
-        if (!sourceInYaml && !targetInYaml) {
-          // Neither block is mentioned in YAML - preserve the edge but with new ID
-          const newEdgeId = crypto.randomUUID()
-          const preservedEdge = {
-            ...edge,
-            id: newEdgeId,
-          }
-          logger.debug(
-            `Preserving existing edge: ${edge.source} -> ${edge.target} with new ID ${newEdgeId}`
-          )
-          completeEdges.push(preservedEdge)
-        }
-      }
-
-      // Add all edges from YAML
-      for (const edge of edges) {
-        const sourceId = yamlIdToActualId.get(edge.source)
-        const targetId = yamlIdToActualId.get(edge.target)
-
-        if (sourceId && targetId) {
-          const newEdgeId = crypto.randomUUID()
-          const newEdge = {
-            ...edge,
-            id: newEdgeId,
-            source: sourceId,
-            target: targetId,
-          }
-          logger.debug(`Creating YAML edge: ${edge.source} -> ${edge.target} with ID ${newEdgeId}`)
-          completeEdges.push(newEdge)
-        } else {
-          logger.warn(`Skipping edge - missing blocks: ${edge.source} -> ${edge.target}`)
-        }
+        logger.debug(
+          `Creating YAML edge: ${edge.source} -> ${edge.target} with ID ${newEdgeId}`
+        )
+        completeEdges.push(newEdge)
+      } else {
+        logger.warn(`Skipping edge - missing blocks: ${edge.source} -> ${edge.target}`)
       }
     }
 
@@ -860,16 +816,16 @@ export async function importWorkflowFromYaml(
     // Apply auto layout
     workflowActions.applyAutoLayout()
 
-    const newBlocksCount = blocks.filter((b) => !existingBlocks[b.id]).length
-    const updatedBlocksCount = blocks.filter((b) => existingBlocks[b.id]).length
-    const preservedBlocksCount = Object.keys(existingBlocks).length - updatedBlocksCount
+    // Calculate summary for YAML editor case
     const totalBlocksInWorkflow = Object.keys(completeBlocks).length
+    const starterBlocksCount = Object.values(completeBlocks).filter((b: any) => b.type === 'starter').length
+    const newBlocksCount = totalBlocksInWorkflow - starterBlocksCount
 
     return {
       success: true,
       errors: [],
       warnings,
-      summary: `Successfully processed ${blocks.length} blocks from YAML: ${newBlocksCount} new, ${updatedBlocksCount} updated, ${preservedBlocksCount} preserved. Workflow now has ${totalBlocksInWorkflow} blocks and ${completeEdges.length} connections.`,
+      summary: `Successfully replaced workflow with ${blocks.length} blocks from YAML. Workflow now has ${totalBlocksInWorkflow} blocks (${starterBlocksCount} starter, ${newBlocksCount} new) and ${completeEdges.length} connections.`,
     }
   } catch (error) {
     logger.error('YAML import failed:', error)
