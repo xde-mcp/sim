@@ -3,10 +3,13 @@ import { devtools } from 'zustand/middleware'
 import {
   type CopilotChat,
   type CopilotMessage,
+  type CopilotCheckpoint,
   createChat,
   deleteChat as deleteApiChat,
   getChat,
   listChats,
+  listCheckpoints,
+  revertToCheckpoint,
   sendStreamingDocsMessage,
   sendStreamingMessage,
   updateChatMessages,
@@ -24,12 +27,16 @@ const initialState = {
   currentChat: null,
   chats: [],
   messages: [],
+  checkpoints: [],
   isLoading: false,
   isLoadingChats: false,
+  isLoadingCheckpoints: false,
   isSendingMessage: false,
   isSaving: false,
+  isRevertingCheckpoint: false,
   error: null,
   saveError: null,
+  checkpointError: null,
   workflowId: null,
 }
 
@@ -661,6 +668,63 @@ export const useCopilotStore = create<CopilotStore>()(
       // Clear save error state
       clearSaveError: () => {
         set({ saveError: null })
+      },
+
+      // Load checkpoints for current chat
+      loadCheckpoints: async (chatId: string) => {
+        set({ isLoadingCheckpoints: true, checkpointError: null })
+
+        try {
+          const result = await listCheckpoints(chatId)
+
+          if (result.success) {
+            set({
+              checkpoints: result.checkpoints,
+              isLoadingCheckpoints: false,
+            })
+            logger.info(`Loaded ${result.checkpoints.length} checkpoints for chat ${chatId}`)
+          } else {
+            throw new Error(result.error || 'Failed to load checkpoints')
+          }
+        } catch (error) {
+          logger.error('Failed to load checkpoints:', error)
+          set({
+            checkpointError: error instanceof Error ? error.message : 'Failed to load checkpoints',
+            isLoadingCheckpoints: false,
+          })
+        }
+      },
+
+      // Revert to a specific checkpoint
+      revertToCheckpoint: async (checkpointId: string) => {
+        set({ isRevertingCheckpoint: true, checkpointError: null })
+
+        try {
+          const result = await revertToCheckpoint(checkpointId)
+
+          if (result.success) {
+            set({
+              isRevertingCheckpoint: false,
+            })
+            logger.info(`Successfully reverted to checkpoint ${checkpointId}`)
+            
+            // Note: The workflow will be updated via socket notification
+            // The UI will automatically refresh when the socket event is received
+          } else {
+            throw new Error(result.error || 'Failed to revert to checkpoint')
+          }
+        } catch (error) {
+          logger.error('Failed to revert to checkpoint:', error)
+          set({
+            checkpointError: error instanceof Error ? error.message : 'Failed to revert to checkpoint',
+            isRevertingCheckpoint: false,
+          })
+        }
+      },
+
+      // Clear checkpoint error state
+      clearCheckpointError: () => {
+        set({ checkpointError: null })
       },
 
       // Retry saving chat messages

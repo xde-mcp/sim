@@ -1,7 +1,7 @@
 'use client'
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { ChevronDown, MessageSquarePlus, MoreHorizontal, Trash2 } from 'lucide-react'
+import { ChevronDown, History, MessageSquarePlus, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { createLogger } from '@/lib/logs/console-logger'
 import { useCopilotStore } from '@/stores/copilot/store'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
+import { CheckpointPanel } from './components/checkpoint-panel'
 import { CopilotModal } from './components/copilot-modal/copilot-modal'
 import { ProfessionalInput } from './components/professional-input/professional-input'
 import { ProfessionalMessage } from './components/professional-message/professional-message'
@@ -46,6 +47,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
   ) => {
     const scrollAreaRef = useRef<HTMLDivElement>(null)
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+    const [showCheckpoints, setShowCheckpoints] = useState(false)
 
     const { activeWorkflowId } = useWorkflowRegistry()
 
@@ -251,6 +253,21 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                 </DropdownMenuContent>
               </DropdownMenu>
 
+              {/* Checkpoint Toggle Button */}
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={() => setShowCheckpoints(!showCheckpoints)}
+                className={`h-8 w-8 p-0 ${
+                  showCheckpoints 
+                    ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30' 
+                    : 'hover:bg-accent/50'
+                }`}
+                title='View Checkpoints'
+              >
+                <History className='h-4 w-4' />
+              </Button>
+
               {/* New Chat Button */}
               <Button
                 variant='ghost'
@@ -279,59 +296,68 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
             )}
           </div>
 
-          {/* Messages area */}
-          <ScrollArea ref={scrollAreaRef} className='max-w-full flex-1 overflow-hidden'>
-            {messages.length === 0 ? (
-              <CopilotWelcome onQuestionClick={handleSubmit} />
-            ) : (
-              messages.map((message) => (
-                <ProfessionalMessage
-                  key={message.id}
-                  message={message}
-                  isStreaming={isSendingMessage && message.id === messages[messages.length - 1]?.id}
-                />
-              ))
-            )}
-          </ScrollArea>
+          {/* Messages area or Checkpoint Panel */}
+          {showCheckpoints ? (
+            <CheckpointPanel />
+          ) : (
+            <ScrollArea ref={scrollAreaRef} className='max-w-full flex-1 overflow-hidden'>
+              {messages.length === 0 ? (
+                <CopilotWelcome onQuestionClick={handleSubmit} />
+              ) : (
+                messages.map((message) => (
+                  <ProfessionalMessage
+                    key={message.id}
+                    message={message}
+                    isStreaming={isSendingMessage && message.id === messages[messages.length - 1]?.id}
+                  />
+                ))
+              )}
+            </ScrollArea>
+          )}
 
-          {/* Mode Selector */}
-          <div className='border-t px-4 py-2'>
-            <div className='flex items-center gap-1 rounded-md border bg-muted/30 p-0.5'>
-              <Button
-                variant='ghost'
-                size='sm'
-                onClick={() => setMode('ask')}
-                className={`h-6 flex-1 font-medium text-xs ${
-                  mode === 'ask'
-                    ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
-                    : 'hover:bg-muted/50'
-                }`}
-                title='Ask questions and get answers. Cannot edit workflows.'
-              >
-                Ask
-              </Button>
-              <Button
-                variant='ghost'
-                size='sm'
-                onClick={() => setMode('agent')}
-                className={`h-6 flex-1 font-medium text-xs ${
-                  mode === 'agent'
-                    ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
-                    : 'hover:bg-muted/50'
-                }`}
-                title='Full agent with workflow editing capabilities.'
-              >
-                Agent
-              </Button>
-            </div>
-          </div>
+          {/* Mode Selector and Input (only show when not viewing checkpoints) */}
+          {!showCheckpoints && (
+            <>
+              {/* Mode Selector */}
+              <div className='border-t px-4 py-2'>
+                <div className='flex items-center gap-1 rounded-md border bg-muted/30 p-0.5'>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    onClick={() => setMode('ask')}
+                    className={`h-6 flex-1 font-medium text-xs ${
+                      mode === 'ask'
+                        ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
+                        : 'hover:bg-muted/50'
+                    }`}
+                    title='Ask questions and get answers. Cannot edit workflows.'
+                  >
+                    Ask
+                  </Button>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    onClick={() => setMode('agent')}
+                    className={`h-6 flex-1 font-medium text-xs ${
+                      mode === 'agent'
+                        ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
+                        : 'hover:bg-muted/50'
+                    }`}
+                    title='Full agent with workflow editing capabilities.'
+                  >
+                    Agent
+                  </Button>
+                </div>
+              </div>
 
-          {/* Input area */}
-          <ProfessionalInput
-            onSubmit={handleSubmit}
-            disabled={!activeWorkflowId}
-            isLoading={isSendingMessage}
-          />
+              {/* Input area */}
+              <ProfessionalInput
+                onSubmit={handleSubmit}
+                disabled={!activeWorkflowId}
+                isLoading={isSendingMessage}
+              />
+            </>
+          )}
         </div>
 
         {/* Fullscreen Modal */}

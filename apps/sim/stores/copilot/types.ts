@@ -14,6 +14,19 @@ export interface CopilotMessage {
 }
 
 /**
+ * Copilot checkpoint structure
+ */
+export interface CopilotCheckpoint {
+  id: string
+  userId: string
+  workflowId: string
+  chatId: string
+  yaml: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
  * Chat mode types
  */
 export type CopilotMode = 'ask' | 'agent'
@@ -44,15 +57,21 @@ export interface CopilotState {
   messages: CopilotMessage[]
   workflowId: string | null
 
+  // Checkpoint management
+  checkpoints: CopilotCheckpoint[]
+
   // Loading states
   isLoading: boolean
   isLoadingChats: boolean
+  isLoadingCheckpoints: boolean
   isSendingMessage: boolean
   isSaving: boolean
+  isRevertingCheckpoint: boolean
 
   // Error states
   error: string | null
   saveError: string | null
+  checkpointError: string | null
 }
 
 /**
@@ -75,10 +94,15 @@ export interface CopilotActions {
   sendDocsMessage: (query: string, options?: { stream?: boolean; topK?: number }) => Promise<void>
   saveChatMessages: (chatId: string) => Promise<void>
 
+  // Checkpoint management
+  loadCheckpoints: (chatId: string) => Promise<void>
+  revertToCheckpoint: (checkpointId: string) => Promise<void>
+
   // Utility actions
   clearMessages: () => void
   clearError: () => void
   clearSaveError: () => void
+  clearCheckpointError: () => void
   retrySave: (chatId: string) => Promise<void>
   reset: () => void
 

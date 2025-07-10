@@ -3,6 +3,19 @@ import { createLogger } from '@/lib/logs/console-logger'
 const logger = createLogger('CopilotAPI')
 
 /**
+ * Checkpoint interface for copilot workflow checkpoints
+ */
+export interface CopilotCheckpoint {
+  id: string
+  userId: string
+  workflowId: string
+  chatId: string
+  yaml: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
  * Message interface for copilot conversations
  */
 export interface CopilotMessage {
@@ -460,6 +473,78 @@ export async function sendStreamingDocsMessage(request: DocsQueryRequest): Promi
     }
   } catch (error) {
     logger.error('Failed to send streaming docs message:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
+ * List checkpoints for a specific chat
+ */
+export async function listCheckpoints(
+  chatId: string,
+  options: {
+    limit?: number
+    offset?: number
+  } = {}
+): Promise<{
+  success: boolean
+  checkpoints: CopilotCheckpoint[]
+  error?: string
+}> {
+  try {
+    const params = new URLSearchParams({
+      chatId,
+      limit: (options.limit || 10).toString(),
+      offset: (options.offset || 0).toString(),
+    })
+
+    const response = await fetch(`/api/copilot/checkpoints?${params}`)
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to list checkpoints')
+    }
+
+    return {
+      success: true,
+      checkpoints: data.checkpoints || [],
+    }
+  } catch (error) {
+    logger.error('Failed to list checkpoints:', error)
+    return {
+      success: false,
+      checkpoints: [],
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
+ * Revert workflow to a specific checkpoint
+ */
+export async function revertToCheckpoint(
+  checkpointId: string
+): Promise<{
+  success: boolean
+  error?: string
+}> {
+  try {
+    const response = await fetch(`/api/copilot/checkpoints/${checkpointId}/revert`, {
+      method: 'POST',
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to revert to checkpoint')
+    }
+
+    return { success: true }
+  } catch (error) {
+    logger.error('Failed to revert to checkpoint:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

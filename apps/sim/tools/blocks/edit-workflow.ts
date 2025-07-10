@@ -5,6 +5,7 @@ interface EditWorkflowParams {
   description?: string
   _context?: {
     workflowId: string
+    chatId?: string
   }
 }
 
@@ -50,6 +51,7 @@ export const editWorkflowTool: ToolConfig<EditWorkflowParams, EditWorkflowRespon
       yamlContent: params.yamlContent,
       workflowId: params._context?.workflowId,
       description: params.description,
+      chatId: params._context?.chatId,
     }),
     isInternalRoute: true,
   },

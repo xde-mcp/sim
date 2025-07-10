@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, MessageSquarePlus, MoreHorizontal, Trash2, X } from 'lucide-react'
+import { ChevronDown, History, MessageSquarePlus, MoreHorizontal, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import {
 import type { CopilotChat } from '@/lib/copilot/api'
 import { createLogger } from '@/lib/logs/console-logger'
 import type { CopilotMessage } from '@/stores/copilot/types'
+import { CheckpointPanel } from '../checkpoint-panel'
 import { ProfessionalInput } from '../professional-input/professional-input'
 import { ProfessionalMessage } from '../professional-message/professional-message'
 import { CopilotWelcome } from '../welcome/welcome'
@@ -56,6 +57,7 @@ export function CopilotModal({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [showCheckpoints, setShowCheckpoints] = useState(false)
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -167,6 +169,21 @@ export function CopilotModal({
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Checkpoint Toggle Button */}
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={() => setShowCheckpoints(!showCheckpoints)}
+            className={`h-8 w-8 p-0 ${
+              showCheckpoints 
+                ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30' 
+                : 'hover:bg-accent/50'
+            }`}
+            title='View Checkpoints'
+          >
+            <History className='h-4 w-4' />
+          </Button>
+
           {/* New Chat Button */}
           <Button
             variant='ghost'
@@ -190,68 +207,79 @@ export function CopilotModal({
         </Button>
       </div>
 
-      {/* Messages container */}
-      <div ref={messagesContainerRef} className='flex-1 overflow-y-auto'>
-        <div className='mx-auto max-w-3xl'>
-          {messages.length === 0 ? (
-            <CopilotWelcome onQuestionClick={onSendMessage} />
-          ) : (
-            messages.map((message) => (
-              <ProfessionalMessage
-                key={message.id}
-                message={message}
-                isStreaming={isLoading && message.id === messages[messages.length - 1]?.id}
-              />
-            ))
-          )}
-
-          <div ref={messagesEndRef} className='h-1' />
+      {/* Messages container or Checkpoint Panel */}
+      {showCheckpoints ? (
+        <div className='flex-1 overflow-hidden'>
+          <CheckpointPanel />
         </div>
-      </div>
+      ) : (
+        <div ref={messagesContainerRef} className='flex-1 overflow-y-auto'>
+          <div className='mx-auto max-w-3xl'>
+            {messages.length === 0 ? (
+              <CopilotWelcome onQuestionClick={onSendMessage} />
+            ) : (
+              messages.map((message) => (
+                <ProfessionalMessage
+                  key={message.id}
+                  message={message}
+                  isStreaming={isLoading && message.id === messages[messages.length - 1]?.id}
+                />
+              ))
+            )}
 
-      {/* Mode Selector */}
-      <div className='border-t px-4 py-2'>
-        <div className='mx-auto max-w-3xl'>
-          <div className='flex items-center gap-1 rounded-md border bg-muted/30 p-0.5'>
-            <Button
-              variant='ghost'
-              size='sm'
-              onClick={() => onModeChange('ask')}
-              className={`h-6 flex-1 font-medium text-xs ${
-                mode === 'ask'
-                  ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
-                  : 'hover:bg-muted/50'
-              }`}
-              title='Ask questions and get answers. Cannot edit workflows.'
-            >
-              Ask
-            </Button>
-            <Button
-              variant='ghost'
-              size='sm'
-              onClick={() => onModeChange('agent')}
-              className={`h-6 flex-1 font-medium text-xs ${
-                mode === 'agent'
-                  ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
-                  : 'hover:bg-muted/50'
-              }`}
-              title='Full agent with workflow editing capabilities.'
-            >
-              Agent
-            </Button>
+            <div ref={messagesEndRef} className='h-1' />
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Input area */}
-      <ProfessionalInput
-        onSubmit={async (message) => {
-          await onSendMessage(message)
-          setCopilotMessage('')
-        }}
-        disabled={false}
-        isLoading={isLoading}
-      />
+      {/* Mode Selector and Input (only show when not viewing checkpoints) */}
+      {!showCheckpoints && (
+        <>
+          {/* Mode Selector */}
+          <div className='border-t px-4 py-2'>
+            <div className='mx-auto max-w-3xl'>
+              <div className='flex items-center gap-1 rounded-md border bg-muted/30 p-0.5'>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={() => onModeChange('ask')}
+                  className={`h-6 flex-1 font-medium text-xs ${
+                    mode === 'ask'
+                      ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
+                      : 'hover:bg-muted/50'
+                  }`}
+                  title='Ask questions and get answers. Cannot edit workflows.'
+                >
+                  Ask
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={() => onModeChange('agent')}
+                  className={`h-6 flex-1 font-medium text-xs ${
+                    mode === 'agent'
+                      ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
+                      : 'hover:bg-muted/50'
+                  }`}
+                  title='Full agent with workflow editing capabilities.'
+                >
+                  Agent
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Input area */}
+          <ProfessionalInput
+            onSubmit={async (message) => {
+              await onSendMessage(message)
+              setCopilotMessage('')
+            }}
+            disabled={false}
+            isLoading={isLoading}
+          />
+        </>
+      )}
     </div>
   )
 }

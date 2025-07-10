@@ -147,6 +147,7 @@ export interface ProviderRequest {
   }
   local_execution?: boolean
   workflowId?: string // Optional workflow ID for authentication context
+  chatId?: string // Optional chat ID for checkpoint context
   stream?: boolean
   environmentVariables?: Record<string, string> // Environment variables for tool execution
   // Azure OpenAI specific parameters

@@ -1,18 +1,22 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logs/console-logger'
-import { saveWorkflowToNormalizedTables } from '@/lib/workflows/db-helpers'
+import { saveWorkflowToNormalizedTables, loadWorkflowFromNormalizedTables } from '@/lib/workflows/db-helpers'
+import { generateWorkflowYaml } from '@/lib/workflows/yaml-generator'
+import { getUserId } from '@/app/api/auth/oauth/utils'
 import { getBlock } from '@/blocks'
 import { db } from '@/db'
-import { workflow as workflowTable } from '@/db/schema'
+import { workflow as workflowTable, copilotCheckpoints } from '@/db/schema'
 import { convertYamlToWorkflow, parseWorkflowYaml } from '@/stores/workflows/yaml/importer'
 
 const logger = createLogger('EditWorkflowAPI')
 
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID().slice(0, 8)
+  
   try {
     const body = await request.json()
-    const { yamlContent, workflowId, description } = body
+    const { yamlContent, workflowId, description, chatId } = body
 
     if (!yamlContent) {
       return NextResponse.json(
@@ -25,11 +29,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'workflowId is required' }, { status: 400 })
     }
 
-    logger.info('[edit-workflow] Processing workflow edit request', {
+    logger.info(`[${requestId}] Processing workflow edit request`, {
       workflowId,
       yamlLength: yamlContent.length,
       hasDescription: !!description,
+      hasChatId: !!chatId,
     })
+
+    // Get the user ID for checkpoint creation
+    const userId = await getUserId(requestId, workflowId)
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 })
+    }
+
+    // Create checkpoint before making changes (only if chatId is provided)
+    if (chatId) {
+      try {
+        logger.info(`[${requestId}] Creating checkpoint before workflow edit`)
+        
+        // Get current workflow state
+        const currentWorkflowData = await loadWorkflowFromNormalizedTables(workflowId)
+        
+        if (currentWorkflowData) {
+          // Generate YAML from current state
+          const currentYaml = generateWorkflowYaml(currentWorkflowData)
+          
+          // Create checkpoint
+          await db.insert(copilotCheckpoints).values({
+            userId,
+            workflowId,
+            chatId,
+            yaml: currentYaml,
+          })
+          
+          logger.info(`[${requestId}] Checkpoint created successfully`)
+        } else {
+          logger.warn(`[${requestId}] Could not load current workflow state for checkpoint`)
+        }
+      } catch (checkpointError) {
+        logger.error(`[${requestId}] Failed to create checkpoint:`, checkpointError)
+        // Continue with workflow edit even if checkpoint fails
+      }
+    }
 
     // Parse YAML content server-side
     const { data: yamlWorkflow, errors: parseErrors } = parseWorkflowYaml(yamlContent)

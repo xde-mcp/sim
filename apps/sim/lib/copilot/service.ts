@@ -214,6 +214,7 @@ export async function generateChatResponse(
     workflowId?: string
     requestId?: string
     mode?: 'ask' | 'agent'
+    chatId?: string
   } = {}
 ): Promise<string | ReadableStream> {
   const config = getCopilotConfig()
@@ -426,6 +427,7 @@ export async function generateChatResponse(
       apiKey,
       stream,
       workflowId: options.workflowId,
+      chatId: options.chatId,
     })
 
     // Handle StreamingExecution (from providers with tool calls)
@@ -700,6 +702,7 @@ export async function sendMessage(request: SendMessageRequest): Promise<{
       stream,
       workflowId,
       mode,
+      chatId: currentChat?.id,
     })
 
     // No need to extract citations - LLM generates direct markdown links

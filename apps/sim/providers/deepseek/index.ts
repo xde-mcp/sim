@@ -286,7 +286,12 @@ export const deepseekProvider: ProviderConfig = {
               const mergedArgs = {
                 ...tool.params,
                 ...toolArgs,
-                ...(request.workflowId ? { _context: { workflowId: request.workflowId } } : {}),
+                ...(request.workflowId ? { 
+                  _context: { 
+                    workflowId: request.workflowId,
+                    ...(request.chatId ? { chatId: request.chatId } : {})
+                  } 
+                } : {}),
                 ...(request.environmentVariables ? { envVars: request.environmentVariables } : {}),
               }
               const result = await executeTool(toolName, mergedArgs, true)
