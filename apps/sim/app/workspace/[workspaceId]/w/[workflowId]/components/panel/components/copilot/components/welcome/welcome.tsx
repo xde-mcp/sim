@@ -33,10 +33,9 @@ export function CopilotWelcome({ onQuestionClick, mode = 'ask' }: CopilotWelcome
         <div className='space-y-2'>
           <h3 className='font-medium text-lg'>How can I help you today?</h3>
           <p className='text-muted-foreground text-sm'>
-            {mode === 'ask' 
+            {mode === 'ask'
               ? 'Ask me anything about your workflows, available tools, or how to get started.'
-              : 'I can help you build, edit, and create workflows. What would you like to do?'
-            }
+              : 'I can help you build, edit, and create workflows. What would you like to do?'}
           </p>
         </div>
         <div className='mx-auto max-w-sm space-y-3'>
