@@ -50,6 +50,27 @@ export function createHttpHandler(roomManager: RoomManager, logger: Logger) {
       return
     }
 
+    // Handle workflow update notifications from the main API
+    if (req.method === 'POST' && req.url === '/api/workflow-updated') {
+      let body = ''
+      req.on('data', (chunk) => {
+        body += chunk.toString()
+      })
+      req.on('end', () => {
+        try {
+          const { workflowId } = JSON.parse(body)
+          roomManager.handleWorkflowUpdate(workflowId)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ success: true }))
+        } catch (error) {
+          logger.error('Error handling workflow update notification:', error)
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Failed to process update notification' }))
+        }
+      })
+      return
+    }
+
     // Handle workflow revert notifications from the main API
     if (req.method === 'POST' && req.url === '/api/workflow-reverted') {
       let body = ''

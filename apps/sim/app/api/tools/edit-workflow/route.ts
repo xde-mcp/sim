@@ -178,6 +178,20 @@ export async function POST(request: NextRequest) {
       })
       .where(eq(workflowTable.id, workflowId))
 
+    // Notify the socket server to broadcast workflow state update to all connected users
+    try {
+      const socketUrl = process.env.SOCKET_URL || 'http://localhost:3002'
+      await fetch(`${socketUrl}/api/workflow-updated`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workflowId }),
+      })
+      logger.info('[edit-workflow] Notified socket server of workflow update')
+    } catch (socketError) {
+      // Don't fail the main request if socket notification fails
+      logger.warn('[edit-workflow] Failed to notify socket server:', socketError)
+    }
+
     const result = {
       success: true,
       errors: [],
