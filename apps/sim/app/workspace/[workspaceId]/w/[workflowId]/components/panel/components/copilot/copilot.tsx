@@ -1,14 +1,7 @@
 'use client'
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
-import {
-  Bot,
-  ChevronDown,
-  Loader2,
-  MessageSquarePlus,
-  MoreHorizontal,
-  Trash2,
-} from 'lucide-react'
+import { Bot, ChevronDown, MessageSquarePlus, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -16,15 +9,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { createLogger } from '@/lib/logs/console-logger'
 import { useCopilotStore } from '@/stores/copilot/store'
-import type { CopilotMessage } from '@/stores/copilot/types'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
 import { CopilotModal } from './components/copilot-modal/copilot-modal'
-import { ProfessionalMessage } from './components/professional-message/professional-message'
 import { ProfessionalInput } from './components/professional-input/professional-input'
+import { ProfessionalMessage } from './components/professional-message/professional-message'
 
 const logger = createLogger('Copilot')
 
@@ -137,8 +128,6 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
       },
       [isSendingMessage, activeWorkflowId, sendMessage]
     )
-
-
 
     // Convert messages for modal (role -> type)
     const modalMessages = messages.map((msg) => ({
@@ -282,7 +271,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
             onSubmit={handleSubmit}
             disabled={!activeWorkflowId}
             isLoading={isSendingMessage}
-            placeholder="Ask about Sim Studio documentation..."
+            placeholder='Ask about Sim Studio documentation...'
           />
         </div>
 

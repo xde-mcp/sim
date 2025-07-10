@@ -1,14 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import {
-  Bot,
-  ChevronDown,
-  MessageSquarePlus,
-  MoreHorizontal,
-  Trash2,
-  X,
-} from 'lucide-react'
+import { Bot, ChevronDown, MessageSquarePlus, MoreHorizontal, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -16,12 +9,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
 import type { CopilotChat } from '@/lib/copilot/api'
 import { createLogger } from '@/lib/logs/console-logger'
-import { ProfessionalMessage } from '../professional-message/professional-message'
-import { ProfessionalInput } from '../professional-input/professional-input'
 import type { CopilotMessage } from '@/stores/copilot/types'
+import { ProfessionalInput } from '../professional-input/professional-input'
+import { ProfessionalMessage } from '../professional-message/professional-message'
 
 const logger = createLogger('CopilotModal')
 
@@ -36,8 +28,6 @@ interface Message {
     url: string
   }>
 }
-
-
 
 interface CopilotModalProps {
   open: boolean
@@ -78,8 +68,6 @@ export function CopilotModal({
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages])
-
-
 
   if (!open) return null
 
@@ -249,7 +237,7 @@ export function CopilotModal({
         }}
         disabled={false}
         isLoading={isLoading}
-        placeholder="Ask about Sim Studio documentation..."
+        placeholder='Ask about Sim Studio documentation...'
       />
     </div>
   )
