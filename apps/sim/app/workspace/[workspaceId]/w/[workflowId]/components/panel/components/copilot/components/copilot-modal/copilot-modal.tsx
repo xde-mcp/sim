@@ -110,7 +110,7 @@ export function CopilotModal({
                     <div key={chat.id} className='flex items-center gap-1 px-1'>
                       <div
                         onClick={() => onSelectChat(chat)}
-                        className={`flex-1 min-w-0 cursor-pointer rounded px-2 py-2 transition-colors hover:bg-accent ${
+                        className={`min-w-0 flex-1 cursor-pointer rounded px-2 py-2 transition-colors hover:bg-accent ${
                           currentChat?.id === chat.id ? 'bg-accent' : ''
                         }`}
                       >
