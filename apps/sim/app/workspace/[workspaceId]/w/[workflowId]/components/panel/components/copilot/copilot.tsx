@@ -244,33 +244,6 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
               </Button>
             </div>
 
-            {/* Mode Selector */}
-            <div className='mt-3 flex items-center gap-1 rounded-lg border bg-muted/30 p-1'>
-              <Button
-                variant={mode === 'ask' ? 'secondary' : 'ghost'}
-                size='sm'
-                onClick={() => setMode('ask')}
-                className='h-7 flex-1 font-medium text-xs'
-              >
-                Ask
-              </Button>
-              <Button
-                variant={mode === 'agent' ? 'secondary' : 'ghost'}
-                size='sm'
-                onClick={() => setMode('agent')}
-                className='h-7 flex-1 font-medium text-xs'
-              >
-                Agent
-              </Button>
-            </div>
-
-            {/* Mode Description */}
-            <div className='mt-2 text-muted-foreground text-xs'>
-              {mode === 'ask'
-                ? 'Ask questions and get answers. Cannot edit workflows.'
-                : 'Full agent with workflow editing capabilities.'}
-            </div>
-
             {/* Error display */}
             {error && (
               <div className='mt-2 rounded-md bg-destructive/10 p-2 text-destructive text-sm'>
@@ -301,6 +274,30 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
               ))
             )}
           </ScrollArea>
+
+          {/* Mode Selector */}
+          <div className='border-t px-4 py-2'>
+            <div className='flex items-center gap-1 rounded-md border bg-muted/30 p-0.5'>
+              <Button
+                variant={mode === 'ask' ? 'secondary' : 'ghost'}
+                size='sm'
+                onClick={() => setMode('ask')}
+                className='h-6 flex-1 font-medium text-xs'
+                title='Ask questions and get answers. Cannot edit workflows.'
+              >
+                Ask
+              </Button>
+              <Button
+                variant={mode === 'agent' ? 'secondary' : 'ghost'}
+                size='sm'
+                onClick={() => setMode('agent')}
+                className='h-6 flex-1 font-medium text-xs'
+                title='Full agent with workflow editing capabilities.'
+              >
+                Agent
+              </Button>
+            </div>
+          </div>
 
           {/* Input area */}
           <ProfessionalInput

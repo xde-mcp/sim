@@ -1,7 +1,7 @@
 import { createLogger } from '@/lib/logs/console-logger'
 import { getProviderDefaultModel } from '@/providers/models'
 import type { ProviderId } from '@/providers/types'
-import { MAIN_CHAT_SYSTEM_PROMPT } from './prompts'
+import { AGENT_MODE_SYSTEM_PROMPT } from './prompts'
 
 const logger = createLogger('CopilotConfig')
 
@@ -94,7 +94,7 @@ export const DEFAULT_COPILOT_CONFIG: CopilotConfig = {
     defaultModel: 'claude-sonnet-4-0',
     temperature: 0.1,
     maxTokens: 4000,
-    systemPrompt: MAIN_CHAT_SYSTEM_PROMPT,
+    systemPrompt: AGENT_MODE_SYSTEM_PROMPT,
   },
   rag: {
     defaultProvider: 'anthropic',

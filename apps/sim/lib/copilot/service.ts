@@ -6,9 +6,30 @@ import { executeProviderRequest } from '@/providers'
 import type { ProviderToolConfig } from '@/providers/types'
 import { getApiKey } from '@/providers/utils'
 import { getCopilotConfig, getCopilotModel } from './config'
-import { TITLE_GENERATION_SYSTEM_PROMPT, TITLE_GENERATION_USER_PROMPT } from './prompts'
+import { 
+  TITLE_GENERATION_SYSTEM_PROMPT, 
+  TITLE_GENERATION_USER_PROMPT,
+  ASK_MODE_SYSTEM_PROMPT,
+  AGENT_MODE_SYSTEM_PROMPT,
+  validateSystemPrompts
+} from './prompts'
 
 const logger = createLogger('CopilotService')
+
+// Validate system prompts on module load
+const promptValidation = validateSystemPrompts()
+if (!promptValidation.askMode.valid) {
+  logger.error('Ask mode system prompt validation failed:', promptValidation.askMode.issues)
+}
+if (!promptValidation.agentMode.valid) {
+  logger.error('Agent mode system prompt validation failed:', promptValidation.agentMode.issues)
+}
+if (promptValidation.askMode.valid && promptValidation.agentMode.valid) {
+  logger.info('System prompt validation passed for both modes', {
+    askModeLength: ASK_MODE_SYSTEM_PROMPT.length,
+    agentModeLength: AGENT_MODE_SYSTEM_PROMPT.length,
+  })
+}
 
 /**
  * Message interface for copilot conversations
@@ -360,15 +381,44 @@ export async function generateChatResponse(
     // Filter tools based on mode
     const tools = mode === 'ask' ? allTools.filter((tool) => tool.id !== 'edit_workflow') : allTools
 
+    // Get the appropriate system prompt for the mode
+    const systemPrompt = mode === 'ask' ? ASK_MODE_SYSTEM_PROMPT : AGENT_MODE_SYSTEM_PROMPT
+
+    // Validate that the prompt is properly defined
+    if (!systemPrompt || systemPrompt.length < 100) {
+      logger.error(`Invalid system prompt for mode: ${mode}`, {
+        mode,
+        promptLength: systemPrompt?.length || 0,
+        promptType: mode === 'ask' ? 'ASK_MODE_SYSTEM_PROMPT' : 'AGENT_MODE_SYSTEM_PROMPT',
+      })
+      throw new Error(`System prompt not properly configured for mode: ${mode}`)
+    }
+
+    // Verify mode-specific content is present
+    if (mode === 'ask' && !systemPrompt.includes('ASK mode')) {
+      logger.warn(`Ask mode prompt may not contain expected ASK mode content`)
+    }
+    if (mode === 'agent' && !systemPrompt.includes('WORKFLOW BUILDING PATTERN')) {
+      logger.warn(`Agent mode prompt may not contain expected workflow building content`)
+    }
+
     logger.info(`Copilot mode: ${mode}, available tools: ${tools.length}`, {
       mode,
       toolIds: tools.map((t) => t.id),
       filteredOut: mode === 'ask' ? ['edit_workflow'] : [],
+      promptType: mode === 'ask' ? 'ASK_MODE_SYSTEM_PROMPT' : 'AGENT_MODE_SYSTEM_PROMPT',
+      promptLength: systemPrompt.length,
+    })
+
+    // Log the first 200 characters of the prompt to verify it's correct
+    logger.debug(`System prompt preview (${mode} mode):`, {
+      promptPreview: systemPrompt.substring(0, 200) + '...',
+      fullPromptLength: systemPrompt.length,
     })
 
     const response = await executeProviderRequest(provider, {
       model,
-      systemPrompt: config.chat.systemPrompt,
+      systemPrompt,
       messages,
       tools,
       temperature: config.chat.temperature,

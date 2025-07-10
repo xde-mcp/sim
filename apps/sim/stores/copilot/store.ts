@@ -43,8 +43,13 @@ export const useCopilotStore = create<CopilotStore>()(
 
       // Set chat mode
       setMode: (mode) => {
+        const previousMode = get().mode
         set({ mode })
-        logger.info(`Copilot mode changed to: ${mode}`)
+        logger.info(`Copilot mode changed from ${previousMode} to ${mode}`, {
+          previousMode,
+          newMode: mode,
+          timestamp: new Date().toISOString(),
+        })
       },
 
       // Set current workflow ID
