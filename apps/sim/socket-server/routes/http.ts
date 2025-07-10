@@ -96,8 +96,6 @@ export function createHttpHandler(roomManager: RoomManager, logger: Logger) {
       return
     }
 
-
-
     // Handle workflow revert notifications from the main API
     if (req.method === 'POST' && req.url === '/api/workflow-reverted') {
       let body = ''

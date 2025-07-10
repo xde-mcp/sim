@@ -174,7 +174,7 @@ export class RoomManager {
       message: 'Copilot has edited the workflow - rehydrating from database',
       timestamp,
     }
-    
+
     console.log('🔥 Socket server emitting copilot-workflow-edit event:', eventData)
     this.io.to(workflowId).emit('copilot-workflow-edit', eventData)
 
@@ -182,8 +182,6 @@ export class RoomManager {
 
     logger.info(`Notified ${room.users.size} users about copilot workflow edit: ${workflowId}`)
   }
-
-
 
   async validateWorkflowConsistency(
     workflowId: string

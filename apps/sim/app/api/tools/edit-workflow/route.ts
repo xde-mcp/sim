@@ -184,9 +184,9 @@ export async function POST(request: NextRequest) {
       await fetch(`${socketUrl}/api/copilot-workflow-edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           workflowId,
-          description: description || 'Copilot edited workflow'
+          description: description || 'Copilot edited workflow',
         }),
       })
       logger.info('[edit-workflow] Notified socket server to rehydrate client stores from database')
