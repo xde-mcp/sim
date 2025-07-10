@@ -429,6 +429,47 @@ export function convertYamlToWorkflow(yamlWorkflow: YamlWorkflow): ImportResult 
 }
 
 /**
+ * Create smart ID mapping that preserves existing block IDs and generates new ones for new blocks
+ */
+function createSmartIdMapping(
+  yamlBlocks: ImportedBlock[],
+  existingBlocks: Record<string, any>,
+  activeWorkflowId: string
+): Map<string, string> {
+  const yamlIdToActualId = new Map<string, string>()
+  const existingBlockIds = new Set(Object.keys(existingBlocks))
+  
+  logger.info('Creating smart ID mapping', {
+    activeWorkflowId,
+    yamlBlockCount: yamlBlocks.length,
+    existingBlockCount: Object.keys(existingBlocks).length,
+    existingBlockIds: Array.from(existingBlockIds),
+    yamlBlockIds: yamlBlocks.map(b => b.id)
+  })
+  
+  for (const block of yamlBlocks) {
+    if (existingBlockIds.has(block.id)) {
+      // Block ID exists in current workflow - preserve it
+      yamlIdToActualId.set(block.id, block.id)
+      logger.info(`✅ Preserving existing block ID: ${block.id} (exists in workflow ${activeWorkflowId})`)
+    } else {
+      // Block ID doesn't exist in current workflow - generate new UUID
+      const newId = crypto.randomUUID()
+      yamlIdToActualId.set(block.id, newId)
+      logger.info(`🆕 Mapping new block: ${block.id} -> ${newId} (not found in workflow ${activeWorkflowId})`)
+    }
+  }
+  
+  logger.info('Smart ID mapping completed', {
+    mappings: Array.from(yamlIdToActualId.entries()),
+    preservedCount: Array.from(yamlIdToActualId.entries()).filter(([old, new_]) => old === new_).length,
+    newCount: Array.from(yamlIdToActualId.entries()).filter(([old, new_]) => old !== new_).length
+  })
+  
+  return yamlIdToActualId
+}
+
+/**
  * Import workflow from YAML by creating complete state upfront (no UI simulation)
  */
 export async function importWorkflowFromYaml(
@@ -465,7 +506,22 @@ export async function importWorkflowFromYaml(
       return { success: false, errors, warnings }
     }
 
-    // Get the existing workflow state (to preserve starter blocks if they exist)
+    // Get current workflow state and ID
+    const currentWorkflowState = useWorkflowStore.getState()
+    const activeWorkflowId = targetWorkflowId || useWorkflowRegistry.getState().activeWorkflowId
+
+    if (!activeWorkflowId) {
+      return { success: false, errors: ['No active workflow'], warnings: [] }
+    }
+
+    logger.info('Starting YAML import', {
+      activeWorkflowId,
+      targetWorkflowId,
+      yamlBlockCount: blocks.length,
+      currentStateBlockCount: Object.keys(currentWorkflowState.blocks).length
+    })
+
+    // Get the existing workflow state - ONLY from the current workflow being edited
     let existingBlocks: Record<string, any> = {}
 
     if (targetWorkflowId) {
@@ -475,6 +531,10 @@ export async function importWorkflowFromYaml(
         if (response.ok) {
           const workflowData = await response.json()
           existingBlocks = workflowData.data?.state?.blocks || {}
+          logger.info(`Fetched existing blocks from API for workflow ${targetWorkflowId}`, {
+            blockCount: Object.keys(existingBlocks).length,
+            blockIds: Object.keys(existingBlocks)
+          })
         }
       } catch (error) {
         logger.warn(`Failed to fetch existing blocks for workflow ${targetWorkflowId}:`, error)
@@ -482,112 +542,49 @@ export async function importWorkflowFromYaml(
     } else {
       // For active workflow, use from store
       existingBlocks = workflowActions.getExistingBlocks()
+      logger.info(`Got existing blocks from workflow store for active workflow ${activeWorkflowId}`, {
+        blockCount: Object.keys(existingBlocks).length,
+        blockIds: Object.keys(existingBlocks)
+      })
     }
 
-    const existingStarterBlocks = Object.values(existingBlocks).filter(
-      (block: any) => block.type === 'starter'
-    )
-
-    // Get stores and current workflow info
-
-    // Get current workflow state
-    const currentWorkflowState = useWorkflowStore.getState()
-    const activeWorkflowId = targetWorkflowId || useWorkflowRegistry.getState().activeWorkflowId
-
-    if (!activeWorkflowId) {
-      return { success: false, errors: ['No active workflow'], warnings: [] }
-    }
+    // Create smart ID mapping that preserves existing block IDs from THIS workflow only
+    const yamlIdToActualId = createSmartIdMapping(blocks, existingBlocks, activeWorkflowId)
 
     // Build complete blocks object
     const completeBlocks: Record<string, any> = {}
     const completeSubBlockValues: Record<string, Record<string, any>> = {}
-    const yamlIdToActualId = new Map<string, string>()
 
-    // Handle starter block
-    let starterBlockId: string | null = null
-    const starterBlock = blocks.find((block) => block.type === 'starter')
-
-    if (starterBlock) {
-      if (existingStarterBlocks.length > 0) {
-        // Use existing starter block
-        const existingStarter = existingStarterBlocks[0] as any
-        starterBlockId = existingStarter.id
-        yamlIdToActualId.set(starterBlock.id, existingStarter.id)
-
-        // Keep existing starter but update its inputs
-        completeBlocks[existingStarter.id] = {
-          ...existingStarter,
-          // Update name if provided in YAML
-          name: starterBlock.name !== 'Start' ? starterBlock.name : existingStarter.name,
-        }
-
-        // Set starter block values
-        completeSubBlockValues[existingStarter.id] = {
-          ...(currentWorkflowState.blocks[existingStarter.id]?.subBlocks
-            ? Object.fromEntries(
-                Object.entries(currentWorkflowState.blocks[existingStarter.id].subBlocks).map(
-                  ([key, subBlock]: [string, any]) => [key, subBlock.value]
-                )
-              )
-            : {}),
-          ...starterBlock.inputs, // Override with YAML values
-        }
-      } else {
-        // Create new starter block
-        starterBlockId = crypto.randomUUID()
-        yamlIdToActualId.set(starterBlock.id, starterBlockId)
-
-        // Create complete starter block from block config
-        const blockConfig = getBlock('starter')
-        if (blockConfig) {
-          const subBlocks: Record<string, any> = {}
-          blockConfig.subBlocks.forEach((subBlock) => {
-            subBlocks[subBlock.id] = {
-              id: subBlock.id,
-              type: subBlock.type,
-              value: null,
-            }
-          })
-
-          completeBlocks[starterBlockId] = {
-            id: starterBlockId,
-            type: 'starter',
-            name: starterBlock.name,
-            position: starterBlock.position,
-            subBlocks,
-            outputs: resolveOutputType(blockConfig.outputs),
-            enabled: true,
-            horizontalHandles: true,
-            isWide: false,
-            height: 0,
-            data: starterBlock.data || {},
-          }
-
-          // Set starter block values
-          completeSubBlockValues[starterBlockId] = { ...starterBlock.inputs }
-        }
+    // First, preserve existing blocks that aren't mentioned in YAML
+    const yamlBlockIds = new Set(blocks.map(b => b.id))
+    for (const [existingId, existingBlock] of Object.entries(existingBlocks)) {
+      if (!yamlBlockIds.has(existingId)) {
+        // This existing block is not in the YAML - preserve it completely
+        completeBlocks[existingId] = { ...existingBlock }
+        
+        // Also preserve its current subblock values
+        const currentValues = currentWorkflowState.blocks[existingId]?.subBlocks || {}
+        completeSubBlockValues[existingId] = Object.fromEntries(
+          Object.entries(currentValues).map(([key, subBlock]: [string, any]) => [key, subBlock.value])
+        )
+        logger.debug(`Preserving existing block not in YAML: ${existingId}`)
       }
     }
 
-    // Create all other blocks
-    // Note: blocks are now sorted to ensure parents come before children,
-    // but we still need the two-phase approach because we're generating new UUIDs
-    let blocksProcessed = 0
+    // Process blocks from YAML - these will update/add blocks
     for (const block of blocks) {
-      if (block.type === 'starter') {
-        continue // Already handled above
+      const actualId = yamlIdToActualId.get(block.id)
+      if (!actualId) {
+        logger.warn(`No ID mapping found for block: ${block.id}`)
+        continue
       }
 
-      const blockId = crypto.randomUUID()
-      yamlIdToActualId.set(block.id, blockId)
-
-      // Create complete block from block config
       const blockConfig = getBlock(block.type)
 
       if (!blockConfig && (block.type === 'loop' || block.type === 'parallel')) {
         // Handle loop/parallel blocks
-        completeBlocks[blockId] = {
-          id: blockId,
+        completeBlocks[actualId] = {
+          id: actualId,
           type: block.type,
           name: block.name,
           position: block.position,
@@ -597,12 +594,9 @@ export async function importWorkflowFromYaml(
           horizontalHandles: true,
           isWide: false,
           height: 0,
-          data: block.data || {}, // Configuration is already in block.data from convertYamlToWorkflow
+          data: block.data || {},
         }
-
-        // Loop/parallel blocks don't use subBlocks, their config is in data
-        // No need to set completeSubBlockValues since they don't have subBlocks
-        blocksProcessed++
+        logger.debug(`Processed loop/parallel block: ${block.id} -> ${actualId}`)
       } else if (blockConfig) {
         // Handle regular blocks
         const subBlocks: Record<string, any> = {}
@@ -614,8 +608,8 @@ export async function importWorkflowFromYaml(
           }
         })
 
-        completeBlocks[blockId] = {
-          id: blockId,
+        completeBlocks[actualId] = {
+          id: actualId,
           type: block.type,
           name: block.name,
           position: block.position,
@@ -625,22 +619,18 @@ export async function importWorkflowFromYaml(
           horizontalHandles: true,
           isWide: false,
           height: 0,
-          data: block.data || {}, // This already includes parentId and extent from convertYamlToWorkflow
+          data: block.data || {},
         }
 
-        // Set block input values
-        completeSubBlockValues[blockId] = { ...block.inputs }
-        blocksProcessed++
+        // Set block input values from YAML
+        completeSubBlockValues[actualId] = { ...block.inputs }
+        logger.debug(`Processed regular block: ${block.id} -> ${actualId}`)
       } else {
         logger.warn(`No block config found for type: ${block.type} (block: ${block.id})`)
       }
     }
 
     // Update parent-child relationships with mapped IDs
-    // This two-phase approach is necessary because:
-    // 1. We generate new UUIDs for all blocks (can't reuse YAML IDs)
-    // 2. Parent references in YAML use the original IDs, need to map to new UUIDs
-    // 3. All blocks must exist before we can map their parent references
     for (const [blockId, blockData] of Object.entries(completeBlocks)) {
       if (blockData.data?.parentId) {
         const mappedParentId = yamlIdToActualId.get(blockData.data.parentId)
@@ -655,8 +645,26 @@ export async function importWorkflowFromYaml(
       }
     }
 
-    // Create complete edges using the ID mapping
+    // Handle edges intelligently:
+    // 1. Keep existing edges that don't involve any blocks mentioned in YAML
+    // 2. Replace all edges involving blocks mentioned in YAML with edges from YAML
     const completeEdges: any[] = []
+    const yamlBlockIdSet = new Set(blocks.map(b => b.id))
+    const yamlBlockActualIdSet = new Set(blocks.map(b => yamlIdToActualId.get(b.id)).filter(Boolean))
+    const existingEdges = currentWorkflowState.edges || []
+    
+    // Preserve edges that don't involve any blocks from YAML
+    for (const edge of existingEdges) {
+      const sourceInYaml = yamlBlockActualIdSet.has(edge.source)
+      const targetInYaml = yamlBlockActualIdSet.has(edge.target)
+      
+      if (!sourceInYaml && !targetInYaml) {
+        // Neither block is mentioned in YAML - preserve the edge
+        completeEdges.push(edge)
+      }
+    }
+    
+    // Add all edges from YAML
     for (const edge of edges) {
       const sourceId = yamlIdToActualId.get(edge.source)
       const targetId = yamlIdToActualId.get(edge.target)
@@ -671,8 +679,6 @@ export async function importWorkflowFromYaml(
         logger.warn(`Skipping edge - missing blocks: ${edge.source} -> ${edge.target}`)
       }
     }
-
-    // Create complete workflow state with values already set in subBlocks
 
     // Merge subblock values directly into block subBlocks
     for (const [blockId, blockData] of Object.entries(completeBlocks)) {
@@ -699,6 +705,12 @@ export async function importWorkflowFromYaml(
       hasActiveSchedule: false,
       hasActiveWebhook: false,
     }
+
+    logger.info('Final workflow state created', {
+      totalBlocks: Object.keys(completeBlocks).length,
+      totalEdges: completeEdges.length,
+      blockIds: Object.keys(completeBlocks)
+    })
 
     // Save directly to database via API
     const response = await fetch(`/api/workflows/${activeWorkflowId}/state`, {
@@ -737,18 +749,16 @@ export async function importWorkflowFromYaml(
     // Apply auto layout
     workflowActions.applyAutoLayout()
 
-    const totalBlocksCreated =
-      Object.keys(completeBlocks).length - (existingStarterBlocks.length > 0 ? 1 : 0)
+    const newBlocksCount = blocks.filter(b => !existingBlocks[b.id]).length
+    const updatedBlocksCount = blocks.filter(b => existingBlocks[b.id]).length
+    const preservedBlocksCount = Object.keys(existingBlocks).length - updatedBlocksCount
+    const totalBlocksInWorkflow = Object.keys(completeBlocks).length
 
     return {
       success: true,
       errors: [],
       warnings,
-      summary: `Imported ${totalBlocksCreated} new blocks and ${completeEdges.length} connections. ${
-        existingStarterBlocks.length > 0
-          ? 'Updated existing starter block.'
-          : 'Created new starter block.'
-      }`,
+      summary: `Successfully processed ${blocks.length} blocks from YAML: ${newBlocksCount} new, ${updatedBlocksCount} updated, ${preservedBlocksCount} preserved. Workflow now has ${totalBlocksInWorkflow} blocks and ${completeEdges.length} connections.`,
     }
   } catch (error) {
     logger.error('YAML import failed:', error)

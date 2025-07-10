@@ -22,6 +22,8 @@ export async function applyWorkflowDiff(
   content: string,
   format: EditorFormat
 ): Promise<ApplyResult> {
+  console.log('🔥 applyWorkflowDiff called!', { format, contentLength: content.length })
+  
   try {
     const { activeWorkflowId } = useWorkflowRegistry.getState()
 
@@ -34,7 +36,17 @@ export async function applyWorkflowDiff(
       }
     }
 
+    logger.info('Starting applyWorkflowDiff', { 
+      format, 
+      activeWorkflowId, 
+      contentLength: content.length 
+    })
+
     if (format === 'yaml') {
+      console.log('🔥 Processing YAML format!')
+      
+      logger.info('Processing YAML format - calling importWorkflowFromYaml')
+      
       // Use the existing YAML importer which handles ID mapping and complete state replacement
       const workflowActions = {
         addBlock: () => {}, // Not used in this path
@@ -44,16 +56,39 @@ export async function applyWorkflowDiff(
           window.dispatchEvent(new CustomEvent('trigger-auto-layout'))
         },
         setSubBlockValue: () => {}, // Not used in this path
-        getExistingBlocks: () => useWorkflowStore.getState().blocks,
+        getExistingBlocks: () => {
+          const blocks = useWorkflowStore.getState().blocks
+          logger.info('getExistingBlocks called', { 
+            blockCount: Object.keys(blocks).length,
+            blockIds: Object.keys(blocks)
+          })
+          return blocks
+        },
       }
 
-      const result = await importWorkflowFromYaml(content, workflowActions)
+      try {
+        logger.info('About to call importWorkflowFromYaml')
+        const result = await importWorkflowFromYaml(content, workflowActions)
+        logger.info('importWorkflowFromYaml completed', { 
+          success: result.success,
+          errors: result.errors,
+          warnings: result.warnings
+        })
 
-      return {
-        success: result.success,
-        errors: result.errors,
-        warnings: result.warnings,
-        appliedOperations: result.success ? 1 : 0, // One complete import operation
+        return {
+          success: result.success,
+          errors: result.errors,
+          warnings: result.warnings,
+          appliedOperations: result.success ? 1 : 0, // One complete import operation
+        }
+      } catch (importError) {
+        logger.error('importWorkflowFromYaml threw an error', importError)
+        return {
+          success: false,
+          errors: [`YAML import failed: ${importError instanceof Error ? importError.message : 'Unknown error'}`],
+          warnings: [],
+          appliedOperations: 0,
+        }
       }
     }
     // Handle JSON format - complete state replacement
