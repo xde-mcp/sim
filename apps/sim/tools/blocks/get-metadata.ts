@@ -11,10 +11,13 @@ interface BlockMetadataInfo {
   inputs?: Record<string, any>
   outputs?: Record<string, any>
   subBlocks?: any[]
-  tools: Record<string, {
-    description: string
-    params?: Record<string, any>
-  }>
+  tools: Record<
+    string,
+    {
+      description: string
+      params?: Record<string, any>
+    }
+  >
 }
 
 interface GetBlockMetadataResult {
@@ -78,4 +81,4 @@ export const getBlockMetadataTool: ToolConfig<GetBlockMetadataParams, GetBlockMe
     }
     return 'An unexpected error occurred while getting block metadata'
   },
-} 
+}

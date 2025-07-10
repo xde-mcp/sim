@@ -20,26 +20,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    logger.info('Getting block metadata', { 
+    logger.info('Getting block metadata', {
       blockIds,
       blockCount: blockIds.length,
-      requestedBlocks: blockIds.join(', ')
+      requestedBlocks: blockIds.join(', '),
     })
 
     // Create result object mapping block_id -> {description, longDescription, category, inputs, outputs, subBlocks, tools}
-    const result: Record<string, { 
-      description: string
-      longDescription?: string
-      category: string
-      inputs?: Record<string, any>
-      outputs?: Record<string, any>
-      subBlocks?: any[]
-      tools: Record<string, { description: string; params?: Record<string, any> }>
-    }> = {}
+    const result: Record<
+      string,
+      {
+        description: string
+        longDescription?: string
+        category: string
+        inputs?: Record<string, any>
+        outputs?: Record<string, any>
+        subBlocks?: any[]
+        tools: Record<string, { description: string; params?: Record<string, any> }>
+      }
+    > = {}
 
     for (const blockId of blockIds) {
       const blockConfig = blockRegistry[blockId]
-      
+
       if (!blockConfig) {
         logger.warn(`Block not found: ${blockId}`)
         continue
@@ -62,7 +65,7 @@ export async function POST(request: NextRequest) {
         if (toolConfig) {
           toolMetadata[toolId] = {
             description: toolConfig.description || '',
-            params: toolConfig.params
+            params: toolConfig.params,
           }
         } else {
           logger.warn(`Tool not found: ${toolId} for block: ${blockId}`)
@@ -108,4 +111,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+}
