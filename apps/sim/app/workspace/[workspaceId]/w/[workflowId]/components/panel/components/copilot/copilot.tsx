@@ -157,17 +157,17 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
               {/* Chat Title Dropdown */}
               <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant='ghost' 
+                  <Button
+                    variant='ghost'
                     className='h-8 min-w-0 flex-1 justify-start px-3 hover:bg-accent/50'
                   >
                     <span className='truncate'>{currentChat?.title || 'New Chat'}</span>
                     <ChevronDown className='ml-2 h-4 w-4 shrink-0' />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  align='start' 
-                  className='z-[110] w-72 border-border/50 bg-background/95 backdrop-blur-sm shadow-lg' 
+                <DropdownMenuContent
+                  align='start'
+                  className='z-[110] w-72 border-border/50 bg-background/95 shadow-lg backdrop-blur-sm'
                   sideOffset={8}
                   onMouseLeave={() => setIsDropdownOpen(false)}
                 >
@@ -184,14 +184,14 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                       .map((chat) => (
                         <div key={chat.id} className='group flex items-center gap-2 px-2 py-1'>
                           <DropdownMenuItem asChild>
-                            <div 
+                            <div
                               onClick={() => {
                                 selectChat(chat)
                                 setIsDropdownOpen(false)
                               }}
                               className={`min-w-0 flex-1 cursor-pointer rounded-lg px-3 py-2.5 transition-all ${
-                                currentChat?.id === chat.id 
-                                  ? 'bg-accent/80 text-accent-foreground' 
+                                currentChat?.id === chat.id
+                                  ? 'bg-accent/80 text-accent-foreground'
                                   : 'hover:bg-accent/40'
                               }`}
                             >
@@ -199,23 +199,31 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                                 <div className='truncate font-medium text-sm leading-tight'>
                                   {chat.title || 'Untitled Chat'}
                                 </div>
-                                <div className='truncate text-muted-foreground text-xs mt-0.5'>
-                                  {chat.messageCount} messages • {new Date(chat.updatedAt).toLocaleDateString()} at {new Date(chat.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                <div className='mt-0.5 truncate text-muted-foreground text-xs'>
+                                  {chat.messageCount} messages •{' '}
+                                  {new Date(chat.updatedAt).toLocaleDateString()} at{' '}
+                                  {new Date(chat.updatedAt).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
                                 </div>
                               </div>
                             </div>
                           </DropdownMenuItem>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant='ghost' 
-                                size='sm' 
+                              <Button
+                                variant='ghost'
+                                size='sm'
                                 className='h-7 w-7 shrink-0 p-0 hover:bg-accent/60'
                               >
                                 <MoreHorizontal className='h-3.5 w-3.5' />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align='end' className='z-[120] border-border/50 bg-background/95 backdrop-blur-sm shadow-lg'>
+                            <DropdownMenuContent
+                              align='end'
+                              className='z-[120] border-border/50 bg-background/95 shadow-lg backdrop-blur-sm'
+                            >
                               <DropdownMenuItem
                                 onClick={() => handleDeleteChat(chat.id)}
                                 className='cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive'
