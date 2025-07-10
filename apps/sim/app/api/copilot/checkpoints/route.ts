@@ -45,7 +45,18 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .offset(offset)
 
-    return NextResponse.json({ checkpoints })
+    // Format timestamps to ISO strings for consistent timezone handling
+    const formattedCheckpoints = checkpoints.map(checkpoint => ({
+      id: checkpoint.id,
+      userId: checkpoint.userId,
+      workflowId: checkpoint.workflowId,
+      chatId: checkpoint.chatId,
+      yaml: checkpoint.yaml,
+      createdAt: checkpoint.createdAt.toISOString(),
+      updatedAt: checkpoint.updatedAt.toISOString(),
+    }))
+
+    return NextResponse.json({ checkpoints: formattedCheckpoints })
   } catch (error) {
     logger.error(`[${requestId}] Error listing checkpoints:`, error)
     return NextResponse.json({ error: 'Failed to list checkpoints' }, { status: 500 })

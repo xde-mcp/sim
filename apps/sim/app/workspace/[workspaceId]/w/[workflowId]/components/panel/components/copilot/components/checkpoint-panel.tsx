@@ -118,7 +118,11 @@ export function CheckpointPanel() {
                       {formatDistanceToNow(new Date(checkpoint.createdAt), { addSuffix: true })}
                     </p>
                     <p className='mt-1 text-muted-foreground text-xs'>
-                      {new Date(checkpoint.createdAt).toLocaleString()}
+                      {new Date(checkpoint.createdAt).toLocaleDateString()} at{' '}
+                      {new Date(checkpoint.createdAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </p>
                   </div>
                   <Button
