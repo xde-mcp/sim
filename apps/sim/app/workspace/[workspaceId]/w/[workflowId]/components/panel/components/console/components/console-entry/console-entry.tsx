@@ -1,14 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import {
-  AlertCircle,
-  AlertTriangle,
-  Calendar,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  Terminal,
-} from 'lucide-react'
+import { AlertCircle, Check, ChevronDown, ChevronUp, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getBlock } from '@/blocks'
 import type { ConsoleEntry as ConsoleEntryType } from '@/stores/panel/console/types'
@@ -19,168 +11,175 @@ interface ConsoleEntryProps {
   consoleWidth: number
 }
 
-// Maximum character length for a word before it's broken up
-const MAX_WORD_LENGTH = 25
-
-const WordWrap = ({ text }: { text: string }) => {
-  if (!text) return null
-
-  // Split text into words, keeping spaces and punctuation
-  const parts = text.split(/(\s+)/g)
-
-  return (
-    <>
-      {parts.map((part, index) => {
-        // If the part is whitespace or shorter than the max length, render it as is
-        if (part.match(/\s+/) || part.length <= MAX_WORD_LENGTH) {
-          return <span key={index}>{part}</span>
-        }
-
-        // For long words, break them up into chunks
-        const chunks = []
-        for (let i = 0; i < part.length; i += MAX_WORD_LENGTH) {
-          chunks.push(part.substring(i, i + MAX_WORD_LENGTH))
-        }
-
-        return (
-          <span key={index} className='break-all'>
-            {chunks.map((chunk, chunkIndex) => (
-              <span key={chunkIndex}>{chunk}</span>
-            ))}
-          </span>
-        )
-      })}
-    </>
-  )
-}
-
 export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [expandAllJson, setExpandAllJson] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(true) // Default expanded
+  const [showCopySuccess, setShowCopySuccess] = useState(false)
 
   const blockConfig = useMemo(() => {
     if (!entry.blockType) return null
     return getBlock(entry.blockType)
   }, [entry.blockType])
 
-  const BlockIcon = blockConfig?.icon
-
-  // Helper function to check if data has nested objects or arrays
-  const hasNestedStructure = (data: any): boolean => {
-    if (data === null || typeof data !== 'object') return false
-
-    // Check if it's an empty object or array
-    if (Object.keys(data).length === 0) return false
-
-    // For arrays, check if any element is an object
-    if (Array.isArray(data)) {
-      return data.some((item) => typeof item === 'object' && item !== null)
-    }
-
-    // For objects, check if any value is an object
-    return Object.values(data).some((value) => typeof value === 'object' && value !== null)
+  const handleCopy = () => {
+    const stringified = JSON.stringify(entry.output, null, 2)
+    navigator.clipboard.writeText(stringified)
+    setShowCopySuccess(true)
   }
 
+  useEffect(() => {
+    if (showCopySuccess) {
+      const timer = setTimeout(() => {
+        setShowCopySuccess(false)
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [showCopySuccess])
+
+  const BlockIcon = blockConfig?.icon
+  const blockColor = blockConfig?.bgColor || '#6B7280'
+
   return (
-    <div
-      className={`border-border border-b transition-colors ${
-        !entry.error && !entry.warning && entry.success ? 'cursor-pointer hover:bg-accent/50' : ''
-      }`}
-      onClick={() => !entry.error && !entry.warning && entry.success && setIsExpanded(!isExpanded)}
-    >
-      <div className='space-y-4 p-4'>
+    <div className='space-y-3'>
+      {/* Header: Icon | Block name */}
+      <div className='flex items-center gap-2'>
+        {BlockIcon && (
+          <div
+            className='flex h-5 w-5 items-center justify-center rounded-md'
+            style={{ backgroundColor: blockColor }}
+          >
+            <BlockIcon className='h-3 w-3 text-white' />
+          </div>
+        )}
+        <span className='font-normal text-base text-sm leading-normal'>
+          {entry.blockName || 'Unknown Block'}
+        </span>
+      </div>
+
+      {/* Duration tag | Time tag */}
+      <div className='flex items-center gap-2'>
         <div
-          className={`${
-            consoleWidth >= 400 ? 'flex items-center justify-between' : 'grid grid-cols-1 gap-4'
+          className={`flex h-5 items-center rounded-lg px-2 ${
+            entry.error ? 'bg-[#F6D2D2] dark:bg-[#442929]' : 'bg-secondary'
           }`}
         >
-          {entry.blockName && (
-            <div className='flex items-center gap-2 text-sm'>
-              {BlockIcon ? (
-                <BlockIcon className='h-4 w-4 text-muted-foreground' />
-              ) : (
-                <Terminal className='h-4 w-4 text-muted-foreground' />
-              )}
-              <span className='text-muted-foreground'>{entry.blockName}</span>
+          {entry.error ? (
+            <div className='flex items-center gap-1'>
+              <AlertCircle className='h-3 w-3 text-[#DC2626] dark:text-[#F87171]' />
+              <span className='font-normal text-[#DC2626] text-xs leading-normal dark:text-[#F87171]'>
+                Error
+              </span>
             </div>
+          ) : (
+            <span className='font-normal text-muted-foreground text-xs leading-normal'>
+              {entry.durationMs ?? 0}ms
+            </span>
           )}
-          <div
-            className={`${
-              consoleWidth >= 400 ? 'flex gap-4' : 'grid grid-cols-2 gap-4'
-            } text-muted-foreground text-sm`}
-          >
-            <div className='flex items-center gap-2'>
-              <Calendar className='h-4 w-4' />
-              <span>{entry.startedAt ? format(new Date(entry.startedAt), 'HH:mm:ss') : 'N/A'}</span>
-            </div>
-            <div className='flex items-center gap-2'>
-              <Clock className='h-4 w-4' />
-              <span>Duration: {entry.durationMs ?? 0}ms</span>
+        </div>
+        <div className='flex h-5 items-center rounded-lg bg-secondary px-2'>
+          <span className='font-normal text-muted-foreground text-xs leading-normal'>
+            {entry.startedAt ? format(new Date(entry.startedAt), 'HH:mm:ss') : 'N/A'}
+          </span>
+        </div>
+      </div>
+
+      {/* Response area */}
+      <div className='space-y-2'>
+        {/* Error display */}
+        {entry.error && (
+          <div className='rounded-lg bg-[#F6D2D2] p-3 dark:bg-[#442929]'>
+            <div className='whitespace-pre-wrap font-normal text-[#DC2626] text-sm leading-normal dark:text-[#F87171]'>
+              {entry.error}
             </div>
           </div>
-        </div>
+        )}
 
-        <div className='space-y-4'>
-          {!entry.error && !entry.warning && (
-            <div className='flex items-start gap-2'>
-              <Terminal className='mt-1 h-4 w-4 text-muted-foreground' />
-              <div className='overflow-wrap-anywhere relative flex-1 whitespace-normal break-normal font-mono text-sm'>
-                {entry.output != null && (
-                  <div className='absolute top-0 right-0 z-10'>
-                    <Button
-                      variant='ghost'
-                      size='sm'
-                      className='h-6 px-2 text-muted-foreground hover:text-foreground'
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setExpandAllJson(!expandAllJson)
-                      }}
-                    >
-                      <span className='flex items-center'>
-                        {expandAllJson ? (
-                          <>
-                            <ChevronUp className='mr-1 h-3 w-3' />
-                            <span className='text-xs'>Collapse</span>
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className='mr-1 h-3 w-3' />
-                            <span className='text-xs'>Expand</span>
-                          </>
-                        )}
-                      </span>
-                    </Button>
-                  </div>
-                )}
-                <JSONView data={entry.output} initiallyExpanded={expandAllJson} />
-              </div>
+        {/* Warning display */}
+        {entry.warning && (
+          <div className='rounded-lg border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800/50'>
+            <div className='mb-1 font-normal text-sm text-yellow-800 leading-normal dark:text-yellow-200'>
+              Warning
             </div>
-          )}
+            <div className='whitespace-pre-wrap font-normal text-sm text-yellow-700 leading-normal dark:text-yellow-300'>
+              {entry.warning}
+            </div>
+          </div>
+        )}
 
-          {entry.error && (
-            <div className='flex items-start gap-2 rounded-md border border-red-500 bg-red-50 p-3 text-destructive dark:border-border dark:bg-background dark:text-foreground'>
-              <AlertCircle className='mt-1 h-4 w-4 flex-shrink-0 text-red-500' />
-              <div className='min-w-0 flex-1'>
-                <div className='font-medium'>Error</div>
-                <div className='w-full overflow-hidden whitespace-pre-wrap text-sm'>
-                  <WordWrap text={entry.error} />
+        {/* Success output */}
+        {!entry.error && !entry.warning && entry.output != null && (
+          <div className='rounded-lg bg-secondary/50 p-3'>
+            {isExpanded ? (
+              <div className='relative'>
+                {/* Copy and Expand/Collapse buttons */}
+                <div className='absolute top-0 right-0 z-10 flex items-center gap-1'>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='h-6 w-6 p-0 hover:bg-transparent'
+                    onClick={handleCopy}
+                  >
+                    {showCopySuccess ? (
+                      <Check className='h-3 w-3 text-gray-500' />
+                    ) : (
+                      <Copy className='h-3 w-3 text-muted-foreground' />
+                    )}
+                  </Button>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='h-6 w-6 p-0 hover:bg-transparent'
+                    onClick={() => setIsExpanded(!isExpanded)}
+                  >
+                    <ChevronUp className='h-3 w-3 text-muted-foreground' />
+                  </Button>
+                </div>
+                <div className='overflow-hidden pr-16 font-mono font-normal text-muted-foreground text-sm leading-normal'>
+                  <JSONView data={entry.output} />
                 </div>
               </div>
-            </div>
-          )}
-
-          {entry.warning && (
-            <div className='flex items-start gap-2 rounded-md border border-yellow-500 bg-yellow-50 p-3 text-yellow-700 dark:border-border dark:bg-background dark:text-yellow-500'>
-              <AlertTriangle className='mt-1 h-4 w-4 flex-shrink-0 text-yellow-500' />
-              <div className='min-w-0 flex-1'>
-                <div className='font-medium'>Warning</div>
-                <div className='w-full overflow-hidden whitespace-pre-wrap text-sm'>
-                  <WordWrap text={entry.warning} />
+            ) : (
+              <div className='relative'>
+                <div className='absolute top-0 right-0 z-10 flex items-center gap-1'>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='h-6 w-6 p-0 hover:bg-transparent'
+                    onClick={handleCopy}
+                  >
+                    {showCopySuccess ? (
+                      <Check className='h-3 w-3 text-gray-500' />
+                    ) : (
+                      <Copy className='h-3 w-3 text-muted-foreground' />
+                    )}
+                  </Button>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='h-6 w-6 p-0 hover:bg-transparent'
+                    onClick={() => setIsExpanded(!isExpanded)}
+                  >
+                    <ChevronDown className='h-3 w-3 text-muted-foreground' />
+                  </Button>
+                </div>
+                <div
+                  className='cursor-pointer pr-16 font-mono font-normal text-muted-foreground text-sm leading-normal'
+                  onClick={() => setIsExpanded(true)}
+                >
+                  {'{...}'}
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* No output message */}
+        {!entry.error && !entry.warning && entry.output == null && (
+          <div className='rounded-lg bg-secondary/50 p-3'>
+            <div className='text-center font-normal text-muted-foreground text-sm leading-normal'>
+              No output
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

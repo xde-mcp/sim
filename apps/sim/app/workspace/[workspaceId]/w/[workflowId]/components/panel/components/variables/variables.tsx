@@ -240,7 +240,7 @@ export function Variables({ panelWidth }: VariablesProps) {
 
   return (
     <ScrollArea className='h-full'>
-      <div className='space-y-3 p-4'>
+      <div className='space-y-3 pt-2'>
         {/* Variables List */}
         {workflowVariables.length === 0 ? (
           <div className='flex h-32 flex-col items-center justify-center pt-4 text-muted-foreground text-sm'>
@@ -256,7 +256,7 @@ export function Variables({ panelWidth }: VariablesProps) {
               {workflowVariables.map((variable) => (
                 <div
                   key={variable.id}
-                  className='group flex flex-col space-y-2 rounded-lg border bg-background shadow-sm'
+                  className='group flex flex-col space-y-2 rounded-lg border bg-background shadow-xs'
                 >
                   <div className='flex items-center justify-between border-b bg-muted/30 p-3'>
                     <div className='flex flex-1 items-center gap-2'>
@@ -399,7 +399,7 @@ export function Variables({ panelWidth }: VariablesProps) {
                         <TooltipTrigger asChild>
                           <div className='group absolute top-[4px] right-[0px] cursor-help'>
                             {getValidationStatus(variable) && (
-                              <div className='rounded-md border border-transparent p-1 transition-all duration-200 group-hover:border-muted/50 group-hover:bg-muted/80 group-hover:shadow-sm'>
+                              <div className='rounded-md border border-transparent p-1 transition-all duration-200 group-hover:border-muted/50 group-hover:bg-muted/80 group-hover:shadow-xs'>
                                 <AlertTriangle className='h-4 w-4 text-muted-foreground opacity-30 transition-opacity duration-200 group-hover:opacity-100' />
                               </div>
                             )}
