@@ -80,14 +80,10 @@ export function createHttpHandler(roomManager: RoomManager, logger: Logger) {
       req.on('end', () => {
         try {
           const { workflowId, description } = JSON.parse(body)
-          console.log('🔥 HTTP route received copilot edit request:', { workflowId, description })
-          console.log('🔥 About to call roomManager.handleCopilotWorkflowEdit')
           roomManager.handleCopilotWorkflowEdit(workflowId, description)
-          console.log('🔥 Called roomManager.handleCopilotWorkflowEdit successfully')
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ success: true }))
         } catch (error) {
-          console.error('🔥 Error in HTTP route:', error)
           logger.error('Error handling copilot workflow edit notification:', error)
           res.writeHead(500, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Failed to process copilot edit notification' }))

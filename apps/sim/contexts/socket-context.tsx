@@ -265,7 +265,6 @@ export function SocketProvider({ children, user }: SocketProviderProps) {
 
         // Workflow operation events
         socketInstance.on('workflow-operation', (data) => {
-          console.log('🔥 Received workflow-operation event:', data)
           eventHandlers.current.workflowOperation?.(data)
         })
 
@@ -302,13 +301,11 @@ export function SocketProvider({ children, user }: SocketProviderProps) {
 
         // Copilot workflow edit events (database has been updated, rehydrate stores)
         socketInstance.on('copilot-workflow-edit', async (data) => {
-          console.log('🔥 Received copilot-workflow-edit event:', data)
           logger.info(
             `Copilot edited workflow ${data.workflowId} - rehydrating stores from database`
           )
 
           if (data.workflowId === urlWorkflowId) {
-            console.log('🔥 Workflow ID matches, proceeding with rehydration')
             try {
               // Fetch fresh workflow state directly from API
               const response = await fetch(`/api/workflows/${data.workflowId}`)
@@ -366,9 +363,6 @@ export function SocketProvider({ children, user }: SocketProviderProps) {
                       // Trigger auto layout after rehydration is complete
                       // Add a small delay to ensure stores have propagated to components
                       setTimeout(() => {
-                        console.log(
-                          '🔥 Triggering auto layout after copilot rehydration (stores updated)'
-                        )
                         window.dispatchEvent(new CustomEvent('trigger-auto-layout'))
                       }, 100)
 
@@ -425,10 +419,7 @@ export function SocketProvider({ children, user }: SocketProviderProps) {
           logger.debug('Operation confirmed:', data)
         })
 
-        // Debug: Listen for ALL events
-        socketInstance.onAny((event, ...args) => {
-          console.log('🔥 Socket received event:', event, args)
-        })
+
 
         socketInstance.on('workflow-state', (workflowData) => {
           logger.info('Received workflow state from server:', workflowData)

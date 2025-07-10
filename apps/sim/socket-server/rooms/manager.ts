@@ -155,11 +155,9 @@ export class RoomManager {
   }
 
   handleCopilotWorkflowEdit(workflowId: string, description?: string) {
-    console.log('🔥 handleCopilotWorkflowEdit called with:', { workflowId, description })
     logger.info(`Handling copilot workflow edit notification for ${workflowId}`)
 
     const room = this.workflowRooms.get(workflowId)
-    console.log('🔥 Found room:', !!room, room ? `with ${room.users.size} users` : 'no room')
     if (!room) {
       logger.debug(`No active room found for copilot workflow edit ${workflowId}`)
       return
@@ -167,16 +165,13 @@ export class RoomManager {
 
     const timestamp = Date.now()
 
-    // Emit special event for copilot edits that tells clients to rehydrate from database
-    const eventData = {
+        // Emit special event for copilot edits that tells clients to rehydrate from database
+    this.io.to(workflowId).emit('copilot-workflow-edit', {
       workflowId,
       description,
       message: 'Copilot has edited the workflow - rehydrating from database',
       timestamp,
-    }
-
-    console.log('🔥 Socket server emitting copilot-workflow-edit event:', eventData)
-    this.io.to(workflowId).emit('copilot-workflow-edit', eventData)
+    })
 
     room.lastModified = timestamp
 
