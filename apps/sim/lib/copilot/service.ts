@@ -320,6 +320,18 @@ export async function generateChatResponse(
           required: ['blockIds'],
         },
       },
+      {
+        id: 'get_yaml_structure',
+        name: 'Get YAML Workflow Structure Guide',
+        description:
+          'Get comprehensive YAML workflow syntax guide and examples to understand how to structure Sim Studio workflows. Use this when users ask to create workflows or need help with YAML syntax.',
+        params: {},
+        parameters: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
     ]
 
     const response = await executeProviderRequest(provider, {
