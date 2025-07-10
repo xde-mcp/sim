@@ -300,6 +300,26 @@ export async function generateChatResponse(
           required: [],
         },
       },
+      {
+        id: 'get_blocks_metadata',
+        name: 'Get Block Metadata',
+        description:
+          'Get detailed metadata including descriptions, schemas, inputs, outputs, and subblocks for specific blocks and their associated tools. Use this after getting the list of blocks to get comprehensive information about selected blocks.',
+        params: {},
+        parameters: {
+          type: 'object',
+          properties: {
+            blockIds: {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+              description: 'Array of block IDs to get metadata for',
+            },
+          },
+          required: ['blockIds'],
+        },
+      },
     ]
 
     const response = await executeProviderRequest(provider, {

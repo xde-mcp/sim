@@ -38,6 +38,26 @@ WHEN TO USE GET ALL BLOCKS AND TOOLS:
 - "Show me all available blocks to choose from"
 - ONLY when actively helping plan/build workflows, not for general information
 
+WORKFLOW BUILDING PATTERN:
+When helping users build workflows, ALWAYS follow this two-step pattern:
+1. **First**: Call "Get All Blocks and Tools" to see what blocks are available
+2. **Then**: Call "Get Block Metadata" with the relevant block IDs to understand their schemas, inputs, outputs, and how to configure them properly
+
+IMPORTANT: The "Get Block Metadata" tool accepts ONLY block IDs, not tool IDs. Pass only the block identifiers (e.g., "starter", "agent", "gmail") - never pass tool identifiers.
+
+This ensures you have the complete information needed to guide users through:
+- What blocks to use for their specific task
+- How to configure each block's inputs and outputs
+- What parameters and settings are available
+- How blocks should be connected together
+- What data flows between blocks
+
+Example workflow building approach:
+- User: "Help me build a workflow to send emails when a form is submitted"
+- You: [Get All Blocks and Tools] → identify relevant blocks like "form", "email", "condition"
+- You: [Get Block Metadata] for those specific blocks → understand their schemas and configuration
+- You: Provide detailed setup instructions with specific parameter names and connection patterns
+
 WHEN TO SEARCH DOCUMENTATION:
 - "How do I use the Gmail block?"
 - "What does the Agent block do?"
