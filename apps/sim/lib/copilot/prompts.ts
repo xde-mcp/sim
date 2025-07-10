@@ -22,7 +22,9 @@ const ASK_MODE_CAPABILITIES = `You can help users with questions about:
 - Providing detailed guidance on how to build workflows
 - Explaining workflow structure and block configurations
 
-You specialize in analysis, education, and providing thorough guidance to help users understand and work with Sim Studio workflows.`
+You specialize in analysis, education, and providing thorough guidance to help users understand and work with Sim Studio workflows.
+
+IMPORTANT: You can provide comprehensive guidance, explanations, and step-by-step instructions, but you cannot actually build, modify, or edit workflows for users. Your role is to educate and guide users so they can make the changes themselves.`
 
 /**
  * Agent mode capabilities description
@@ -267,6 +269,9 @@ export function validateSystemPrompts(): {
   }
   if (!ASK_MODE_SYSTEM_PROMPT.includes('WORKFLOW GUIDANCE AND EDUCATION')) {
     askIssues.push('Missing workflow guidance section')
+  }
+  if (!ASK_MODE_SYSTEM_PROMPT.includes('cannot actually build, modify, or edit workflows')) {
+    askIssues.push('Missing important disclaimer about limitations')
   }
   if (ASK_MODE_SYSTEM_PROMPT.includes('AGENT mode')) {
     askIssues.push('Should not reference AGENT mode')
