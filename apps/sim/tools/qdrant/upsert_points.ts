@@ -45,7 +45,7 @@ export const upsertPointsTool: ToolConfig<QdrantUpsertParams, QdrantResponse> = 
   transformResponse: async (response) => {
     const data = await response.json()
     return {
-      success: true,
+      success: response.ok && data.status === 'ok',
       output: {
         status: data.status,
         data: data.result,

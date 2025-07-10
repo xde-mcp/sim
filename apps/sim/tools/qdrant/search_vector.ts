@@ -55,7 +55,7 @@ export const searchVectorTool: ToolConfig<QdrantSearchParams, QdrantResponse> = 
   request: {
     method: 'POST',
     url: (params) =>
-      `${params.url.replace(/\/$/, '')}/collections/${params.collection}/points/query`,
+      `${params.url.replace(/\/$/, '')}/collections/${encodeURIComponent(params.collection)}/points/query`,
     headers: (params) => ({
       'Content-Type': 'application/json',
       ...(params.apiKey ? { 'api-key': params.apiKey } : {}),
@@ -70,6 +70,9 @@ export const searchVectorTool: ToolConfig<QdrantSearchParams, QdrantResponse> = 
   },
 
   transformResponse: async (response) => {
+    if (!response.ok) {
+      throw new Error(`Qdrant search failed: ${response.statusText}`)
+    }
     const data = await response.json()
     return {
       success: true,
