@@ -265,6 +265,7 @@ export function SocketProvider({ children, user }: SocketProviderProps) {
 
         // Workflow operation events
         socketInstance.on('workflow-operation', (data) => {
+          console.log('🔥 Received workflow-operation event:', data)
           eventHandlers.current.workflowOperation?.(data)
         })
 
@@ -296,6 +297,81 @@ export function SocketProvider({ children, user }: SocketProviderProps) {
           // Request fresh workflow state to sync with external changes
           if (data.workflowId === urlWorkflowId) {
             socketInstance.emit('request-sync', { workflowId: data.workflowId })
+          }
+        })
+
+        // Copilot workflow edit events (database has been updated, rehydrate stores)
+        socketInstance.on('copilot-workflow-edit', async (data) => {
+          console.log('🔥 Received copilot-workflow-edit event:', data)
+          logger.info(`Copilot edited workflow ${data.workflowId} - rehydrating stores from database`)
+          
+          if (data.workflowId === urlWorkflowId) {
+            console.log('🔥 Workflow ID matches, proceeding with rehydration')
+            try {
+              // Fetch fresh workflow state directly from API
+              const response = await fetch(`/api/workflows/${data.workflowId}`)
+              if (response.ok) {
+                const responseData = await response.json()
+                const workflowData = responseData.data
+
+                if (workflowData?.state) {
+                  logger.info('Rehydrating stores with fresh workflow state from database')
+                  
+                  // Import stores dynamically to avoid import issues
+                  Promise.all([
+                    import('@/stores/workflows/workflow/store'),
+                    import('@/stores/workflows/subblock/store')
+                  ]).then(([{ useWorkflowStore }, { useSubBlockStore }]) => {
+                    const workflowState = workflowData.state
+                    
+                    // Extract subblock values from blocks
+                    const subblockValues: Record<string, Record<string, any>> = {}
+                    Object.entries(workflowState.blocks || {}).forEach(([blockId, block]) => {
+                      const blockState = block as any
+                      subblockValues[blockId] = {}
+                      Object.entries(blockState.subBlocks || {}).forEach(([subblockId, subblock]) => {
+                        subblockValues[blockId][subblockId] = (subblock as any).value
+                      })
+                    })
+                    
+                    // Update workflow store with fresh state from database
+                    const newWorkflowState = {
+                      blocks: workflowState.blocks || {},
+                      edges: workflowState.edges || [],
+                      loops: workflowState.loops || {},
+                      parallels: workflowState.parallels || {},
+                      lastSaved: workflowState.lastSaved || Date.now(),
+                      isDeployed: workflowState.isDeployed || false,
+                      deployedAt: workflowState.deployedAt,
+                      deploymentStatuses: workflowState.deploymentStatuses || {},
+                      hasActiveSchedule: workflowState.hasActiveSchedule || false,
+                      hasActiveWebhook: workflowState.hasActiveWebhook || false,
+                    }
+                    
+                    useWorkflowStore.setState(newWorkflowState)
+                    
+                    // Update subblock store with fresh values
+                    useSubBlockStore.setState((state: any) => ({
+                      workflowValues: {
+                        ...state.workflowValues,
+                        [data.workflowId]: subblockValues,
+                      },
+                    }))
+                    
+                    // Trigger auto layout after rehydration
+                    window.dispatchEvent(new CustomEvent('trigger-auto-layout'))
+                    
+                    logger.info('Successfully rehydrated stores from database after copilot edit')
+                  }).catch((error) => {
+                    logger.error('Failed to import stores for copilot rehydration:', error)
+                  })
+                }
+              } else {
+                logger.error('Failed to fetch fresh workflow state:', response.statusText)
+              }
+            } catch (error) {
+              logger.error('Failed to rehydrate stores after copilot edit:', error)
+            }
           }
         })
 
@@ -337,9 +413,72 @@ export function SocketProvider({ children, user }: SocketProviderProps) {
           logger.debug('Operation confirmed:', data)
         })
 
-        socketInstance.on('workflow-state', (state) => {
-          logger.info('Received workflow state from server:', state)
-          // This will be used to sync initial state when joining a workflow
+        // Debug: Listen for ALL events
+        socketInstance.onAny((event, ...args) => {
+          console.log('🔥 Socket received event:', event, args)
+        })
+
+        socketInstance.on('workflow-state', (workflowData) => {
+          logger.info('Received workflow state from server:', workflowData)
+          
+          // Update local stores with the fresh workflow state (same logic as YAML editor)
+          if (workflowData?.state && workflowData.id === urlWorkflowId) {
+            logger.info('Updating local stores with fresh workflow state from server')
+            
+            try {
+              // Import stores dynamically to avoid import issues
+              Promise.all([
+                import('@/stores/workflows/workflow/store'),
+                import('@/stores/workflows/subblock/store'),
+                import('@/stores/workflows/registry/store')
+              ]).then(([{ useWorkflowStore }, { useSubBlockStore }, { useWorkflowRegistry }]) => {
+                const workflowState = workflowData.state
+                
+                // Extract subblock values from blocks before updating workflow store
+                const subblockValues: Record<string, Record<string, any>> = {}
+                Object.entries(workflowState.blocks || {}).forEach(([blockId, block]) => {
+                  const blockState = block as any
+                  subblockValues[blockId] = {}
+                  Object.entries(blockState.subBlocks || {}).forEach(([subblockId, subblock]) => {
+                    subblockValues[blockId][subblockId] = (subblock as any).value
+                  })
+                })
+                
+                // Update workflow store with new state
+                const newWorkflowState = {
+                  blocks: workflowState.blocks || {},
+                  edges: workflowState.edges || [],
+                  loops: workflowState.loops || {},
+                  parallels: workflowState.parallels || {},
+                  lastSaved: workflowState.lastSaved || Date.now(),
+                  isDeployed: workflowState.isDeployed || false,
+                  deployedAt: workflowState.deployedAt,
+                  deploymentStatuses: workflowState.deploymentStatuses || {},
+                  hasActiveSchedule: workflowState.hasActiveSchedule || false,
+                  hasActiveWebhook: workflowState.hasActiveWebhook || false,
+                }
+                
+                useWorkflowStore.setState(newWorkflowState)
+                
+                // Update subblock store with fresh values
+                useSubBlockStore.setState((state: any) => ({
+                  workflowValues: {
+                    ...state.workflowValues,
+                    [workflowData.id]: subblockValues,
+                  },
+                }))
+                
+                                 // Trigger auto layout after state update (same as YAML editor)
+                 window.dispatchEvent(new CustomEvent('trigger-auto-layout'))
+                 
+                 logger.info('Successfully updated local stores with fresh workflow state')
+               }).catch((error) => {
+                 logger.error('Failed to import stores for workflow state update:', error)
+               })
+            } catch (error) {
+              logger.error('Failed to update local stores with workflow state:', error)
+            }
+          }
         })
 
         setSocket(socketInstance)

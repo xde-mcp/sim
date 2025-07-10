@@ -178,15 +178,18 @@ export async function POST(request: NextRequest) {
       })
       .where(eq(workflowTable.id, workflowId))
 
-    // Notify the socket server to broadcast workflow state update to all connected users
+    // Notify the socket server to tell clients to rehydrate stores from database
     try {
       const socketUrl = process.env.SOCKET_URL || 'http://localhost:3002'
-      await fetch(`${socketUrl}/api/workflow-updated`, {
+      await fetch(`${socketUrl}/api/copilot-workflow-edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workflowId }),
+        body: JSON.stringify({ 
+          workflowId,
+          description: description || 'Copilot edited workflow'
+        }),
       })
-      logger.info('[edit-workflow] Notified socket server of workflow update')
+      logger.info('[edit-workflow] Notified socket server to rehydrate client stores from database')
     } catch (socketError) {
       // Don't fail the main request if socket notification fails
       logger.warn('[edit-workflow] Failed to notify socket server:', socketError)
