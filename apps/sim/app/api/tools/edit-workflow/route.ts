@@ -1,19 +1,22 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logs/console-logger'
-import { saveWorkflowToNormalizedTables, loadWorkflowFromNormalizedTables } from '@/lib/workflows/db-helpers'
+import {
+  loadWorkflowFromNormalizedTables,
+  saveWorkflowToNormalizedTables,
+} from '@/lib/workflows/db-helpers'
 import { generateWorkflowYaml } from '@/lib/workflows/yaml-generator'
 import { getUserId } from '@/app/api/auth/oauth/utils'
 import { getBlock } from '@/blocks'
 import { db } from '@/db'
-import { workflow as workflowTable, copilotCheckpoints } from '@/db/schema'
+import { copilotCheckpoints, workflow as workflowTable } from '@/db/schema'
 import { convertYamlToWorkflow, parseWorkflowYaml } from '@/stores/workflows/yaml/importer'
 
 const logger = createLogger('EditWorkflowAPI')
 
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID().slice(0, 8)
-  
+
   try {
     const body = await request.json()
     const { yamlContent, workflowId, description, chatId } = body
@@ -46,14 +49,14 @@ export async function POST(request: NextRequest) {
     if (chatId) {
       try {
         logger.info(`[${requestId}] Creating checkpoint before workflow edit`)
-        
+
         // Get current workflow state
         const currentWorkflowData = await loadWorkflowFromNormalizedTables(workflowId)
-        
+
         if (currentWorkflowData) {
           // Generate YAML from current state
           const currentYaml = generateWorkflowYaml(currentWorkflowData)
-          
+
           // Create checkpoint
           await db.insert(copilotCheckpoints).values({
             userId,
@@ -61,7 +64,7 @@ export async function POST(request: NextRequest) {
             chatId,
             yaml: currentYaml,
           })
-          
+
           logger.info(`[${requestId}] Checkpoint created successfully`)
         } else {
           logger.warn(`[${requestId}] Could not load current workflow state for checkpoint`)

@@ -1030,13 +1030,22 @@ export const copilotCheckpoints = pgTable(
     userIdIdx: index('copilot_checkpoints_user_id_idx').on(table.userId),
     workflowIdIdx: index('copilot_checkpoints_workflow_id_idx').on(table.workflowId),
     chatIdIdx: index('copilot_checkpoints_chat_id_idx').on(table.chatId),
-    
+
     // Combined indexes for common queries
-    userWorkflowIdx: index('copilot_checkpoints_user_workflow_idx').on(table.userId, table.workflowId),
-    workflowChatIdx: index('copilot_checkpoints_workflow_chat_idx').on(table.workflowId, table.chatId),
+    userWorkflowIdx: index('copilot_checkpoints_user_workflow_idx').on(
+      table.userId,
+      table.workflowId
+    ),
+    workflowChatIdx: index('copilot_checkpoints_workflow_chat_idx').on(
+      table.workflowId,
+      table.chatId
+    ),
 
     // Ordering indexes
     createdAtIdx: index('copilot_checkpoints_created_at_idx').on(table.createdAt),
-    chatCreatedAtIdx: index('copilot_checkpoints_chat_created_at_idx').on(table.chatId, table.createdAt),
+    chatCreatedAtIdx: index('copilot_checkpoints_chat_created_at_idx').on(
+      table.chatId,
+      table.createdAt
+    ),
   })
 )

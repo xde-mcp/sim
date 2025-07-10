@@ -525,9 +525,7 @@ export async function listCheckpoints(
 /**
  * Revert workflow to a specific checkpoint
  */
-export async function revertToCheckpoint(
-  checkpointId: string
-): Promise<{
+export async function revertToCheckpoint(checkpointId: string): Promise<{
   success: boolean
   error?: string
 }> {

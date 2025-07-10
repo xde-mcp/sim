@@ -3,7 +3,6 @@ import { devtools } from 'zustand/middleware'
 import {
   type CopilotChat,
   type CopilotMessage,
-  type CopilotCheckpoint,
   createChat,
   deleteChat as deleteApiChat,
   getChat,
@@ -707,7 +706,7 @@ export const useCopilotStore = create<CopilotStore>()(
               isRevertingCheckpoint: false,
             })
             logger.info(`Successfully reverted to checkpoint ${checkpointId}`)
-            
+
             // Note: The workflow will be updated via socket notification
             // The UI will automatically refresh when the socket event is received
           } else {
@@ -716,7 +715,8 @@ export const useCopilotStore = create<CopilotStore>()(
         } catch (error) {
           logger.error('Failed to revert to checkpoint:', error)
           set({
-            checkpointError: error instanceof Error ? error.message : 'Failed to revert to checkpoint',
+            checkpointError:
+              error instanceof Error ? error.message : 'Failed to revert to checkpoint',
             isRevertingCheckpoint: false,
           })
         }

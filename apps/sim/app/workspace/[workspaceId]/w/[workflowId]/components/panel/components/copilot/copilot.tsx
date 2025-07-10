@@ -259,8 +259,8 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                 size='sm'
                 onClick={() => setShowCheckpoints(!showCheckpoints)}
                 className={`h-8 w-8 p-0 ${
-                  showCheckpoints 
-                    ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30' 
+                  showCheckpoints
+                    ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
                     : 'hover:bg-accent/50'
                 }`}
                 title='View Checkpoints'
@@ -308,7 +308,9 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                   <ProfessionalMessage
                     key={message.id}
                     message={message}
-                    isStreaming={isSendingMessage && message.id === messages[messages.length - 1]?.id}
+                    isStreaming={
+                      isSendingMessage && message.id === messages[messages.length - 1]?.id
+                    }
                   />
                 ))
               )}

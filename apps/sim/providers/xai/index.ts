@@ -322,12 +322,14 @@ export const xAIProvider: ProviderConfig = {
               const mergedArgs = {
                 ...tool.params,
                 ...toolArgs,
-                ...(request.workflowId ? { 
-                  _context: { 
-                    workflowId: request.workflowId,
-                    ...(request.chatId ? { chatId: request.chatId } : {})
-                  } 
-                } : {}),
+                ...(request.workflowId
+                  ? {
+                      _context: {
+                        workflowId: request.workflowId,
+                        ...(request.chatId ? { chatId: request.chatId } : {}),
+                      },
+                    }
+                  : {}),
               }
               const result = await executeTool(toolName, mergedArgs, true)
               const toolCallEndTime = Date.now()

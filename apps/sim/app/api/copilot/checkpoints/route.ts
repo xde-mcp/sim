@@ -39,10 +39,7 @@ export async function GET(request: NextRequest) {
       .select()
       .from(copilotCheckpoints)
       .where(
-        and(
-          eq(copilotCheckpoints.userId, session.user.id),
-          eq(copilotCheckpoints.chatId, chatId)
-        )
+        and(eq(copilotCheckpoints.userId, session.user.id), eq(copilotCheckpoints.chatId, chatId))
       )
       .orderBy(desc(copilotCheckpoints.createdAt))
       .limit(limit)
@@ -53,4 +50,4 @@ export async function GET(request: NextRequest) {
     logger.error(`[${requestId}] Error listing checkpoints:`, error)
     return NextResponse.json({ error: 'Failed to list checkpoints' }, { status: 500 })
   }
-} 
+}

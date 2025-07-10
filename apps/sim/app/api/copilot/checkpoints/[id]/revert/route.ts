@@ -2,11 +2,11 @@ import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { createLogger } from '@/lib/logs/console-logger'
-import { parseWorkflowYaml, convertYamlToWorkflow } from '@/stores/workflows/yaml/importer'
 import { saveWorkflowToNormalizedTables } from '@/lib/workflows/db-helpers'
 import { getBlock } from '@/blocks'
 import { db } from '@/db'
 import { copilotCheckpoints, workflow as workflowTable } from '@/db/schema'
+import { convertYamlToWorkflow, parseWorkflowYaml } from '@/stores/workflows/yaml/importer'
 
 const logger = createLogger('RevertCheckpointAPI')
 
@@ -14,10 +14,7 @@ const logger = createLogger('RevertCheckpointAPI')
  * POST /api/copilot/checkpoints/[id]/revert
  * Revert workflow to a specific checkpoint
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const requestId = crypto.randomUUID().slice(0, 8)
   const checkpointId = (await params).id
 
@@ -36,10 +33,7 @@ export async function POST(
       .select()
       .from(copilotCheckpoints)
       .where(
-        and(
-          eq(copilotCheckpoints.id, checkpointId),
-          eq(copilotCheckpoints.userId, session.user.id)
-        )
+        and(eq(copilotCheckpoints.id, checkpointId), eq(copilotCheckpoints.userId, session.user.id))
       )
       .limit(1)
 
@@ -60,11 +54,14 @@ export async function POST(
 
     if (!yamlWorkflow || parseErrors.length > 0) {
       logger.error(`[${requestId}] YAML parsing failed`, { parseErrors })
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to parse checkpoint YAML',
-        details: parseErrors,
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to parse checkpoint YAML',
+          details: parseErrors,
+        },
+        { status: 400 }
+      )
     }
 
     // Convert YAML to workflow format
@@ -72,11 +69,14 @@ export async function POST(
 
     if (convertErrors.length > 0) {
       logger.error(`[${requestId}] YAML conversion failed`, { convertErrors })
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to convert checkpoint YAML to workflow',
-        details: convertErrors,
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to convert checkpoint YAML to workflow',
+          details: convertErrors,
+        },
+        { status: 400 }
+      )
     }
 
     // Create workflow state (same format as edit-workflow)
@@ -153,10 +153,13 @@ export async function POST(
 
     if (!saveResult.success) {
       logger.error(`[${requestId}] Failed to save reverted workflow:`, saveResult.error)
-      return NextResponse.json({
-        success: false,
-        error: `Database save failed: ${saveResult.error || 'Unknown error'}`,
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Database save failed: ${saveResult.error || 'Unknown error'}`,
+        },
+        { status: 500 }
+      )
     }
 
     // Update workflow's lastSynced timestamp
@@ -196,8 +199,10 @@ export async function POST(
   } catch (error) {
     logger.error(`[${requestId}] Error reverting checkpoint:`, error)
     return NextResponse.json(
-      { error: `Failed to revert checkpoint: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      {
+        error: `Failed to revert checkpoint: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      },
       { status: 500 }
     )
   }
-} 
+}

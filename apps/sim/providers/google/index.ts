@@ -366,12 +366,14 @@ export const googleProvider: ProviderConfig = {
                 ...tool.params, // Default parameters defined for the tool
                 ...toolArgs, // Arguments from the model's function call
                 ...requiredToolCallParams, // Required parameters from the tool definition (take precedence)
-                ...(request.workflowId ? { 
-                  _context: { 
-                    workflowId: request.workflowId,
-                    ...(request.chatId ? { chatId: request.chatId } : {})
-                  } 
-                } : {}),
+                ...(request.workflowId
+                  ? {
+                      _context: {
+                        workflowId: request.workflowId,
+                        ...(request.chatId ? { chatId: request.chatId } : {}),
+                      },
+                    }
+                  : {}),
                 ...(request.environmentVariables ? { envVars: request.environmentVariables } : {}),
               }
 
