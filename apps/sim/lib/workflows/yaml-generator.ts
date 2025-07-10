@@ -4,7 +4,11 @@ import { createLogger } from '@/lib/logs/console-logger'
 import { getBlock } from '@/blocks'
 import type { SubBlockConfig } from '@/blocks/types'
 import type { BlockState, WorkflowState } from '@/stores/workflows/workflow/types'
-import { generateBlockConnections, cleanConditionInputs, type ConnectionsFormat } from '@/stores/workflows/yaml/parsing-utils'
+import {
+  type ConnectionsFormat,
+  cleanConditionInputs,
+  generateBlockConnections,
+} from '@/stores/workflows/yaml/parsing-utils'
 
 const logger = createLogger('WorkflowYamlGenerator')
 
@@ -210,12 +214,11 @@ export function generateWorkflowYaml(
     // Process each block
     Object.entries(workflowState.blocks).forEach(([blockId, blockState]) => {
       const rawInputs = extractBlockInputs(blockState, blockId, subBlockValues)
-      
+
       // Clean up condition inputs to use semantic format
-      const inputs = blockState.type === 'condition' 
-        ? cleanConditionInputs(blockId, rawInputs)
-        : rawInputs
-      
+      const inputs =
+        blockState.type === 'condition' ? cleanConditionInputs(blockId, rawInputs) : rawInputs
+
       // Use shared utility to generate connections in new format
       const connections = generateBlockConnections(blockId, workflowState.edges)
 

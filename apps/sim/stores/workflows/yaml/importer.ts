@@ -7,12 +7,12 @@ import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
 import { useSubBlockStore } from '@/stores/workflows/subblock/store'
 import { useWorkflowStore } from '@/stores/workflows/workflow/store'
 import {
-  parseBlockConnections,
-  validateBlockStructure,
-  validateBlockReferences,
-  expandConditionInputs,
   type ConnectionsFormat,
+  expandConditionInputs,
   type ImportedEdge,
+  parseBlockConnections,
+  validateBlockReferences,
+  validateBlockStructure,
 } from './parsing-utils'
 
 const logger = createLogger('WorkflowYamlImporter')
@@ -40,8 +40,6 @@ interface ImportedBlock {
   parentId?: string
   extent?: 'parent'
 }
-
-
 
 interface ImportResult {
   blocks: ImportedBlock[]
@@ -122,8 +120,6 @@ export function parseWorkflowYaml(yamlContent: string): {
   }
 }
 
-
-
 /**
  * Validate that block types exist and are valid
  */
@@ -133,7 +129,10 @@ function validateBlockTypes(yamlWorkflow: YamlWorkflow): { errors: string[]; war
 
   Object.entries(yamlWorkflow.blocks).forEach(([blockId, block]) => {
     // Use shared structure validation
-    const { errors: structureErrors, warnings: structureWarnings } = validateBlockStructure(blockId, block)
+    const { errors: structureErrors, warnings: structureWarnings } = validateBlockStructure(
+      blockId,
+      block
+    )
     errors.push(...structureErrors)
     warnings.push(...structureWarnings)
 
@@ -324,9 +323,10 @@ export function convertYamlToWorkflow(yamlWorkflow: YamlWorkflow): ImportResult 
     const position = positions[blockId] || { x: 100, y: 100 }
 
     // Expand condition inputs from clean format to internal format
-    const processedInputs = yamlBlock.type === 'condition'
-      ? expandConditionInputs(blockId, yamlBlock.inputs || {})
-      : yamlBlock.inputs || {}
+    const processedInputs =
+      yamlBlock.type === 'condition'
+        ? expandConditionInputs(blockId, yamlBlock.inputs || {})
+        : yamlBlock.inputs || {}
 
     const importedBlock: ImportedBlock = {
       id: blockId,
@@ -367,9 +367,12 @@ export function convertYamlToWorkflow(yamlWorkflow: YamlWorkflow): ImportResult 
 
   // Convert edges from connections using shared parser
   Object.entries(yamlWorkflow.blocks).forEach(([blockId, yamlBlock]) => {
-    const { edges: blockEdges, errors: connectionErrors, warnings: connectionWarnings } = 
-      parseBlockConnections(blockId, yamlBlock.connections, yamlBlock.type)
-    
+    const {
+      edges: blockEdges,
+      errors: connectionErrors,
+      warnings: connectionWarnings,
+    } = parseBlockConnections(blockId, yamlBlock.connections, yamlBlock.type)
+
     edges.push(...blockEdges)
     errors.push(...connectionErrors)
     warnings.push(...connectionWarnings)
