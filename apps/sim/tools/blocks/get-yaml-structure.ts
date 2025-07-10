@@ -1,6 +1,6 @@
 import type { ToolConfig, ToolResponse } from '../types'
 
-interface GetYamlStructureParams {}
+type GetYamlStructureParams = {}
 
 interface GetYamlStructureResult {
   guide: string
@@ -30,9 +30,7 @@ export const getYamlStructureTool: ToolConfig<GetYamlStructureParams, GetYamlStr
     isInternalRoute: true,
   },
 
-  transformResponse: async (
-    response: Response
-  ): Promise<GetYamlStructureResponse> => {
+  transformResponse: async (response: Response): Promise<GetYamlStructureResponse> => {
     if (!response.ok) {
       throw new Error(`Get YAML structure failed: ${response.status} ${response.statusText}`)
     }
@@ -55,4 +53,4 @@ export const getYamlStructureTool: ToolConfig<GetYamlStructureParams, GetYamlStr
     }
     return 'An unexpected error occurred while getting YAML structure guide'
   },
-} 
+}
