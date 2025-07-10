@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { eq } from 'drizzle-orm'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logs/console-logger'
-import { parseWorkflowYaml, convertYamlToWorkflow } from '@/stores/workflows/yaml/importer'
 import { saveWorkflowToNormalizedTables } from '@/lib/workflows/db-helpers'
 import { getBlock } from '@/blocks'
-import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { workflow as workflowTable } from '@/db/schema'
+import { convertYamlToWorkflow, parseWorkflowYaml } from '@/stores/workflows/yaml/importer'
 
 const logger = createLogger('EditWorkflowAPI')
 
@@ -22,10 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!workflowId) {
-      return NextResponse.json(
-        { success: false, error: 'workflowId is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, error: 'workflowId is required' }, { status: 400 })
     }
 
     logger.info('[edit-workflow] Processing workflow edit request', {
@@ -46,7 +43,7 @@ export async function POST(request: NextRequest) {
           message: 'Failed to parse YAML workflow',
           errors: parseErrors,
           warnings: [],
-        }
+        },
       })
     }
 
@@ -62,7 +59,7 @@ export async function POST(request: NextRequest) {
           message: 'Failed to convert YAML to workflow',
           errors: convertErrors,
           warnings,
-        }
+        },
       })
     }
 
@@ -82,11 +79,11 @@ export async function POST(request: NextRequest) {
 
     // Process blocks and assign new IDs (complete replacement)
     const blockIdMapping = new Map<string, string>()
-    
+
     for (const block of blocks) {
       const newId = crypto.randomUUID()
       blockIdMapping.set(block.id, newId)
-      
+
       // Get block configuration to set proper defaults
       const blockConfig = getBlock(block.type)
       const subBlocks: Record<string, any> = {}
@@ -113,7 +110,7 @@ export async function POST(request: NextRequest) {
           Object.assign(outputs, blockConfig.outputs)
         }
       }
-      
+
       newWorkflowState.blocks[newId] = {
         id: newId,
         type: block.type,
@@ -142,7 +139,7 @@ export async function POST(request: NextRequest) {
     for (const edge of edges) {
       const sourceId = blockIdMapping.get(edge.source)
       const targetId = blockIdMapping.get(edge.target)
-      
+
       if (sourceId && targetId) {
         newWorkflowState.edges.push({
           id: crypto.randomUUID(),
@@ -167,7 +164,7 @@ export async function POST(request: NextRequest) {
           message: `Database save failed: ${saveResult.error || 'Unknown error'}`,
           errors: [saveResult.error || 'Database save failed'],
           warnings,
-        }
+        },
       })
     }
 
@@ -199,22 +196,22 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         success: result.success,
-        message: result.success 
+        message: result.success
           ? `Workflow updated successfully${description ? `: ${description}` : ''}`
           : 'Failed to update workflow',
         summary: result.summary,
         errors: result.errors,
         warnings: result.warnings,
-      }
+      },
     })
   } catch (error) {
     logger.error('[edit-workflow] Error:', error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: `Failed to edit workflow: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      {
+        success: false,
+        error: `Failed to edit workflow: ${error instanceof Error ? error.message : 'Unknown error'}`,
       },
       { status: 500 }
     )
   }
-} 
+}

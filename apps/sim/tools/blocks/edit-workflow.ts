@@ -54,9 +54,7 @@ export const editWorkflowTool: ToolConfig<EditWorkflowParams, EditWorkflowRespon
     isInternalRoute: true,
   },
 
-  transformResponse: async (
-    response: Response
-  ): Promise<EditWorkflowResponse> => {
+  transformResponse: async (response: Response): Promise<EditWorkflowResponse> => {
     if (!response.ok) {
       throw new Error(`Edit workflow failed: ${response.status} ${response.statusText}`)
     }
@@ -79,4 +77,4 @@ export const editWorkflowTool: ToolConfig<EditWorkflowParams, EditWorkflowRespon
     }
     return 'An unexpected error occurred while editing the workflow'
   },
-} 
+}
