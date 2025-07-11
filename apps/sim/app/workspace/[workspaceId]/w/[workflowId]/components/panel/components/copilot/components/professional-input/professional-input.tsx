@@ -57,8 +57,8 @@ const ProfessionalInput: FC<ProfessionalInputProps> = ({
   const canSubmit = message.trim().length > 0 && !disabled && !isLoading
 
   return (
-    <div className={cn('w-full max-w-full overflow-hidden border-t bg-background p-4', className)}>
-      <div className='mx-auto w-full max-w-full'>
+    <div className={cn('w-full max-w-full overflow-hidden bg-background p-4', className)}>
+      <div className='mx-auto w-full max-w-3xl'>
         <div className='relative w-full max-w-full'>
           <div className='relative flex w-full max-w-full items-end rounded-2xl border border-border bg-background shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary'>
             <Textarea

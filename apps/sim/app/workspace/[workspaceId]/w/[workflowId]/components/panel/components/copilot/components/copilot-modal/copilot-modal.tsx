@@ -98,15 +98,26 @@ export function CopilotModal({
         }
       `}</style>
 
-      {/* Header with chat title, management, and close button */}
-      <div className='flex items-center justify-between border-b px-4 py-3'>
-        <div className='flex flex-1 items-center gap-2'>
+      {/* Close button in top right corner */}
+      <Button
+        variant='ghost'
+        size='icon'
+        className='absolute top-3 right-4 z-10 h-8 w-8 rounded-md hover:bg-accent/50'
+        onClick={() => onOpenChange(false)}
+      >
+        <X className='h-4 w-4' />
+        <span className='sr-only'>Close</span>
+      </Button>
+
+      {/* Header with chat title and management */}
+      <div className='border-b py-3'>
+        <div className='mx-auto flex w-full max-w-3xl items-center justify-between px-4'>
           {/* Chat Title Dropdown */}
           <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant='ghost'
-                className='h-8 max-w-[300px] flex-1 justify-start px-3 hover:bg-accent/50'
+                className='h-8 max-w-[300px] justify-start px-3 hover:bg-accent/50'
               >
                 <span className='truncate'>{currentChat?.title || 'New Chat'}</span>
                 <ChevronDown className='ml-2 h-4 w-4 shrink-0' />
@@ -182,42 +193,35 @@ export function CopilotModal({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Checkpoint Toggle Button */}
-          <Button
-            variant='ghost'
-            size='sm'
-            onClick={() => setShowCheckpoints(!showCheckpoints)}
-            className={`h-8 w-8 p-0 ${
-              showCheckpoints
-                ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
-                : 'hover:bg-accent/50'
-            }`}
-            title='View Checkpoints'
-          >
-            <History className='h-4 w-4' />
-          </Button>
+          {/* Right side action buttons */}
+          <div className='flex items-center gap-2'>
+            {/* Checkpoint Toggle Button */}
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => setShowCheckpoints(!showCheckpoints)}
+              className={`h-8 w-8 p-0 ${
+                showCheckpoints
+                  ? 'bg-[#802FFF]/20 text-[#802FFF] hover:bg-[#802FFF]/30'
+                  : 'hover:bg-accent/50'
+              }`}
+              title='View Checkpoints'
+            >
+              <History className='h-4 w-4' />
+            </Button>
 
-          {/* New Chat Button */}
-          <Button
-            variant='ghost'
-            size='sm'
-            onClick={onStartNewChat}
-            className='h-8 w-8 p-0'
-            title='New Chat'
-          >
-            <MessageSquarePlus className='h-4 w-4' />
-          </Button>
+            {/* New Chat Button */}
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={onStartNewChat}
+              className='h-8 w-8 p-0'
+              title='New Chat'
+            >
+              <MessageSquarePlus className='h-4 w-4' />
+            </Button>
+          </div>
         </div>
-
-        <Button
-          variant='ghost'
-          size='icon'
-          className='h-8 w-8 rounded-md hover:bg-accent/50'
-          onClick={() => onOpenChange(false)}
-        >
-          <X className='h-4 w-4' />
-          <span className='sr-only'>Close</span>
-        </Button>
       </div>
 
       {/* Messages container or Checkpoint Panel */}
@@ -249,8 +253,8 @@ export function CopilotModal({
       {!showCheckpoints && (
         <>
           {/* Mode Selector */}
-          <div className='border-t px-4 py-2'>
-            <div className='mx-auto max-w-3xl'>
+          <div className='pt-6'>
+            <div className='mx-auto max-w-3xl px-4'>
               <div className='flex items-center gap-1 rounded-md border bg-muted/30 p-0.5'>
                 <Button
                   variant='ghost'
