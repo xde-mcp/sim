@@ -46,10 +46,9 @@ You have FULL workflow editing capabilities and can modify users' workflows dire
  */
 const TOOL_USAGE_GUIDELINES = `
 IMPORTANT DISTINCTION - Three types of information:
-1. **USER'S SPECIFIC WORKFLOW**: Use "Get User's Specific Workflow" tool ONLY when users ask about "my workflow", "this workflow", "what I have built", or "my current blocks"
-2. **BUILDING WORKFLOWS**: Use "Get All Blocks and Tools" tool ONLY when there is a specific need to help users build/plan workflows and they need to explore available options, or a need to see details of tools/blocks
+1. **USER'S SPECIFIC WORKFLOW**: Use "Get User's Specific Workflow" tool when users ask about "my workflow", "this workflow", "what I have built", or "my current blocks"
+2. **BUILDING WORKFLOWS**: Use "Get All Blocks and Tools" tool ONLY when helping users build/plan workflows and they need to explore available options
 3. **SPECIFIC TOOL/BLOCK INFO**: Use documentation search for information about specific tools, how features work, or detailed explanations
-4. **METADATA**: Use "Get Block Metadata" tool ONLY when users ask about specific blocks and you need to know the details of the block, such as inputs, outputs, configuration options, etc., and ONLY after you have called "Get All Blocks and Tools" to see what blocks ids are valid
 
 WHEN TO USE WORKFLOW TOOL:
 - "What does my workflow do?"
@@ -67,20 +66,7 @@ WHEN TO USE GET ALL BLOCKS AND TOOLS:
 - "Help me plan a workflow, what options do I have?"
 - "What blocks are best for automation?"
 - "Show me all available blocks to choose from"
-- ONLY when actively helping plan/build workflows, not for general information
-
-WHEN TO USE GET BLOCK METADATA:
-- "What is the input schema for the [block]?"
-- "How do I configure the [block]?"
-- "What are the available inputs for [block]?" - ALWAYS call "Get Block Metadata" to see the inputs for the block
-- "What are the outputs of [block]?" - ALWAYS call "Get Block Metadata" to see the outputs for the block
-- "What is the configuration options for [block]?" - ALWAYS call "Get Block Metadata" to see the configuration options for the block
-- "What is the default value for [block]?" - ALWAYS call "Get Block Metadata" to see the default value for the block
-
-UNDERSTANDING USER WORKFLOWS:
-- To understand a user's workflow, you can check the docs or call the "Get YAML Workflow Structure Guide" to understand more about the workflow structure and syntax
-- Use documentation search to understand workflow concepts and block functionality
-- Only call "Get User's Specific Workflow" when the user specifically asks about their workflow`
+- ONLY when actively helping plan/build workflows, not for general information`
 
 /**
  * Workflow building process (Agent mode only)
@@ -170,12 +156,6 @@ Be educational and thorough - your goal is to make users confident in building w
  * Documentation search guidelines
  */
 const DOCUMENTATION_SEARCH_GUIDELINES = `
-DOCUMENTATION SEARCH BEHAVIOR:
-- Only run ONE doc search per similar concept/topic
-- For related questions like "how do I use a memory block" and "what is a memory block", run only ONE search since they're about the same concept
-- Only run multiple doc searches if they're about different concepts like "what is a memory block" AND "what is an agent block"
-- Don't run duplicate searches for the same topic or similar variations
-
 WHEN TO SEARCH DOCUMENTATION:
 - "How do I use the Gmail block?"
 - "What does the Agent block do?"
@@ -289,9 +269,6 @@ export function validateSystemPrompts(): {
   }
   if (!ASK_MODE_SYSTEM_PROMPT.includes('WORKFLOW GUIDANCE AND EDUCATION')) {
     askIssues.push('Missing workflow guidance section')
-  }
-  if (!ASK_MODE_SYSTEM_PROMPT.includes('cannot actually build, modify, or edit workflows')) {
-    askIssues.push('Missing important disclaimer about limitations')
   }
   if (ASK_MODE_SYSTEM_PROMPT.includes('AGENT mode')) {
     askIssues.push('Should not reference AGENT mode')
@@ -787,7 +764,7 @@ blocks:
 ## Key Syntax Reminders
 
 1. **Block names** → references: "Sum Calculator" becomes \`<sumcalculator.property>\`
-2. **Starter block** → always \`<start.input>\` 
+2. **Starter block** → always \`<start.input>\`  IT WILL ALWAYS BE CALLED \`<start.input>\`
 3. **Conditions** → direct YAML object, not JSON string
 4. **Environment variables** → \`{{VARIABLE_NAME}}\`
 5. **Version** → must be \`'1.0'\` with quotes
