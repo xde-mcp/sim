@@ -261,10 +261,11 @@ ${fieldDescriptions}
       }
     }
 
-    // EARLY STREAMING: if caller requested streaming and there are no tools to execute,
-    // we can directly stream the completion.
-    if (request.stream && (!anthropicTools || anthropicTools.length === 0)) {
-      logger.info('Using streaming response for Anthropic request (no tools)')
+    // STREAMING WITH INCREMENTAL PARSING: Handle both text and tool calls in real-time
+    if (request.stream) {
+      logger.info('Using incremental streaming parser for Anthropic request', {
+        hasTools: !!(anthropicTools && anthropicTools.length > 0)
+      })
 
       // Start execution timer for the entire provider execution
       const providerStartTime = Date.now()
@@ -276,23 +277,272 @@ ${fieldDescriptions}
         stream: true,
       })
 
-      // Start collecting token usage
+      // State for incremental parsing
+      let currentBlockType: 'text' | 'tool_use' | null = null
+      let toolCallBuffer: any = null
+      let toolCalls: any[] = []
+      let streamedContent = ''
+      
+      // Token usage tracking
       const tokenUsage = {
         prompt: 0,
         completion: 0,
         total: 0,
       }
 
-      // Create a StreamingExecution response with a readable stream
+      // Create an incremental parsing stream
+      const incrementalParsingStream = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of streamResponse) {
+              // Handle different chunk types
+              if (chunk.type === 'content_block_start') {
+                currentBlockType = chunk.content_block?.type
+                
+                if (currentBlockType === 'tool_use') {
+                  // Start buffering a tool call
+                  toolCallBuffer = {
+                    id: chunk.content_block.id,
+                    name: chunk.content_block.name,
+                    input: {},
+                  }
+                  logger.info(`Starting tool call: ${chunk.content_block.name}`)
+                }
+                
+              } else if (chunk.type === 'content_block_delta') {
+                if (currentBlockType === 'text' && chunk.delta?.text) {
+                  // Stream text content immediately to user
+                  const textContent = chunk.delta.text
+                  streamedContent += textContent
+                  controller.enqueue(new TextEncoder().encode(textContent))
+                  
+                } else if (currentBlockType === 'tool_use' && chunk.delta?.partial_json) {
+                  // Buffer tool call parameters
+                  if (toolCallBuffer) {
+                    try {
+                      // Attempt to parse the accumulated JSON
+                      const partialInput = chunk.delta.partial_json
+                      // This is partial JSON, we'll parse it when the block is complete
+                      toolCallBuffer.partialInput = (toolCallBuffer.partialInput || '') + partialInput
+                    } catch (error) {
+                      // Ignore parsing errors for partial JSON
+                    }
+                  }
+                }
+                
+              } else if (chunk.type === 'content_block_stop') {
+                if (currentBlockType === 'tool_use' && toolCallBuffer) {
+                  try {
+                    // Parse the complete tool call input
+                    toolCallBuffer.input = JSON.parse(toolCallBuffer.partialInput || '{}')
+                    toolCalls.push(toolCallBuffer)
+                    
+                    // Queue tool call for execution
+                    pendingToolCalls.push(toolCallBuffer)
+                    
+                    logger.info(`Completed tool call buffer for: ${toolCallBuffer.name}`)
+                  } catch (error) {
+                    logger.error('Error parsing tool call input:', { error, toolCallBuffer })
+                  }
+                  toolCallBuffer = null
+                }
+                currentBlockType = null
+                
+              } else if (chunk.type === 'message_start') {
+                // Track usage data if available
+                if (chunk.message?.usage) {
+                  tokenUsage.prompt = chunk.message.usage.input_tokens || 0
+                }
+                
+              } else if (chunk.type === 'message_delta') {
+                // Update token counts as they become available
+                if (chunk.usage) {
+                  tokenUsage.completion = chunk.usage.output_tokens || 0
+                  tokenUsage.total = tokenUsage.prompt + tokenUsage.completion
+                }
+                
+                             } else if (chunk.type === 'message_stop') {
+                 // Stream is complete - execute any pending tool calls
+                 logger.info('Initial stream completed', {
+                   streamedContentLength: streamedContent.length,
+                   toolCallsCount: toolCalls.length,
+                   pendingToolCallsCount: pendingToolCalls.length
+                 })
+                 
+                 if (pendingToolCalls.length > 0) {
+                   // Execute tools and continue conversation
+                   await executeToolsAndContinue(pendingToolCalls, controller)
+                 }
+                 
+                 controller.close()
+                 break
+               }
+            }
+          } catch (error) {
+            logger.error('Error in incremental streaming:', { error })
+            controller.error(error)
+          }
+        }
+      })
+
+      // Track conversation state for multi-turn tool execution
+      let conversationMessages = [...messages]
+      let pendingToolCalls: any[] = []
+      let completedToolCalls: any[] = []
+      
+      // Helper function to execute tools and continue conversation
+      const executeToolsAndContinue = async (toolCalls: any[], controller: ReadableStreamDefaultController) => {
+        try {
+          logger.info(`Executing ${toolCalls.length} tool calls`, {
+            toolNames: toolCalls.map(tc => tc.name)
+          })
+
+          // Execute all tools in parallel
+          const toolResults = await Promise.all(
+            toolCalls.map(async (toolCall) => {
+              const tool = request.tools?.find((t: any) => t.id === toolCall.name)
+              if (!tool) {
+                logger.warn(`Tool not found: ${toolCall.name}`)
+                return null
+              }
+
+              const toolCallStartTime = Date.now()
+              const mergedArgs = {
+                ...tool.params,
+                ...toolCall.input,
+                ...(request.workflowId
+                  ? {
+                      _context: {
+                        workflowId: request.workflowId,
+                        ...(request.chatId ? { chatId: request.chatId } : {}),
+                      },
+                    }
+                  : {}),
+                ...(request.environmentVariables ? { envVars: request.environmentVariables } : {}),
+              }
+
+              const result = await executeTool(toolCall.name, mergedArgs, true)
+              const toolCallEndTime = Date.now()
+
+              if (result.success) {
+                completedToolCalls.push({
+                  name: toolCall.name,
+                  arguments: toolCall.input,
+                  startTime: new Date(toolCallStartTime).toISOString(),
+                  endTime: new Date(toolCallEndTime).toISOString(),
+                  duration: toolCallEndTime - toolCallStartTime,
+                  result: result.output,
+                })
+              }
+
+              return {
+                toolCall,
+                result: result.success ? result.output : null,
+                success: result.success
+              }
+            })
+          )
+
+          // Add tool calls and results to conversation
+          conversationMessages.push({
+            role: 'assistant',
+            content: toolCalls.map(tc => ({
+              type: 'tool_use',
+              id: tc.id,
+              name: tc.name,
+              input: tc.input,
+            })) as any
+          })
+
+          conversationMessages.push({
+            role: 'user',
+            content: toolResults
+              .filter(tr => tr?.success)
+              .map(tr => ({
+                type: 'tool_result',
+                tool_use_id: tr!.toolCall.id,
+                content: JSON.stringify(tr!.result),
+              })) as any
+          })
+
+          // Continue the conversation with tool results
+          const nextStreamResponse = await anthropic.messages.create({
+            ...payload,
+            messages: conversationMessages,
+            stream: true,
+          })
+
+          // Parse the continuation stream
+          await parseContinuationStream(nextStreamResponse, controller)
+
+        } catch (error) {
+          logger.error('Error executing tools and continuing conversation:', { error })
+          // Continue streaming even if tools fail
+        }
+      }
+
+      // Helper function to parse continuation streams (for tool result responses)
+      const parseContinuationStream = async (streamResponse: any, controller: ReadableStreamDefaultController) => {
+        let currentBlockType: 'text' | 'tool_use' | null = null
+        let toolCallBuffer: any = null
+        let newToolCalls: any[] = []
+
+        for await (const chunk of streamResponse) {
+          if (chunk.type === 'content_block_start') {
+            currentBlockType = chunk.content_block?.type
+            
+            if (currentBlockType === 'tool_use') {
+              toolCallBuffer = {
+                id: chunk.content_block.id,
+                name: chunk.content_block.name,
+                input: {},
+              }
+            }
+            
+          } else if (chunk.type === 'content_block_delta') {
+            if (currentBlockType === 'text' && chunk.delta?.text) {
+              // Stream continuation text immediately
+              const textContent = chunk.delta.text
+              controller.enqueue(new TextEncoder().encode(textContent))
+              
+            } else if (currentBlockType === 'tool_use' && chunk.delta?.partial_json) {
+              if (toolCallBuffer) {
+                toolCallBuffer.partialInput = (toolCallBuffer.partialInput || '') + chunk.delta.partial_json
+              }
+            }
+            
+          } else if (chunk.type === 'content_block_stop') {
+            if (currentBlockType === 'tool_use' && toolCallBuffer) {
+              try {
+                toolCallBuffer.input = JSON.parse(toolCallBuffer.partialInput || '{}')
+                newToolCalls.push(toolCallBuffer)
+              } catch (error) {
+                logger.error('Error parsing continuation tool call:', { error })
+              }
+              toolCallBuffer = null
+            }
+            currentBlockType = null
+            
+          } else if (chunk.type === 'message_stop') {
+            // If there are more tool calls, execute them
+            if (newToolCalls.length > 0) {
+              await executeToolsAndContinue(newToolCalls, controller)
+            }
+            break
+          }
+        }
+      }
+
+      // Create the streaming result
       const streamingResult = {
-        stream: createReadableStreamFromAnthropicStream(streamResponse),
+        stream: incrementalParsingStream,
         execution: {
           success: true,
           output: {
-            content: '', // Will be filled by streaming content in chat component
+            content: '', // Will be filled by streaming content
             model: request.model,
             tokens: tokenUsage,
-            toolCalls: undefined,
+            toolCalls: toolCalls.length > 0 ? { list: toolCalls, count: toolCalls.length } : undefined,
             providerTiming: {
               startTime: providerStartTimeISO,
               endTime: new Date().toISOString(),
@@ -300,21 +550,20 @@ ${fieldDescriptions}
               timeSegments: [
                 {
                   type: 'model',
-                  name: 'Streaming response',
+                  name: 'Incremental streaming with tools',
                   startTime: providerStartTime,
                   endTime: Date.now(),
                   duration: Date.now() - providerStartTime,
                 },
               ],
             },
-            // Estimate token cost based on typical Claude pricing
             cost: {
-              total: 0.0,
+              total: 0.0, // Will be updated as tokens are counted
               input: 0.0,
               output: 0.0,
             },
           },
-          logs: [], // No block logs for direct streaming
+          logs: [],
           metadata: {
             startTime: providerStartTimeISO,
             endTime: new Date().toISOString(),
