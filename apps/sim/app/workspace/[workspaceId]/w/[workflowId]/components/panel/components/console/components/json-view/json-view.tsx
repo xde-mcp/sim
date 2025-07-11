@@ -14,17 +14,17 @@ const TruncatedValue = ({ value }: { value: string }) => {
 
   if (value.length <= MAX_STRING_LENGTH) {
     return (
-      <span className='break-all font-[380] text-muted-foreground/80 leading-normal'>{value}</span>
+      <span className='break-all font-[380] text-muted-foreground leading-normal'>{value}</span>
     )
   }
 
   return (
-    <span className='break-all font-[380] text-muted-foreground/80 leading-normal'>
+    <span className='break-all font-[380] text-muted-foreground leading-normal'>
       {isExpanded ? value : `${value.slice(0, MAX_STRING_LENGTH)}...`}
       <Button
         variant='link'
         size='sm'
-        className='h-auto px-1 font-[380] text-muted-foreground text-xs hover:text-foreground'
+        className='h-auto px-1 font-[380] text-muted-foreground/70 text-xs hover:text-foreground'
         onClick={(e) => {
           e.stopPropagation()
           setIsExpanded(!isExpanded)
@@ -55,7 +55,7 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
 
   if (typeof data === 'number' || typeof data === 'boolean') {
     return (
-      <span className='break-all font-[380] text-muted-foreground/80 leading-normal'>
+      <span className='break-all font-[380] text-muted-foreground leading-normal'>
         {JSON.stringify(data)}
       </span>
     )
@@ -67,7 +67,7 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
     if (shouldCollapse && !isExpanded) {
       return (
         <span
-          className='cursor-pointer break-all font-[380] text-muted-foreground text-xs leading-normal'
+          className='cursor-pointer break-all font-[380] text-muted-foreground/70 text-xs leading-normal'
           onClick={() => setIsExpanded(true)}
         >
           {'[...]'}
@@ -76,7 +76,7 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
     }
 
     return (
-      <span className='break-all font-[380] text-muted-foreground leading-normal'>
+      <span className='break-all font-[380] text-muted-foreground/70 leading-normal'>
         {'['}
         {data.length > 0 && (
           <>
@@ -104,7 +104,7 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
     if (shouldCollapse && !isExpanded) {
       return (
         <span
-          className='cursor-pointer break-all font-[380] text-muted-foreground text-xs leading-normal'
+          className='cursor-pointer break-all font-[380] text-muted-foreground/70 text-xs leading-normal'
           onClick={() => setIsExpanded(true)}
         >
           {'{...}'}
@@ -113,7 +113,7 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
     }
 
     return (
-      <span className='break-all font-[380] text-muted-foreground leading-normal'>
+      <span className='break-all font-[380] text-muted-foreground/70 leading-normal'>
         {'{'}
         {keys.length > 0 && (
           <>
@@ -121,8 +121,8 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
             {keys.map((key, index) => (
               <span key={key} className='break-all'>
                 {'  '.repeat(depth + 1)}
-                <span className='break-all font-[380] text-foreground leading-normal'>"{key}"</span>
-                <span className='font-[380] text-muted-foreground leading-normal'>: </span>
+                <span className='break-all font-[380] text-foreground leading-normal'>{key}</span>
+                <span className='font-[380] text-muted-foreground/60 leading-normal'>: </span>
                 <CollapsibleJSON data={data[key]} depth={depth + 1} />
                 {index < keys.length - 1 ? ',' : ''}
                 {'\n'}
