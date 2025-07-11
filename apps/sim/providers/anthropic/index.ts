@@ -364,15 +364,15 @@ ${fieldDescriptions}
                   pendingToolCallsCount: pendingToolCalls.length,
                 })
 
-                                 if (pendingToolCalls.length > 0) {
-                   // Add visual separator before tool execution
-                   const displayNames = groupToolsByDisplayName(pendingToolCalls)
-                   const statusMessage = `\n\n🔄 ${displayNames.join(' • ')}\n\n`
-                   controller.enqueue(new TextEncoder().encode(statusMessage))
-                   
-                   // Execute tools and continue conversation
-                   await executeToolsAndContinue(pendingToolCalls, controller)
-                 }
+                if (pendingToolCalls.length > 0) {
+                  // Add visual separator before tool execution
+                  const displayNames = groupToolsByDisplayName(pendingToolCalls)
+                  const statusMessage = `\n\n🔄 ${displayNames.join(' • ')}\n\n`
+                  controller.enqueue(new TextEncoder().encode(statusMessage))
+
+                  // Execute tools and continue conversation
+                  await executeToolsAndContinue(pendingToolCalls, controller)
+                }
 
                 controller.close()
                 break
@@ -409,7 +409,7 @@ ${fieldDescriptions}
       // Helper function to group tools by their display names
       const groupToolsByDisplayName = (toolCalls: any[]): string[] => {
         const displayNameSet = new Set<string>()
-        toolCalls.forEach(tc => {
+        toolCalls.forEach((tc) => {
           displayNameSet.add(getToolDisplayName(tc.name))
         })
         return Array.from(displayNameSet)
@@ -493,19 +493,19 @@ ${fieldDescriptions}
               })) as any,
           })
 
-                     // Add subtle completion indicator before continuing
-           const completionMessage = `\n`
-           controller.enqueue(new TextEncoder().encode(completionMessage))
+          // Add subtle completion indicator before continuing
+          const completionMessage = `\n`
+          controller.enqueue(new TextEncoder().encode(completionMessage))
 
-           // Continue the conversation with tool results
-           const nextStreamResponse = await anthropic.messages.create({
-             ...payload,
-             messages: conversationMessages,
-             stream: true,
-           })
+          // Continue the conversation with tool results
+          const nextStreamResponse = await anthropic.messages.create({
+            ...payload,
+            messages: conversationMessages,
+            stream: true,
+          })
 
-           // Parse the continuation stream
-           await parseContinuationStream(nextStreamResponse, controller)
+          // Parse the continuation stream
+          await parseContinuationStream(nextStreamResponse, controller)
         } catch (error) {
           logger.error('Error executing tools and continuing conversation:', { error })
           // Continue streaming even if tools fail
