@@ -52,7 +52,10 @@ export function ToolCallExecution({ toolCall, isCompact = false }: ToolCallProps
                 {toolCall.displayName || toolCall.name}
               </span>
               {toolCall.progress && (
-                <Badge variant='outline' className='shrink-0 text-amber-700 text-xs dark:text-amber-300'>
+                <Badge
+                  variant='outline'
+                  className='shrink-0 text-amber-700 text-xs dark:text-amber-300'
+                >
                   {toolCall.progress}
                 </Badge>
               )}
@@ -64,18 +67,18 @@ export function ToolCallExecution({ toolCall, isCompact = false }: ToolCallProps
             )}
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent className='min-w-0 px-3 pb-3'>
-          <div className='min-w-0 space-y-2'>
+        <CollapsibleContent className='min-w-0 max-w-full px-3 pb-3'>
+          <div className='min-w-0 max-w-full space-y-2'>
             <div className='flex items-center gap-2 text-amber-700 text-xs dark:text-amber-300'>
               <Loader2 className='h-3 w-3 shrink-0 animate-spin' />
               <span>Executing...</span>
             </div>
             {toolCall.parameters && Object.keys(toolCall.parameters).length > 0 && (
-              <div className='min-w-0 rounded bg-amber-100 p-2 dark:bg-amber-900'>
+              <div className='min-w-0 max-w-full rounded bg-amber-100 p-2 dark:bg-amber-900'>
                 <div className='mb-1 font-medium text-amber-800 text-xs dark:text-amber-200'>
                   Parameters:
                 </div>
-                <div className='min-w-0 break-all font-mono text-amber-700 text-xs dark:text-amber-300'>
+                <div className='min-w-0 max-w-full break-all font-mono text-amber-700 text-xs dark:text-amber-300'>
                   {JSON.stringify(toolCall.parameters, null, 2)}
                 </div>
               </div>
@@ -118,7 +121,9 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
           >
             <div className='flex min-w-0 flex-col gap-1'>
               <div className='flex min-w-0 items-center gap-2 overflow-hidden'>
-                {isSuccess && <CheckCircle className='h-4 w-4 shrink-0 text-green-600 dark:text-green-400' />}
+                {isSuccess && (
+                  <CheckCircle className='h-4 w-4 shrink-0 text-green-600 dark:text-green-400' />
+                )}
                 {isError && <XCircle className='h-4 w-4 shrink-0 text-red-600 dark:text-red-400' />}
                 <span
                   className={cn(
@@ -166,12 +171,12 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
             </div>
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent className='min-w-0 px-3 pb-3'>
-          <div className='min-w-0 space-y-2'>
+        <CollapsibleContent className='min-w-0 max-w-full px-3 pb-3'>
+          <div className='min-w-0 max-w-full space-y-2'>
             {toolCall.parameters && Object.keys(toolCall.parameters).length > 0 && (
               <div
                 className={cn(
-                  'min-w-0 rounded p-2',
+                  'min-w-0 max-w-full rounded p-2',
                   isSuccess && 'bg-green-100 dark:bg-green-900',
                   isError && 'bg-red-100 dark:bg-red-900'
                 )}
@@ -187,7 +192,7 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
                 </div>
                 <div
                   className={cn(
-                    'min-w-0 break-all font-mono text-xs',
+                    'min-w-0 max-w-full break-all font-mono text-xs',
                     isSuccess && 'text-green-700 dark:text-green-300',
                     isError && 'text-red-700 dark:text-red-300'
                   )}
@@ -199,7 +204,7 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
             {toolCall.result && (
               <div
                 className={cn(
-                  'min-w-0 rounded p-2',
+                  'min-w-0 max-w-full rounded p-2',
                   isSuccess && 'bg-green-100 dark:bg-green-900',
                   isError && 'bg-red-100 dark:bg-red-900'
                 )}
@@ -215,7 +220,7 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
                 </div>
                 <div
                   className={cn(
-                    'min-w-0 break-all font-mono text-xs',
+                    'min-w-0 max-w-full break-all font-mono text-xs',
                     isSuccess && 'text-green-700 dark:text-green-300',
                     isError && 'text-red-700 dark:text-red-300'
                   )}
@@ -227,11 +232,11 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
               </div>
             )}
             {toolCall.error && (
-              <div className='min-w-0 rounded bg-red-100 p-2 dark:bg-red-900'>
+              <div className='min-w-0 max-w-full rounded bg-red-100 p-2 dark:bg-red-900'>
                 <div className='mb-1 font-medium text-red-800 text-xs dark:text-red-200'>
                   Error:
                 </div>
-                <div className='min-w-0 break-all font-mono text-red-700 text-xs dark:text-red-300'>
+                <div className='min-w-0 max-w-full break-all font-mono text-red-700 text-xs dark:text-red-300'>
                   {toolCall.error}
                 </div>
               </div>
@@ -268,7 +273,10 @@ export function ToolCallGroupComponent({ group, isCompact = false }: ToolCallGro
 
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CollapsibleTrigger asChild>
-          <Button variant='ghost' className='w-full min-w-0 justify-between p-2 text-sm hover:bg-muted'>
+          <Button
+            variant='ghost'
+            className='w-full min-w-0 justify-between p-2 text-sm hover:bg-muted'
+          >
             <div className='flex min-w-0 items-center gap-2 overflow-hidden'>
               <span className='min-w-0 truncate text-muted-foreground'>
                 {isAllCompleted ? 'Completed' : 'In Progress'} ({completedCount}/{totalCount})
@@ -286,9 +294,9 @@ export function ToolCallGroupComponent({ group, isCompact = false }: ToolCallGro
             )}
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent className='min-w-0 space-y-2'>
+        <CollapsibleContent className='min-w-0 max-w-full space-y-2'>
           {group.toolCalls.map((toolCall) => (
-            <div key={toolCall.id} className='min-w-0'>
+            <div key={toolCall.id} className='min-w-0 max-w-full'>
               {toolCall.state === 'executing' && (
                 <ToolCallExecution toolCall={toolCall} isCompact={isCompact} />
               )}
@@ -309,7 +317,9 @@ export function ToolCallIndicator({ type, content, toolNames }: ToolCallIndicato
     return (
       <div className='flex min-w-0 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
         <Loader2 className='h-4 w-4 shrink-0 animate-spin text-blue-600 dark:text-blue-400' />
-        <span className='min-w-0 truncate text-blue-800 dark:text-blue-200'>🔄 {toolNames.join(' • ')}</span>
+        <span className='min-w-0 truncate text-blue-800 dark:text-blue-200'>
+          🔄 {toolNames.join(' • ')}
+        </span>
       </div>
     )
   }
