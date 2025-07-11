@@ -321,7 +321,7 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
           {!showCheckpoints && (
             <>
               {/* Mode Selector */}
-              <div className='border-t px-4 py-2'>
+              <div className='border-t px-4 pt-2'>
                 <div className='flex items-center gap-1 rounded-md border bg-muted/30 p-0.5'>
                   <Button
                     variant='ghost'
