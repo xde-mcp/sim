@@ -177,7 +177,7 @@ async function handleApiError(response: Response, defaultMessage: string): Promi
  */
 async function makeApiRequest<T>(
   url: string,
-  options: RequestInit = {},
+  options: RequestInit,
   defaultErrorMessage: string
 ): Promise<ApiResponse<T>> {
   try {
@@ -242,11 +242,7 @@ export async function listChats(
     offset: (options.offset || 0).toString(),
   })
 
-  const result = await makeApiRequest<any>(
-    `/api/copilot?${params}`,
-    {},
-    'Failed to list chats'
-  )
+  const result = await makeApiRequest<any>(`/api/copilot?${params}`, {}, 'Failed to list chats')
 
   return {
     success: result.success,
@@ -341,7 +337,9 @@ export async function sendMessage(request: SendMessageRequest): Promise<MessageR
 /**
  * Send a streaming message using the unified copilot API
  */
-export async function sendStreamingMessage(request: SendMessageRequest): Promise<StreamingResponse> {
+export async function sendStreamingMessage(
+  request: SendMessageRequest
+): Promise<StreamingResponse> {
   try {
     const response = await fetch('/api/copilot', {
       method: 'POST',
@@ -405,7 +403,9 @@ export async function sendDocsMessage(request: DocsQueryRequest): Promise<DocsRe
 /**
  * Send a streaming documentation query using the main copilot API
  */
-export async function sendStreamingDocsMessage(request: DocsQueryRequest): Promise<StreamingResponse> {
+export async function sendStreamingDocsMessage(
+  request: DocsQueryRequest
+): Promise<StreamingResponse> {
   try {
     const message = `Please search the documentation and answer this question: ${request.query}`
 

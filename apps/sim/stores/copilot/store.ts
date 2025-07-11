@@ -120,9 +120,11 @@ export const useCopilotStore = create<CopilotStore>()(
 
           // Load chats for the new workflow
           if (workflowId) {
-            get().loadChats().catch((error) => {
-              logger.error('Failed to load chats after workflow change:', error)
-            })
+            get()
+              .loadChats()
+              .catch((error) => {
+                logger.error('Failed to load chats after workflow change:', error)
+              })
           }
         }
       },
@@ -431,18 +433,14 @@ export const useCopilotStore = create<CopilotStore>()(
                     // Update the streaming message
                     set((state) => ({
                       messages: state.messages.map((msg) =>
-                        msg.id === messageId
-                          ? { ...msg, content: accumulatedContent }
-                          : msg
+                        msg.id === messageId ? { ...msg, content: accumulatedContent } : msg
                       ),
                     }))
                   } else if (data.type === 'complete') {
                     // Final update
                     set((state) => ({
                       messages: state.messages.map((msg) =>
-                        msg.id === messageId
-                          ? { ...msg, content: accumulatedContent }
-                          : msg
+                        msg.id === messageId ? { ...msg, content: accumulatedContent } : msg
                       ),
                       isSendingMessage: false,
                     }))

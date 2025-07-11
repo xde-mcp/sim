@@ -162,7 +162,10 @@ function applyEnvironmentOverrides(config: CopilotConfig): void {
     config.chat.defaultModel = process.env.COPILOT_CHAT_MODEL
   }
 
-  const chatTemperature = parseFloatEnv(process.env.COPILOT_CHAT_TEMPERATURE, 'COPILOT_CHAT_TEMPERATURE')
+  const chatTemperature = parseFloatEnv(
+    process.env.COPILOT_CHAT_TEMPERATURE,
+    'COPILOT_CHAT_TEMPERATURE'
+  )
   if (chatTemperature !== null) {
     config.chat.temperature = chatTemperature
   }
@@ -186,7 +189,10 @@ function applyEnvironmentOverrides(config: CopilotConfig): void {
     config.rag.defaultModel = process.env.COPILOT_RAG_MODEL
   }
 
-  const ragTemperature = parseFloatEnv(process.env.COPILOT_RAG_TEMPERATURE, 'COPILOT_RAG_TEMPERATURE')
+  const ragTemperature = parseFloatEnv(
+    process.env.COPILOT_RAG_TEMPERATURE,
+    'COPILOT_RAG_TEMPERATURE'
+  )
   if (ragTemperature !== null) {
     config.rag.temperature = ragTemperature
   }
@@ -236,7 +242,7 @@ export function getCopilotConfig(): CopilotConfig {
 
   try {
     applyEnvironmentOverrides(config)
-    
+
     logger.info('Copilot configuration loaded', {
       chatProvider: config.chat.defaultProvider,
       chatModel: config.chat.defaultModel,
@@ -323,13 +329,41 @@ export function validateCopilotConfig(config: CopilotConfig): ValidationResult {
 
   // Validate configuration values using constraints
   const validationChecks = [
-    { value: config.chat.temperature, constraint: VALIDATION_CONSTRAINTS.temperature, name: 'Chat temperature' },
-    { value: config.rag.temperature, constraint: VALIDATION_CONSTRAINTS.temperature, name: 'RAG temperature' },
-    { value: config.chat.maxTokens, constraint: VALIDATION_CONSTRAINTS.maxTokens, name: 'Chat maxTokens' },
-    { value: config.rag.maxTokens, constraint: VALIDATION_CONSTRAINTS.maxTokens, name: 'RAG maxTokens' },
-    { value: config.rag.maxSources, constraint: VALIDATION_CONSTRAINTS.maxSources, name: 'RAG maxSources' },
-    { value: config.rag.similarityThreshold, constraint: VALIDATION_CONSTRAINTS.similarityThreshold, name: 'RAG similarityThreshold' },
-    { value: config.general.maxConversationHistory, constraint: VALIDATION_CONSTRAINTS.maxConversationHistory, name: 'General maxConversationHistory' },
+    {
+      value: config.chat.temperature,
+      constraint: VALIDATION_CONSTRAINTS.temperature,
+      name: 'Chat temperature',
+    },
+    {
+      value: config.rag.temperature,
+      constraint: VALIDATION_CONSTRAINTS.temperature,
+      name: 'RAG temperature',
+    },
+    {
+      value: config.chat.maxTokens,
+      constraint: VALIDATION_CONSTRAINTS.maxTokens,
+      name: 'Chat maxTokens',
+    },
+    {
+      value: config.rag.maxTokens,
+      constraint: VALIDATION_CONSTRAINTS.maxTokens,
+      name: 'RAG maxTokens',
+    },
+    {
+      value: config.rag.maxSources,
+      constraint: VALIDATION_CONSTRAINTS.maxSources,
+      name: 'RAG maxSources',
+    },
+    {
+      value: config.rag.similarityThreshold,
+      constraint: VALIDATION_CONSTRAINTS.similarityThreshold,
+      name: 'RAG similarityThreshold',
+    },
+    {
+      value: config.general.maxConversationHistory,
+      constraint: VALIDATION_CONSTRAINTS.maxConversationHistory,
+      name: 'General maxConversationHistory',
+    },
   ]
 
   for (const check of validationChecks) {

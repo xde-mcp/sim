@@ -1,6 +1,6 @@
 import { createLogger } from '@/lib/logs/console-logger'
-import { useWorkflowYamlStore } from '@/stores/workflows/yaml/store'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
+import { useWorkflowYamlStore } from '@/stores/workflows/yaml/store'
 import { searchDocumentation } from './service'
 
 const logger = createLogger('CopilotTools')
@@ -66,7 +66,8 @@ interface UserWorkflowData {
 const docsSearchTool: CopilotTool = {
   id: 'docs_search_internal',
   name: 'Search Documentation',
-  description: 'Search Sim Studio documentation for information about features, tools, workflows, and functionality',
+  description:
+    'Search Sim Studio documentation for information about features, tools, workflows, and functionality',
   parameters: {
     type: 'object',
     properties: {
@@ -111,7 +112,8 @@ const docsSearchTool: CopilotTool = {
 const getUserWorkflowTool: CopilotTool = {
   id: 'get_user_workflow',
   name: 'Get User Workflow',
-  description: 'Get the current user workflow as YAML format. This shows all blocks, their configurations, inputs, and connections in the workflow.',
+  description:
+    'Get the current user workflow as YAML format. This shows all blocks, their configurations, inputs, and connections in the workflow.',
   parameters: {
     type: 'object',
     properties: {},

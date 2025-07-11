@@ -1,12 +1,12 @@
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { createLogger } from '@/lib/logs/console-logger'
+import { getRotatingApiKey } from '@/lib/utils'
+import { generateEmbeddings } from '@/app/api/knowledge/utils'
 import { db } from '@/db'
 import { copilotChats, docsEmbeddings } from '@/db/schema'
 import { executeProviderRequest } from '@/providers'
 import type { ProviderToolConfig } from '@/providers/types'
 import { getApiKey } from '@/providers/utils'
-import { getRotatingApiKey } from '@/lib/utils'
-import { generateEmbeddings } from '@/app/api/knowledge/utils'
 import { getCopilotConfig, getCopilotModel } from './config'
 import {
   AGENT_MODE_SYSTEM_PROMPT,
@@ -157,23 +157,23 @@ function buildConversationMessages(
   maxHistory: number
 ): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
   const messages = []
-  
+
   // Add conversation history (limited by config)
   const recentHistory = conversationHistory.slice(-maxHistory)
-  
+
   for (const msg of recentHistory) {
     messages.push({
       role: msg.role as 'user' | 'assistant' | 'system',
       content: msg.content,
     })
   }
-  
+
   // Add current user message
   messages.push({
     role: 'user' as const,
     content: message,
   })
-  
+
   return messages
 }
 
@@ -185,7 +185,8 @@ function getAvailableTools(mode: 'ask' | 'agent'): ProviderToolConfig[] {
     {
       id: 'docs_search_internal',
       name: 'Search Documentation',
-      description: 'Search Sim Studio documentation for information about features, tools, workflows, and functionality',
+      description:
+        'Search Sim Studio documentation for information about features, tools, workflows, and functionality',
       params: {},
       parameters: {
         type: 'object',
@@ -206,14 +207,16 @@ function getAvailableTools(mode: 'ask' | 'agent'): ProviderToolConfig[] {
     {
       id: 'get_user_workflow',
       name: "Get User's Specific Workflow",
-      description: 'Get the user\'s current workflow - this shows ONLY the blocks they have actually built and configured in their specific workflow, not general Sim Studio capabilities.',
+      description:
+        "Get the user's current workflow - this shows ONLY the blocks they have actually built and configured in their specific workflow, not general Sim Studio capabilities.",
       params: {},
       parameters: {
         type: 'object',
         properties: {
           includeMetadata: {
             type: 'boolean',
-            description: 'Whether to include additional metadata about the workflow (default: false)',
+            description:
+              'Whether to include additional metadata about the workflow (default: false)',
             default: false,
           },
         },
@@ -223,14 +226,16 @@ function getAvailableTools(mode: 'ask' | 'agent'): ProviderToolConfig[] {
     {
       id: 'get_blocks_and_tools',
       name: 'Get All Blocks and Tools',
-      description: 'Get a comprehensive list of all available blocks and tools in Sim Studio with their descriptions, categories, and capabilities.',
+      description:
+        'Get a comprehensive list of all available blocks and tools in Sim Studio with their descriptions, categories, and capabilities.',
       params: {},
       parameters: {
         type: 'object',
         properties: {
           includeDetails: {
             type: 'boolean',
-            description: 'Whether to include detailed information like inputs, outputs, and sub-blocks (default: false)',
+            description:
+              'Whether to include detailed information like inputs, outputs, and sub-blocks (default: false)',
             default: false,
           },
           filterCategory: {
@@ -244,7 +249,8 @@ function getAvailableTools(mode: 'ask' | 'agent'): ProviderToolConfig[] {
     {
       id: 'get_blocks_metadata',
       name: 'Get Block Metadata',
-      description: 'Get detailed metadata including descriptions, schemas, inputs, outputs, and subblocks for specific blocks and their associated tools.',
+      description:
+        'Get detailed metadata including descriptions, schemas, inputs, outputs, and subblocks for specific blocks and their associated tools.',
       params: {},
       parameters: {
         type: 'object',
@@ -263,7 +269,8 @@ function getAvailableTools(mode: 'ask' | 'agent'): ProviderToolConfig[] {
     {
       id: 'get_yaml_structure',
       name: 'Get YAML Workflow Structure Guide',
-      description: 'Get comprehensive YAML workflow syntax guide and examples to understand how to structure Sim Studio workflows.',
+      description:
+        'Get comprehensive YAML workflow syntax guide and examples to understand how to structure Sim Studio workflows.',
       params: {},
       parameters: {
         type: 'object',
@@ -274,7 +281,8 @@ function getAvailableTools(mode: 'ask' | 'agent'): ProviderToolConfig[] {
     {
       id: 'edit_workflow',
       name: 'Edit Workflow',
-      description: 'Save/edit the current workflow by providing YAML content. This performs the same action as saving in the YAML code editor.',
+      description:
+        'Save/edit the current workflow by providing YAML content. This performs the same action as saving in the YAML code editor.',
       params: {},
       parameters: {
         type: 'object',
@@ -400,16 +408,20 @@ export async function generateChatResponse(
 
   try {
     const apiKey = getProviderApiKey(provider, model)
-    
+
     // Build conversation context
-    const messages = buildConversationMessages(message, conversationHistory, config.general.maxConversationHistory)
-    
+    const messages = buildConversationMessages(
+      message,
+      conversationHistory,
+      config.general.maxConversationHistory
+    )
+
     // Get available tools for the mode
     const tools = getAvailableTools(mode)
-    
+
     // Get the appropriate system prompt for the mode
     const systemPrompt = mode === 'ask' ? ASK_MODE_SYSTEM_PROMPT : AGENT_MODE_SYSTEM_PROMPT
-    
+
     // Validate system prompt
     validateSystemPrompt(mode, systemPrompt)
 
