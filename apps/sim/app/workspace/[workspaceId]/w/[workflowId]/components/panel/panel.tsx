@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CircleSlash, X } from 'lucide-react'
+import { ArrowDownToLine, CircleSlash, X } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useChatStore } from '@/stores/panel/chat/store'
 import { useConsoleStore } from '@/stores/panel/console/store'
@@ -22,7 +22,9 @@ export function Panel() {
   const setActiveTab = usePanelStore((state) => state.setActiveTab)
 
   const clearConsole = useConsoleStore((state) => state.clearConsole)
+  const exportConsoleCSV = useConsoleStore((state) => state.exportConsoleCSV)
   const clearChat = useChatStore((state) => state.clearChat)
+  const exportChatCSV = useChatStore((state) => state.exportChatCSV)
   const { activeWorkflowId } = useWorkflowRegistry()
 
   // Fixed width to match floating tab selector
@@ -76,6 +78,34 @@ export function Panel() {
           <div className='flex items-center justify-between pt-3 pb-1'>
             <h2 className='font-[450] text-base text-card-foreground capitalize'>{activeTab}</h2>
             <div className='flex items-center gap-2'>
+              {activeTab === 'console' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => activeWorkflowId && exportConsoleCSV(activeWorkflowId)}
+                      className='font-medium text-md leading-normal transition-all hover:brightness-75 dark:hover:brightness-125'
+                      style={{ color: 'var(--base-muted-foreground)' }}
+                    >
+                      <ArrowDownToLine className='h-4 w-4' strokeWidth={2} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side='bottom'>Export console data</TooltipContent>
+                </Tooltip>
+              )}
+              {activeTab === 'chat' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => activeWorkflowId && exportChatCSV(activeWorkflowId)}
+                      className='font-medium text-md leading-normal transition-all hover:brightness-75 dark:hover:brightness-125'
+                      style={{ color: 'var(--base-muted-foreground)' }}
+                    >
+                      <ArrowDownToLine className='h-4 w-4' strokeWidth={2} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side='bottom'>Export chat data</TooltipContent>
+                </Tooltip>
+              )}
               {(activeTab === 'console' || activeTab === 'chat') && (
                 <Tooltip>
                   <TooltipTrigger asChild>
