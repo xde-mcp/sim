@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { AudioPlayer } from '../audio-player/audio-player'
 
 interface JSONViewProps {
   data: any
@@ -454,7 +453,6 @@ export const JSONView = ({ data }: JSONViewProps) => {
   if (hasAudioUrl) {
     return (
       <div onContextMenu={handleContextMenu}>
-        <AudioPlayer audioUrl={data.audioUrl} />
         <pre className='max-w-full overflow-hidden whitespace-pre-wrap break-all font-mono'>
           <CollapsibleJSON data={data} />
         </pre>

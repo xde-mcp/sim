@@ -1,19 +1,112 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
-import { AlertCircle, Check, ChevronDown, ChevronUp, Copy } from 'lucide-react'
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Download,
+  Pause,
+  Play,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logs/console-logger'
 import { getBlock } from '@/blocks'
 import type { ConsoleEntry as ConsoleEntryType } from '@/stores/panel/console/types'
 import { JSONView } from '../json-view/json-view'
+
+const logger = createLogger('ConsoleEntry')
 
 interface ConsoleEntryProps {
   entry: ConsoleEntryType
   consoleWidth: number
 }
 
+// Helper function to check if an object contains an audio URL
+const hasAudioData = (obj: any): boolean => {
+  return obj && typeof obj === 'object' && 'audioUrl' in obj && typeof obj.audioUrl === 'string'
+}
+
 export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
   const [isExpanded, setIsExpanded] = useState(true) // Default expanded
   const [showCopySuccess, setShowCopySuccess] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Check if entry has audio data
+  const hasAudio = useMemo(() => {
+    return entry.output != null && hasAudioData(entry.output)
+  }, [entry.output])
+
+  const audioUrl = useMemo(() => {
+    return hasAudio && entry.output ? entry.output.audioUrl : null
+  }, [hasAudio, entry.output])
+
+  // Audio player logic
+  useEffect(() => {
+    if (!hasAudio || !audioUrl) return
+
+    if (!audioRef.current) {
+      audioRef.current = new Audio(audioUrl)
+      audioRef.current.addEventListener('ended', () => setIsPlaying(false))
+      audioRef.current.addEventListener('pause', () => setIsPlaying(false))
+      audioRef.current.addEventListener('play', () => setIsPlaying(true))
+      audioRef.current.addEventListener('timeupdate', updateProgress)
+    } else {
+      audioRef.current.src = audioUrl
+      setProgress(0)
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.removeEventListener('ended', () => setIsPlaying(false))
+        audioRef.current.removeEventListener('pause', () => setIsPlaying(false))
+        audioRef.current.removeEventListener('play', () => setIsPlaying(true))
+        audioRef.current.removeEventListener('timeupdate', updateProgress)
+      }
+    }
+  }, [hasAudio, audioUrl])
+
+  const updateProgress = () => {
+    if (audioRef.current) {
+      const value = (audioRef.current.currentTime / audioRef.current.duration) * 100
+      setProgress(Number.isNaN(value) ? 0 : value)
+    }
+  }
+
+  const togglePlay = () => {
+    if (!audioRef.current) return
+
+    if (isPlaying) {
+      audioRef.current.pause()
+    } else {
+      audioRef.current.play()
+    }
+  }
+
+  const downloadAudio = async () => {
+    if (!audioUrl) return
+
+    try {
+      const response = await fetch(audioUrl)
+      const blob = await response.blob()
+
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `tts-audio-${Date.now()}.mp3`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      logger.error('Error downloading audio:', error)
+    }
+  }
 
   const blockConfig = useMemo(() => {
     if (!entry.blockType) return null
@@ -111,6 +204,33 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
             <div className='relative'>
               {/* Copy and Expand/Collapse buttons */}
               <div className='absolute top-[-2.8] right-0 z-10 flex items-center gap-1'>
+                {/* Audio controls - only show if audio data exists */}
+                {hasAudio && (
+                  <>
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      className='h-6 w-6 p-0 hover:bg-transparent'
+                      onClick={togglePlay}
+                      aria-label={isPlaying ? 'Pause' : 'Play'}
+                    >
+                      {isPlaying ? (
+                        <Pause className='h-3 w-3 text-muted-foreground' />
+                      ) : (
+                        <Play className='h-3 w-3 text-muted-foreground' />
+                      )}
+                    </Button>
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      className='h-6 w-6 p-0 hover:bg-transparent'
+                      onClick={downloadAudio}
+                      aria-label='Download audio'
+                    >
+                      <Download className='h-3 w-3 text-muted-foreground' />
+                    </Button>
+                  </>
+                )}
                 <Button
                   variant='ghost'
                   size='sm'
@@ -136,7 +256,7 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
                   )}
                 </Button>
               </div>
-              
+
               {/* Content */}
               {isExpanded ? (
                 <div className='max-w-full overflow-hidden break-all font-mono font-normal text-muted-foreground text-sm leading-normal'>

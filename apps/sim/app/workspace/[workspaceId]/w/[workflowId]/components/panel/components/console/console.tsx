@@ -19,7 +19,7 @@ export function Console({ panelWidth }: ConsoleProps) {
   }, [entries, activeWorkflowId])
 
   return (
-    <ScrollArea className='h-full pt-2 pl-[1px]'>
+    <ScrollArea className='h-full pt-2 pl-[1px]' hideScrollbar={true}>
       <div className='space-y-3'>
         {filteredEntries.length === 0 ? (
           <div className='flex h-32 items-center justify-center pt-4 text-muted-foreground text-sm'>

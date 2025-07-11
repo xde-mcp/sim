@@ -50,11 +50,7 @@ function ModalChatMessage({ message }: ChatMessageProps) {
         <div className='flex'>
           <div className='max-w-[80%]'>
             <div className='whitespace-pre-wrap break-words text-base leading-relaxed'>
-              {isJsonObject ? (
-                <JSONView data={message.content} />
-              ) : (
-                <span>{message.content}</span>
-              )}
+              {isJsonObject ? <JSONView data={message.content} /> : <span>{message.content}</span>}
             </div>
           </div>
         </div>
