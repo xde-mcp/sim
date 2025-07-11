@@ -238,12 +238,12 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
         <div className='message-container group flex w-full max-w-full justify-start overflow-hidden px-4 py-3'>
           <div className='flex w-full max-w-[85%] flex-col'>
             {/* Main message content with icon */}
-            <div className='flex items-end gap-3 mb-3'>
+            <div className='mb-3 flex items-end gap-3'>
               {/* Bot icon aligned with bottom of message bubble */}
-              <div className='flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm flex-shrink-0'>
+              <div className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm'>
                 <Bot className={`h-4 w-4 ${isStreaming ? 'animate-spin' : ''}`} />
               </div>
-              
+
               {/* Message content */}
               <div className='flex min-w-0 flex-1 flex-col items-start space-y-2'>
                 {/* Inline content rendering - tool calls and text in order */}
@@ -339,9 +339,9 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
                 )}
               </div>
             </div>
-            
+
             {/* Timestamp and actions - separate from main content */}
-            <div className='flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100 ml-11'>
+            <div className='ml-11 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100'>
               <span className='text-muted-foreground text-xs'>
                 {formatTimestamp(message.timestamp)}
               </span>
@@ -359,7 +359,7 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
 
             {/* Citations if available */}
             {message.citations && message.citations.length > 0 && (
-              <div className='mt-2 max-w-full space-y-1 ml-11'>
+              <div className='mt-2 ml-11 max-w-full space-y-1'>
                 <div className='font-medium text-muted-foreground text-xs'>Sources:</div>
                 <div className='flex flex-wrap gap-1'>
                   {message.citations.map((citation) => (
