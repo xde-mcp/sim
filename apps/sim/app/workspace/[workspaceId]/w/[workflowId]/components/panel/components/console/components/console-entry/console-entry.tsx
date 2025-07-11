@@ -28,11 +28,142 @@ const hasAudioData = (obj: any): boolean => {
   return obj && typeof obj === 'object' && 'audioUrl' in obj && typeof obj.audioUrl === 'string'
 }
 
+// Helper function to check if a string is likely a base64 image
+const isBase64Image = (str: string): boolean => {
+  if (typeof str !== 'string') return false
+  return str.length > 100 && /^[A-Za-z0-9+/=]+$/.test(str)
+}
+
+// Helper function to check if an object contains an image URL
+const hasImageData = (obj: any): boolean => {
+  if (!obj || typeof obj !== 'object') return false
+
+  // Case 1: Has explicit image data (base64)
+  if (
+    'image' in obj &&
+    typeof obj.image === 'string' &&
+    obj.image.length > 0 &&
+    isBase64Image(obj.image)
+  ) {
+    return true
+  }
+
+  // Case 2: Has explicit image type in metadata
+  if (
+    obj.metadata?.type &&
+    typeof obj.metadata.type === 'string' &&
+    obj.metadata.type.toLowerCase() === 'image'
+  ) {
+    return true
+  }
+
+  // Case 3: Content URL points to an image file
+  if (typeof obj.content === 'string' && obj.content.startsWith('http')) {
+    return !!obj.content.toLowerCase().match(/\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/)
+  }
+
+  // Case 4: Has URL property with image extension
+  if ('url' in obj && typeof obj.url === 'string') {
+    if (obj.metadata?.fileType?.startsWith('image/')) {
+      return true
+    }
+    const url = obj.url.toLowerCase()
+    return url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/) !== null
+  }
+
+  return false
+}
+
+// Get image URL from object
+const getImageUrl = (obj: any): string | null => {
+  if (!obj || typeof obj !== 'object') return null
+
+  // Try content field first
+  if (typeof obj.content === 'string' && obj.content.startsWith('http')) {
+    return obj.content
+  }
+
+  // Try url field
+  if ('url' in obj && typeof obj.url === 'string') {
+    return obj.url
+  }
+
+  return null
+}
+
+// Get base64 image data from object
+const getImageData = (obj: any): string | null => {
+  if (!obj || typeof obj !== 'object') return null
+
+  if (
+    'image' in obj &&
+    typeof obj.image === 'string' &&
+    obj.image.length > 0 &&
+    isBase64Image(obj.image)
+  ) {
+    return obj.image
+  }
+
+  return null
+}
+
+// Image preview component
+const ImagePreview = ({
+  imageUrl,
+  imageData,
+  isBase64 = false,
+  onLoadError,
+}: {
+  imageUrl?: string
+  imageData?: string
+  isBase64?: boolean
+  onLoadError?: (hasError: boolean) => void
+}) => {
+  const [loadError, setLoadError] = useState(false)
+
+  // Only display image if we have valid data
+  const hasValidData =
+    (isBase64 && imageData && imageData.length > 0) || (imageUrl && imageUrl.length > 0)
+
+  if (!hasValidData) {
+    return null
+  }
+
+  if (loadError) {
+    return null
+  }
+
+  // Determine the source for the image
+  const imageSrc =
+    isBase64 && imageData && imageData.length > 0
+      ? `data:image/png;base64,${imageData}`
+      : imageUrl || ''
+
+  return (
+    <div className='my-2 w-1/2'>
+      <img
+        src={imageSrc}
+        alt='Generated image'
+        className='h-auto w-full rounded-lg border'
+        onError={(e) => {
+          console.error('Image failed to load:', imageSrc)
+          setLoadError(true)
+          onLoadError?.(true)
+        }}
+        onLoad={() => {
+          onLoadError?.(false)
+        }}
+      />
+    </div>
+  )
+}
+
 export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
   const [isExpanded, setIsExpanded] = useState(true) // Default expanded
   const [showCopySuccess, setShowCopySuccess] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [imageLoadError, setImageLoadError] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // Check if entry has audio data
@@ -40,9 +171,29 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
     return entry.output != null && hasAudioData(entry.output)
   }, [entry.output])
 
+  // Check if entry has image data
+  const hasImage = useMemo(() => {
+    return entry.output != null && hasImageData(entry.output)
+  }, [entry.output])
+
+  // Only show image download button if image exists and didn't fail to load
+  const showImageDownload = hasImage && !imageLoadError
+
   const audioUrl = useMemo(() => {
     return hasAudio && entry.output ? entry.output.audioUrl : null
   }, [hasAudio, entry.output])
+
+  const imageUrl = useMemo(() => {
+    return hasImage && entry.output ? getImageUrl(entry.output) : null
+  }, [hasImage, entry.output])
+
+  const imageData = useMemo(() => {
+    return hasImage && entry.output ? getImageData(entry.output) : null
+  }, [hasImage, entry.output])
+
+  const isBase64Image = useMemo(() => {
+    return imageData != null && imageData.length > 0
+  }, [imageData])
 
   // Audio player logic
   useEffect(() => {
@@ -108,6 +259,47 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
     }
   }
 
+  const downloadImage = async () => {
+    try {
+      let blob: Blob
+      if (isBase64Image && imageData && imageData.length > 0) {
+        // Convert base64 to blob
+        const byteString = atob(imageData)
+        const arrayBuffer = new ArrayBuffer(byteString.length)
+        const uint8Array = new Uint8Array(arrayBuffer)
+        for (let i = 0; i < byteString.length; i++) {
+          uint8Array[i] = byteString.charCodeAt(i)
+        }
+        blob = new Blob([arrayBuffer], { type: 'image/png' })
+      } else if (imageUrl && imageUrl.length > 0) {
+        // Use proxy endpoint to fetch image
+        const proxyUrl = `/api/proxy/image?url=${encodeURIComponent(imageUrl)}`
+        const response = await fetch(proxyUrl)
+        if (!response.ok) {
+          throw new Error(`Failed to download image: ${response.statusText}`)
+        }
+        blob = await response.blob()
+      } else {
+        throw new Error('No image data or URL provided')
+      }
+
+      // Create object URL and trigger download
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `generated-image-${Date.now()}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      // Clean up the URL
+      setTimeout(() => URL.revokeObjectURL(url), 100)
+    } catch (error) {
+      console.error('Error downloading image:', error)
+      alert('Failed to download image. Please try again later.')
+    }
+  }
+
   const blockConfig = useMemo(() => {
     if (!entry.blockType) return null
     return getBlock(entry.blockType)
@@ -130,6 +322,11 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
 
   const BlockIcon = blockConfig?.icon
   const blockColor = blockConfig?.bgColor || '#6B7280'
+
+  // Handle image load error callback
+  const handleImageLoadError = (hasError: boolean) => {
+    setImageLoadError(hasError)
+  }
 
   return (
     <div className='space-y-3'>
@@ -231,6 +428,18 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
                     </Button>
                   </>
                 )}
+                {/* Image controls - only show if image data exists and didn't fail to load */}
+                {showImageDownload && (
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='h-6 w-6 p-0 hover:bg-transparent'
+                    onClick={downloadImage}
+                    aria-label='Download image'
+                  >
+                    <Download className='h-3 w-3 text-muted-foreground' />
+                  </Button>
+                )}
                 <Button
                   variant='ghost'
                   size='sm'
@@ -256,6 +465,16 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
                   )}
                 </Button>
               </div>
+
+              {/* Image preview - show before JSON content */}
+              {hasImage && (
+                <ImagePreview
+                  imageUrl={imageUrl || undefined}
+                  imageData={imageData || undefined}
+                  isBase64={isBase64Image}
+                  onLoadError={handleImageLoadError}
+                />
+              )}
 
               {/* Content */}
               {isExpanded ? (
