@@ -364,10 +364,15 @@ ${fieldDescriptions}
                   pendingToolCallsCount: pendingToolCalls.length,
                 })
 
-                if (pendingToolCalls.length > 0) {
-                  // Execute tools and continue conversation
-                  await executeToolsAndContinue(pendingToolCalls, controller)
-                }
+                                 if (pendingToolCalls.length > 0) {
+                   // Add visual separator before tool execution
+                   const displayNames = groupToolsByDisplayName(pendingToolCalls)
+                   const statusMessage = `\n\n🔄 ${displayNames.join(' • ')}\n\n`
+                   controller.enqueue(new TextEncoder().encode(statusMessage))
+                   
+                   // Execute tools and continue conversation
+                   await executeToolsAndContinue(pendingToolCalls, controller)
+                 }
 
                 controller.close()
                 break
@@ -384,6 +389,31 @@ ${fieldDescriptions}
       const conversationMessages = [...messages]
       const pendingToolCalls: any[] = []
       const completedToolCalls: any[] = []
+
+      // Tool ID to readable name mapping for better UX
+      const toolDisplayNames: Record<string, string> = {
+        get_user_workflow: 'Analyzing your workflow',
+        get_blocks_tools: 'Designing an approach',
+        get_block_metadata: 'Designing an approach',
+        edit_workflow: 'Building your workflow',
+        get_yaml_structure: 'Building your workflow',
+        search_documentation: 'Searching documentation',
+        // Add more mappings as needed
+      }
+
+      // Helper function to get display name for tool
+      const getToolDisplayName = (toolId: string): string => {
+        return toolDisplayNames[toolId] || `Executing ${toolId}`
+      }
+
+      // Helper function to group tools by their display names
+      const groupToolsByDisplayName = (toolCalls: any[]): string[] => {
+        const displayNameSet = new Set<string>()
+        toolCalls.forEach(tc => {
+          displayNameSet.add(getToolDisplayName(tc.name))
+        })
+        return Array.from(displayNameSet)
+      }
 
       // Helper function to execute tools and continue conversation
       const executeToolsAndContinue = async (
@@ -463,15 +493,19 @@ ${fieldDescriptions}
               })) as any,
           })
 
-          // Continue the conversation with tool results
-          const nextStreamResponse = await anthropic.messages.create({
-            ...payload,
-            messages: conversationMessages,
-            stream: true,
-          })
+                     // Add subtle completion indicator before continuing
+           const completionMessage = `\n`
+           controller.enqueue(new TextEncoder().encode(completionMessage))
 
-          // Parse the continuation stream
-          await parseContinuationStream(nextStreamResponse, controller)
+           // Continue the conversation with tool results
+           const nextStreamResponse = await anthropic.messages.create({
+             ...payload,
+             messages: conversationMessages,
+             stream: true,
+           })
+
+           // Parse the continuation stream
+           await parseContinuationStream(nextStreamResponse, controller)
         } catch (error) {
           logger.error('Error executing tools and continuing conversation:', { error })
           // Continue streaming even if tools fail
