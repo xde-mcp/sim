@@ -161,6 +161,7 @@ const ImagePreview = ({
 export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
   const [isExpanded, setIsExpanded] = useState(true) // Default expanded
   const [showCopySuccess, setShowCopySuccess] = useState(false)
+  const [showInput, setShowInput] = useState(false) // State for input/output toggle
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
   const [imageLoadError, setImageLoadError] = useState(false)
@@ -194,6 +195,21 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
   const isBase64Image = useMemo(() => {
     return imageData != null && imageData.length > 0
   }, [imageData])
+
+  // Get the data to display based on the toggle state
+  const displayData = useMemo(() => {
+    return showInput ? entry.input : entry.output
+  }, [showInput, entry.input, entry.output])
+
+  // Check if input data exists
+  const hasInputData = useMemo(() => {
+    return (
+      entry.input != null &&
+      (typeof entry.input === 'object'
+        ? Object.keys(entry.input).length > 0
+        : entry.input !== undefined && entry.input !== null)
+    )
+  }, [entry.input])
 
   // Audio player logic
   useEffect(() => {
@@ -306,7 +322,8 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
   }, [entry.blockType])
 
   const handleCopy = () => {
-    const stringified = JSON.stringify(entry.output, null, 2)
+    const dataToCopy = showInput ? entry.input : entry.output
+    const stringified = JSON.stringify(dataToCopy, null, 2)
     navigator.clipboard.writeText(stringified)
     setShowCopySuccess(true)
   }
@@ -345,7 +362,7 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
         </span>
       </div>
 
-      {/* Duration tag | Time tag */}
+      {/* Duration tag | Time tag | Input/Output tags */}
       <div className='flex items-center gap-2'>
         <div
           className={`flex h-5 items-center rounded-lg px-2 ${
@@ -370,6 +387,31 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
             {entry.startedAt ? format(new Date(entry.startedAt), 'HH:mm:ss') : 'N/A'}
           </span>
         </div>
+        {/* Input/Output tags - only show if input data exists */}
+        {hasInputData && (
+          <>
+            <button
+              onClick={() => setShowInput(false)}
+              className={`flex h-5 items-center rounded-lg px-2 transition-colors ${
+                !showInput
+                  ? 'border-[#e5e5e5] bg-[#f5f5f5] text-[#1a1a1a] dark:border-[#424242] dark:bg-[#1f1f1f] dark:text-[#ffffff]'
+                  : 'bg-secondary text-muted-foreground hover:bg-secondary hover:text-card-foreground'
+              }`}
+            >
+              <span className='font-normal text-xs leading-normal'>Output</span>
+            </button>
+            <button
+              onClick={() => setShowInput(true)}
+              className={`flex h-5 items-center rounded-lg px-2 transition-colors ${
+                showInput
+                  ? 'border-[#e5e5e5] bg-[#f5f5f5] text-[#1a1a1a] dark:border-[#424242] dark:bg-[#1f1f1f] dark:text-[#ffffff]'
+                  : 'bg-secondary text-muted-foreground hover:bg-secondary hover:text-card-foreground'
+              }`}
+            >
+              <span className='font-normal text-xs leading-normal'>Input</span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* Response area */}
@@ -396,13 +438,13 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
         )}
 
         {/* Success output */}
-        {!entry.error && !entry.warning && entry.output != null && (
+        {!entry.error && !entry.warning && (showInput ? hasInputData : entry.output != null) && (
           <div className='rounded-lg bg-secondary/50 p-3'>
             <div className='relative'>
               {/* Copy and Expand/Collapse buttons */}
               <div className='absolute top-[-2.8] right-0 z-10 flex items-center gap-1'>
-                {/* Audio controls - only show if audio data exists */}
-                {hasAudio && (
+                {/* Audio controls - only show if audio data exists and we're showing output */}
+                {hasAudio && !showInput && (
                   <>
                     <Button
                       variant='ghost'
@@ -428,8 +470,8 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
                     </Button>
                   </>
                 )}
-                {/* Image controls - only show if image data exists and didn't fail to load */}
-                {showImageDownload && (
+                {/* Image controls - only show if image data exists and didn't fail to load and we're showing output */}
+                {showImageDownload && !showInput && (
                   <Button
                     variant='ghost'
                     size='sm'
@@ -466,8 +508,8 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
                 </Button>
               </div>
 
-              {/* Image preview - show before JSON content */}
-              {hasImage && (
+              {/* Image preview - show before JSON content - only for output mode */}
+              {hasImage && !showInput && (
                 <ImagePreview
                   imageUrl={imageUrl || undefined}
                   imageData={imageData || undefined}
@@ -479,7 +521,7 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
               {/* Content */}
               {isExpanded ? (
                 <div className='max-w-full overflow-hidden break-all font-mono font-normal text-muted-foreground text-sm leading-normal'>
-                  <JSONView data={entry.output} />
+                  <JSONView data={displayData} />
                 </div>
               ) : (
                 <div
@@ -494,10 +536,19 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
         )}
 
         {/* No output message */}
-        {!entry.error && !entry.warning && entry.output == null && (
+        {!entry.error && !entry.warning && !showInput && entry.output == null && (
           <div className='rounded-lg bg-secondary/50 p-3'>
             <div className='text-center font-normal text-muted-foreground text-sm leading-normal'>
               No output
+            </div>
+          </div>
+        )}
+
+        {/* No input message */}
+        {!entry.error && !entry.warning && showInput && !hasInputData && (
+          <div className='rounded-lg bg-secondary/50 p-3'>
+            <div className='text-center font-normal text-muted-foreground text-sm leading-normal'>
+              No input
             </div>
           </div>
         )}

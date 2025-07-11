@@ -224,6 +224,10 @@ export const useConsoleStore = create<ConsoleStore>()(
                   updatedEntry.durationMs = update.durationMs
                 }
 
+                if (update.input !== undefined) {
+                  updatedEntry.input = update.input
+                }
+
                 return updatedEntry
               }
               return entry
