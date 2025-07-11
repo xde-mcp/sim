@@ -392,13 +392,13 @@ ${fieldDescriptions}
 
       // Tool ID to readable name mapping for better UX
       const toolDisplayNames: Record<string, string> = {
+        // Actual copilot tool IDs
+        docs_search_internal: 'Searching documentation',
         get_user_workflow: 'Analyzing your workflow',
-        get_blocks_tools: 'Designing an approach',
-        get_block_metadata: 'Designing an approach',
+        get_blocks_and_tools: 'Designing an approach',
+        get_blocks_metadata: 'Designing an approach',
+        get_yaml_structure: 'Designing an approach',
         edit_workflow: 'Building your workflow',
-        get_yaml_structure: 'Building your workflow',
-        search_documentation: 'Searching documentation',
-        // Add more mappings as needed
       }
 
       // Helper function to get display name for tool
@@ -555,8 +555,13 @@ ${fieldDescriptions}
             }
             currentBlockType = null
           } else if (chunk.type === 'message_stop') {
-            // If there are more tool calls, execute them
+            // If there are more tool calls, show thinking indicator and execute them
             if (newToolCalls.length > 0) {
+              // Add thinking indicator for subsequent tool calls
+              const displayNames = groupToolsByDisplayName(newToolCalls)
+              const statusMessage = `\n\n🔄 ${displayNames.join(' • ')}\n\n`
+              controller.enqueue(new TextEncoder().encode(statusMessage))
+              
               await executeToolsAndContinue(newToolCalls, controller)
             }
             break
