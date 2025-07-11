@@ -307,6 +307,22 @@ ${fieldDescriptions}
                     input: {},
                   }
                   logger.info(`Starting tool call: ${chunk.content_block.name}`)
+
+                  // Emit tool call detection event
+                  const toolDetectionEvent = {
+                    type: 'tool_call_detected',
+                    toolCall: {
+                      id: chunk.content_block.id,
+                      name: chunk.content_block.name,
+                      displayName: getToolDisplayName(chunk.content_block.name),
+                      state: 'detecting',
+                    },
+                  }
+                  controller.enqueue(
+                    new TextEncoder().encode(
+                      `\n__TOOL_CALL_EVENT__${JSON.stringify(toolDetectionEvent)}__TOOL_CALL_EVENT__\n`
+                    )
+                  )
                 }
               } else if (chunk.type === 'content_block_delta') {
                 if (currentBlockType === 'text' && chunk.delta?.text) {
@@ -365,10 +381,22 @@ ${fieldDescriptions}
                 })
 
                 if (pendingToolCalls.length > 0) {
-                  // Add visual separator before tool execution
-                  const displayNames = groupToolsByDisplayName(pendingToolCalls)
-                  const statusMessage = `\n\n🔄 ${displayNames.join(' • ')}\n\n`
-                  controller.enqueue(new TextEncoder().encode(statusMessage))
+                  // Send structured tool call indicators instead of text
+                  const toolCallEvent = {
+                    type: 'tool_calls_start',
+                    toolCalls: pendingToolCalls.map((tc) => ({
+                      id: tc.id,
+                      name: tc.name,
+                      displayName: getToolDisplayName(tc.name),
+                      parameters: tc.input,
+                      state: 'executing',
+                    })),
+                  }
+                  controller.enqueue(
+                    new TextEncoder().encode(
+                      `\n__TOOL_CALL_EVENT__${JSON.stringify(toolCallEvent)}__TOOL_CALL_EVENT__\n`
+                    )
+                  )
 
                   // Execute tools and continue conversation
                   await executeToolsAndContinue(pendingToolCalls, controller)
@@ -463,6 +491,28 @@ ${fieldDescriptions}
                 })
               }
 
+              // Emit tool completion event
+              const toolCompletionEvent = {
+                type: 'tool_call_complete',
+                toolCall: {
+                  id: toolCall.id,
+                  name: toolCall.name,
+                  displayName: getToolDisplayName(toolCall.name),
+                  parameters: toolCall.input,
+                  state: result.success ? 'completed' : 'error',
+                  startTime: toolCallStartTime,
+                  endTime: toolCallEndTime,
+                  duration: toolCallEndTime - toolCallStartTime,
+                  result: result.success ? result.output : null,
+                  error: result.success ? null : 'Tool execution failed',
+                },
+              }
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `\n__TOOL_CALL_EVENT__${JSON.stringify(toolCompletionEvent)}__TOOL_CALL_EVENT__\n`
+                )
+              )
+
               return {
                 toolCall,
                 result: result.success ? result.output : null,
@@ -555,12 +605,24 @@ ${fieldDescriptions}
             }
             currentBlockType = null
           } else if (chunk.type === 'message_stop') {
-            // If there are more tool calls, show thinking indicator and execute them
+            // If there are more tool calls, emit structured events and execute them
             if (newToolCalls.length > 0) {
-              // Add thinking indicator for subsequent tool calls
-              const displayNames = groupToolsByDisplayName(newToolCalls)
-              const statusMessage = `\n\n🔄 ${displayNames.join(' • ')}\n\n`
-              controller.enqueue(new TextEncoder().encode(statusMessage))
+              // Send structured tool call indicators for subsequent calls
+              const toolCallEvent = {
+                type: 'tool_calls_start',
+                toolCalls: newToolCalls.map((tc) => ({
+                  id: tc.id,
+                  name: tc.name,
+                  displayName: getToolDisplayName(tc.name),
+                  parameters: tc.input,
+                  state: 'executing',
+                })),
+              }
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `\n__TOOL_CALL_EVENT__${JSON.stringify(toolCallEvent)}__TOOL_CALL_EVENT__\n`
+                )
+              )
 
               await executeToolsAndContinue(newToolCalls, controller)
             }

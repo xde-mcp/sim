@@ -1,6 +1,6 @@
 'use client'
 
-import { type FC, memo } from 'react'
+import { type FC, memo, useMemo } from 'react'
 import { Bot, Copy, User } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import ReactMarkdown from 'react-markdown'
@@ -8,6 +8,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
+import { ToolCallCompletion, ToolCallExecution } from '@/components/ui/tool-call'
+import { parseMessageContent, stripToolCallIndicators } from '@/lib/tool-call-parser'
 import type { CopilotMessage } from '@/stores/copilot/types'
 
 interface ProfessionalMessageProps {
@@ -21,12 +23,30 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
   const isAssistant = message.role === 'assistant'
 
   const handleCopyContent = () => {
-    navigator.clipboard.writeText(message.content)
+    // Copy clean text content without tool call indicators
+    const contentToCopy = isAssistant ? stripToolCallIndicators(message.content) : message.content
+    navigator.clipboard.writeText(contentToCopy)
   }
 
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
+
+  // Parse message content to separate text and tool calls
+  const parsedContent = useMemo(() => {
+    if (isAssistant && message.content) {
+      return parseMessageContent(message.content)
+    }
+    return null
+  }, [isAssistant, message.content])
+
+  // Get clean text content without tool call indicators
+  const cleanTextContent = useMemo(() => {
+    if (isAssistant && message.content) {
+      return stripToolCallIndicators(message.content)
+    }
+    return message.content
+  }, [isAssistant, message.content])
 
   // Custom components for react-markdown
   const markdownComponents = {
@@ -220,47 +240,103 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
             <div className='flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm'>
               <Bot className='h-4 w-4' />
             </div>
-            <div className='flex min-w-0 flex-1 flex-col items-start space-y-1'>
-              <div className='w-full max-w-full overflow-hidden rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'>
-                {message.content ? (
-                  <div
-                    className='prose prose-sm dark:prose-invert w-full max-w-none overflow-hidden'
-                    style={{
-                      maxWidth: '100%',
-                      width: '100%',
-                      overflow: 'hidden',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                      {message.content}
-                    </ReactMarkdown>
-                  </div>
-                ) : isStreaming ? (
-                  <div className='flex items-center gap-2 py-1 text-muted-foreground'>
-                    <div className='flex space-x-1'>
-                      <div
-                        className='h-2 w-2 animate-bounce rounded-full bg-current'
-                        style={{ animationDelay: '0ms' }}
-                      />
-                      <div
-                        className='h-2 w-2 animate-bounce rounded-full bg-current'
-                        style={{ animationDelay: '150ms' }}
-                      />
-                      <div
-                        className='h-2 w-2 animate-bounce rounded-full bg-current'
-                        style={{ animationDelay: '300ms' }}
-                      />
+            <div className='flex min-w-0 flex-1 flex-col items-start space-y-3'>
+              {/* Inline content rendering - tool calls and text in order */}
+              {parsedContent?.inlineContent && parsedContent.inlineContent.length > 0 ? (
+                <div className='w-full max-w-full space-y-2'>
+                  {parsedContent.inlineContent.map((item, index) => {
+                    if (item.type === 'tool_call' && item.toolCall) {
+                      const toolCall = item.toolCall
+                      return (
+                        <div key={`${toolCall.id}-${index}`}>
+                          {toolCall.state === 'detecting' && (
+                            <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
+                              <div className='h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-blue-400' />
+                              <span className='text-blue-800 dark:text-blue-200'>
+                                Detecting {toolCall.displayName || toolCall.name}...
+                              </span>
+                            </div>
+                          )}
+                          {toolCall.state === 'executing' && (
+                            <ToolCallExecution toolCall={toolCall} isCompact={false} />
+                          )}
+                          {(toolCall.state === 'completed' || toolCall.state === 'error') && (
+                            <ToolCallCompletion toolCall={toolCall} isCompact={false} />
+                          )}
+                        </div>
+                      )
+                    }
+                    if (item.type === 'text' && item.content.trim()) {
+                      return (
+                        <div
+                          key={`text-${index}`}
+                          className='w-full max-w-full overflow-hidden rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'
+                        >
+                          <div
+                            className='prose prose-sm dark:prose-invert w-full max-w-none overflow-hidden'
+                            style={{
+                              maxWidth: '100%',
+                              width: '100%',
+                              overflow: 'hidden',
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={markdownComponents}
+                            >
+                              {item.content}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
+                      )
+                    }
+                    return null
+                  })}
+                </div>
+              ) : (
+                /* Fallback for empty content or streaming */
+                <div className='w-full max-w-full overflow-hidden rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'>
+                  {cleanTextContent ? (
+                    <div
+                      className='prose prose-sm dark:prose-invert w-full max-w-none overflow-hidden'
+                      style={{
+                        maxWidth: '100%',
+                        width: '100%',
+                        overflow: 'hidden',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                        {cleanTextContent}
+                      </ReactMarkdown>
                     </div>
-                    <span className='text-sm'>Thinking...</span>
-                  </div>
-                ) : null}
-              </div>
+                  ) : isStreaming ? (
+                    <div className='flex items-center gap-2 py-1 text-muted-foreground'>
+                      <div className='flex space-x-1'>
+                        <div
+                          className='h-2 w-2 animate-bounce rounded-full bg-current'
+                          style={{ animationDelay: '0ms' }}
+                        />
+                        <div
+                          className='h-2 w-2 animate-bounce rounded-full bg-current'
+                          style={{ animationDelay: '150ms' }}
+                        />
+                        <div
+                          className='h-2 w-2 animate-bounce rounded-full bg-current'
+                          style={{ animationDelay: '300ms' }}
+                        />
+                      </div>
+                      <span className='text-sm'>Thinking...</span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
               <div className='flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100'>
                 <span className='text-muted-foreground text-xs'>
                   {formatTimestamp(message.timestamp)}
                 </span>
-                {message.content && (
+                {cleanTextContent && (
                   <Button
                     variant='ghost'
                     size='sm'
