@@ -15,11 +15,13 @@ const TruncatedValue = ({ value }: { value: string }) => {
   const [isExpanded, setIsExpanded] = useState(false)
 
   if (value.length <= MAX_STRING_LENGTH) {
-    return <span className='font-[380] text-muted-foreground/80 leading-normal'>{value}</span>
+    return (
+      <span className='break-all font-[380] text-muted-foreground/80 leading-normal'>{value}</span>
+    )
   }
 
   return (
-    <span className='font-[380] text-muted-foreground/80 leading-normal'>
+    <span className='break-all font-[380] text-muted-foreground/80 leading-normal'>
       {isExpanded ? value : `${value.slice(0, MAX_STRING_LENGTH)}...`}
       <Button
         variant='link'
@@ -40,11 +42,13 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
   const [isExpanded, setIsExpanded] = useState(false)
 
   if (data === null) {
-    return <span className='font-[380] text-muted-foreground leading-normal'>null</span>
+    return <span className='break-all font-[380] text-muted-foreground leading-normal'>null</span>
   }
 
   if (data === undefined) {
-    return <span className='font-[380] text-muted-foreground leading-normal'>undefined</span>
+    return (
+      <span className='break-all font-[380] text-muted-foreground leading-normal'>undefined</span>
+    )
   }
 
   if (typeof data === 'string') {
@@ -53,7 +57,7 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
 
   if (typeof data === 'number' || typeof data === 'boolean') {
     return (
-      <span className='font-[380] text-muted-foreground/80 leading-normal'>
+      <span className='break-all font-[380] text-muted-foreground/80 leading-normal'>
         {JSON.stringify(data)}
       </span>
     )
@@ -65,7 +69,7 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
     if (shouldCollapse && !isExpanded) {
       return (
         <span
-          className='cursor-pointer font-[380] text-muted-foreground text-xs leading-normal'
+          className='cursor-pointer break-all font-[380] text-muted-foreground text-xs leading-normal'
           onClick={() => setIsExpanded(true)}
         >
           {'[...]'}
@@ -74,13 +78,13 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
     }
 
     return (
-      <span className='font-[380] text-muted-foreground leading-normal'>
+      <span className='break-all font-[380] text-muted-foreground leading-normal'>
         {'['}
         {data.length > 0 && (
           <>
             {'\n'}
             {data.map((item, index) => (
-              <span key={index}>
+              <span key={index} className='break-all'>
                 {'  '.repeat(depth + 1)}
                 <CollapsibleJSON data={item} depth={depth + 1} />
                 {index < data.length - 1 ? ',' : ''}
@@ -102,7 +106,7 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
     if (shouldCollapse && !isExpanded) {
       return (
         <span
-          className='cursor-pointer font-[380] text-muted-foreground text-xs leading-normal'
+          className='cursor-pointer break-all font-[380] text-muted-foreground text-xs leading-normal'
           onClick={() => setIsExpanded(true)}
         >
           {'{...}'}
@@ -111,15 +115,15 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
     }
 
     return (
-      <span className='font-[380] text-muted-foreground leading-normal'>
+      <span className='break-all font-[380] text-muted-foreground leading-normal'>
         {'{'}
         {keys.length > 0 && (
           <>
             {'\n'}
             {keys.map((key, index) => (
-              <span key={key}>
+              <span key={key} className='break-all'>
                 {'  '.repeat(depth + 1)}
-                <span className='font-[380] text-foreground leading-normal'>"{key}"</span>
+                <span className='break-all font-[380] text-foreground leading-normal'>"{key}"</span>
                 <span className='font-[380] text-muted-foreground leading-normal'>: </span>
                 <CollapsibleJSON data={data[key]} depth={depth + 1} />
                 {index < keys.length - 1 ? ',' : ''}
@@ -135,7 +139,9 @@ const CollapsibleJSON = ({ data, depth = 0 }: { data: any; depth?: number }) => 
   }
 
   return (
-    <span className='font-[380] text-muted-foreground leading-normal'>{JSON.stringify(data)}</span>
+    <span className='break-all font-[380] text-muted-foreground leading-normal'>
+      {JSON.stringify(data)}
+    </span>
   )
 }
 
@@ -413,7 +419,7 @@ export const JSONView = ({ data }: JSONViewProps) => {
     return (
       <div onContextMenu={handleContextMenu}>
         <ImagePreview imageUrl={data.url} />
-        <pre className='whitespace-pre-wrap font-mono'>
+        <pre className='max-w-full overflow-hidden whitespace-pre-wrap break-all font-mono'>
           <CollapsibleJSON data={data} />
         </pre>
         {contextMenuPosition && (
@@ -449,7 +455,7 @@ export const JSONView = ({ data }: JSONViewProps) => {
     return (
       <div onContextMenu={handleContextMenu}>
         <AudioPlayer audioUrl={data.audioUrl} />
-        <pre className='whitespace-pre-wrap font-mono'>
+        <pre className='max-w-full overflow-hidden whitespace-pre-wrap break-all font-mono'>
           <CollapsibleJSON data={data} />
         </pre>
         {contextMenuPosition && (
@@ -481,7 +487,7 @@ export const JSONView = ({ data }: JSONViewProps) => {
           imageData={hasValidImage && isBase64Image(data.image) ? data.image : undefined}
           isBase64={hasValidImage && isBase64Image(data.image)}
         />
-        <pre className='whitespace-pre-wrap font-mono'>
+        <pre className='max-w-full overflow-hidden whitespace-pre-wrap break-all font-mono'>
           <CollapsibleJSON data={data} />
         </pre>
         {contextMenuPosition && (
@@ -529,7 +535,7 @@ export const JSONView = ({ data }: JSONViewProps) => {
           }
           isBase64={hasValidImage && isBase64Image(outputData.image)}
         />
-        <pre className='whitespace-pre-wrap font-mono'>
+        <pre className='max-w-full overflow-hidden whitespace-pre-wrap break-all font-mono'>
           <CollapsibleJSON data={data} />
         </pre>
         {contextMenuPosition && (
@@ -566,12 +572,14 @@ export const JSONView = ({ data }: JSONViewProps) => {
     return (
       <span
         onContextMenu={handleContextMenu}
-        className='relative break-all font-[380] font-mono text-muted-foreground leading-normal'
+        className='relative max-w-full overflow-hidden break-all font-[380] font-mono text-muted-foreground leading-normal'
       >
         {typeof data === 'string' ? (
           <TruncatedValue value={stringValue} />
         ) : (
-          <span className='font-[380] text-muted-foreground leading-normal'>{stringValue}</span>
+          <span className='break-all font-[380] text-muted-foreground leading-normal'>
+            {stringValue}
+          </span>
         )}
         {contextMenuPosition && (
           <div
@@ -593,7 +601,7 @@ export const JSONView = ({ data }: JSONViewProps) => {
   // Default case: show JSON as formatted text with collapsible functionality
   return (
     <div onContextMenu={handleContextMenu}>
-      <pre className='whitespace-pre-wrap font-mono'>
+      <pre className='max-w-full overflow-hidden whitespace-pre-wrap break-all font-mono'>
         <CollapsibleJSON data={data} />
       </pre>
       {contextMenuPosition && (

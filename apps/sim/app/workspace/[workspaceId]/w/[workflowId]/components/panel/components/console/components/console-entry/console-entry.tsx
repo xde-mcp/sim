@@ -83,11 +83,11 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
       </div>
 
       {/* Response area */}
-      <div className='space-y-2'>
+      <div className='space-y-2 pb-2'>
         {/* Error display */}
         {entry.error && (
           <div className='rounded-lg bg-[#F6D2D2] p-3 dark:bg-[#442929]'>
-            <div className='whitespace-pre-wrap font-normal text-[#DC2626] text-sm leading-normal dark:text-[#F87171]'>
+            <div className='overflow-hidden whitespace-pre-wrap break-all font-normal text-[#DC2626] text-sm leading-normal dark:text-[#F87171]'>
               {entry.error}
             </div>
           </div>
@@ -99,7 +99,7 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
             <div className='mb-1 font-normal text-sm text-yellow-800 leading-normal dark:text-yellow-200'>
               Warning
             </div>
-            <div className='whitespace-pre-wrap font-normal text-sm text-yellow-700 leading-normal dark:text-yellow-300'>
+            <div className='overflow-hidden whitespace-pre-wrap break-all font-normal text-sm text-yellow-700 leading-normal dark:text-yellow-300'>
               {entry.warning}
             </div>
           </div>
@@ -108,67 +108,49 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
         {/* Success output */}
         {!entry.error && !entry.warning && entry.output != null && (
           <div className='rounded-lg bg-secondary/50 p-3'>
-            {isExpanded ? (
-              <div className='relative'>
-                {/* Copy and Expand/Collapse buttons */}
-                <div className='absolute top-0 right-0 z-10 flex items-center gap-1'>
-                  <Button
-                    variant='ghost'
-                    size='sm'
-                    className='h-6 w-6 p-0 hover:bg-transparent'
-                    onClick={handleCopy}
-                  >
-                    {showCopySuccess ? (
-                      <Check className='h-3 w-3 text-gray-500' />
-                    ) : (
-                      <Copy className='h-3 w-3 text-muted-foreground' />
-                    )}
-                  </Button>
-                  <Button
-                    variant='ghost'
-                    size='sm'
-                    className='h-6 w-6 p-0 hover:bg-transparent'
-                    onClick={() => setIsExpanded(!isExpanded)}
-                  >
+            <div className='relative'>
+              {/* Copy and Expand/Collapse buttons */}
+              <div className='absolute top-[-2.8] right-0 z-10 flex items-center gap-1'>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  className='h-6 w-6 p-0 hover:bg-transparent'
+                  onClick={handleCopy}
+                >
+                  {showCopySuccess ? (
+                    <Check className='h-3 w-3 text-gray-500' />
+                  ) : (
+                    <Copy className='h-3 w-3 text-muted-foreground' />
+                  )}
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  className='h-6 w-6 p-0 hover:bg-transparent'
+                  onClick={() => setIsExpanded(!isExpanded)}
+                >
+                  {isExpanded ? (
                     <ChevronUp className='h-3 w-3 text-muted-foreground' />
-                  </Button>
-                </div>
-                <div className='overflow-hidden pr-16 font-mono font-normal text-muted-foreground text-sm leading-normal'>
+                  ) : (
+                    <ChevronDown className='h-3 w-3 text-muted-foreground' />
+                  )}
+                </Button>
+              </div>
+              
+              {/* Content */}
+              {isExpanded ? (
+                <div className='max-w-full overflow-hidden break-all font-mono font-normal text-muted-foreground text-sm leading-normal'>
                   <JSONView data={entry.output} />
                 </div>
-              </div>
-            ) : (
-              <div className='relative'>
-                <div className='absolute top-0 right-0 z-10 flex items-center gap-1'>
-                  <Button
-                    variant='ghost'
-                    size='sm'
-                    className='h-6 w-6 p-0 hover:bg-transparent'
-                    onClick={handleCopy}
-                  >
-                    {showCopySuccess ? (
-                      <Check className='h-3 w-3 text-gray-500' />
-                    ) : (
-                      <Copy className='h-3 w-3 text-muted-foreground' />
-                    )}
-                  </Button>
-                  <Button
-                    variant='ghost'
-                    size='sm'
-                    className='h-6 w-6 p-0 hover:bg-transparent'
-                    onClick={() => setIsExpanded(!isExpanded)}
-                  >
-                    <ChevronDown className='h-3 w-3 text-muted-foreground' />
-                  </Button>
-                </div>
+              ) : (
                 <div
-                  className='cursor-pointer pr-16 font-mono font-normal text-muted-foreground text-sm leading-normal'
+                  className='max-w-full cursor-pointer overflow-hidden break-all font-mono font-normal text-muted-foreground text-sm leading-normal'
                   onClick={() => setIsExpanded(true)}
                 >
                   {'{...}'}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
