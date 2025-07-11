@@ -561,7 +561,7 @@ ${fieldDescriptions}
               const displayNames = groupToolsByDisplayName(newToolCalls)
               const statusMessage = `\n\n🔄 ${displayNames.join(' • ')}\n\n`
               controller.enqueue(new TextEncoder().encode(statusMessage))
-              
+
               await executeToolsAndContinue(newToolCalls, controller)
             }
             break
