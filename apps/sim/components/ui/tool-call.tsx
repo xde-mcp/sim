@@ -44,11 +44,11 @@ export function ToolCallExecution({ toolCall, isCompact = false }: ToolCallProps
         <CollapsibleTrigger asChild>
           <Button
             variant='ghost'
-            className='w-full min-w-0 justify-between p-3 hover:bg-amber-100 dark:hover:bg-amber-900'
+            className='w-full min-w-0 justify-between px-3 py-4 hover:bg-amber-100 dark:hover:bg-amber-900'
           >
             <div className='flex min-w-0 items-center gap-2 overflow-hidden'>
               <Settings className='h-4 w-4 shrink-0 animate-pulse text-amber-600 dark:text-amber-400' />
-              <span className='min-w-0 truncate font-mono text-amber-800 text-sm dark:text-amber-200'>
+              <span className='min-w-0 truncate font-mono text-amber-800 text-xs dark:text-amber-200'>
                 {toolCall.displayName || toolCall.name}
               </span>
               {toolCall.progress && (
@@ -114,40 +114,37 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
           <Button
             variant='ghost'
             className={cn(
-              'w-full min-w-0 justify-between p-3',
+              'w-full min-w-0 justify-between px-3 py-4',
               isSuccess && 'hover:bg-green-100 dark:hover:bg-green-900',
               isError && 'hover:bg-red-100 dark:hover:bg-red-900'
             )}
           >
-            <div className='flex min-w-0 flex-col gap-1'>
-              <div className='flex min-w-0 items-center gap-2 overflow-hidden'>
-                {isSuccess && (
-                  <CheckCircle className='h-4 w-4 shrink-0 text-green-600 dark:text-green-400' />
+            <div className='flex min-w-0 items-center gap-2 overflow-hidden'>
+              {isSuccess && (
+                <CheckCircle className='h-4 w-4 shrink-0 text-green-600 dark:text-green-400' />
+              )}
+              {isError && <XCircle className='h-4 w-4 shrink-0 text-red-600 dark:text-red-400' />}
+              <span
+                className={cn(
+                  'min-w-0 truncate font-mono text-xs',
+                  isSuccess && 'text-green-800 dark:text-green-200',
+                  isError && 'text-red-800 dark:text-red-200'
                 )}
-                {isError && <XCircle className='h-4 w-4 shrink-0 text-red-600 dark:text-red-400' />}
-                <span
-                  className={cn(
-                    'min-w-0 truncate font-mono text-sm',
-                    isSuccess && 'text-green-800 dark:text-green-200',
-                    isError && 'text-red-800 dark:text-red-200'
-                  )}
-                >
-                  {toolCall.displayName || toolCall.name}
-                </span>
-              </div>
+              >
+                {toolCall.displayName || toolCall.name}
+              </span>
               {toolCall.duration && (
-                <div className='flex justify-start'>
-                  <Badge
-                    variant='outline'
-                    className={cn(
-                      'text-xs',
-                      isSuccess && 'text-green-700 dark:text-green-300',
-                      isError && 'text-red-700 dark:text-red-300'
-                    )}
-                  >
-                    {formatDuration(toolCall.duration)}
-                  </Badge>
-                </div>
+                <Badge
+                  variant='outline'
+                  className={cn(
+                    'shrink-0 text-xs',
+                    isSuccess && 'text-green-700 dark:text-green-300',
+                    isError && 'text-red-700 dark:text-red-300'
+                  )}
+                  style={{ fontSize: '0.625rem' }}
+                >
+                  {formatDuration(toolCall.duration)}
+                </Badge>
               )}
             </div>
             <div className='flex shrink-0 items-center'>
@@ -275,7 +272,7 @@ export function ToolCallGroupComponent({ group, isCompact = false }: ToolCallGro
         <CollapsibleTrigger asChild>
           <Button
             variant='ghost'
-            className='w-full min-w-0 justify-between p-2 text-sm hover:bg-muted'
+            className='w-full min-w-0 justify-between px-3 py-3 text-sm hover:bg-muted'
           >
             <div className='flex min-w-0 items-center gap-2 overflow-hidden'>
               <span className='min-w-0 truncate text-muted-foreground'>
