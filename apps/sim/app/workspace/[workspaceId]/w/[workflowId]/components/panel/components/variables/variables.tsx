@@ -239,19 +239,21 @@ export function Variables({ panelWidth }: VariablesProps) {
   }, [workflowVariables])
 
   return (
-    <ScrollArea className='h-full'>
-      <div className='space-y-3 pt-2'>
-        {/* Variables List */}
-        {workflowVariables.length === 0 ? (
-          <div className='flex h-32 flex-col items-center justify-center pt-4 text-muted-foreground text-sm'>
-            <div className='mb-2'>No variables yet</div>
-            <Button variant='outline' size='sm' className='text-xs' onClick={handleAddVariable}>
-              <Plus className='mr-1 h-3.5 w-3.5' />
-              Add your first variable
-            </Button>
-          </div>
-        ) : (
-          <>
+    <div className='h-full pt-2'>
+      {workflowVariables.length === 0 ? (
+        <div className='flex h-full items-center justify-center'>
+          <Button
+            onClick={handleAddVariable}
+            className='h-9 rounded-[8px] border border-[#E5E5E5] bg-[#FFFFFF] px-3 py-1.5 font-normal text-muted-foreground text-sm shadow-xs transition-colors hover:text-muted-foreground dark:border-[#414141] dark:bg-[#202020] dark:hover:text-muted-foreground'
+            variant='outline'
+          >
+            <Plus className='h-4 w-4' />
+            Add variable
+          </Button>
+        </div>
+      ) : (
+        <ScrollArea className='h-full'>
+          <div className='space-y-3'>
             <div className='space-y-3'>
               {workflowVariables.map((variable) => (
                 <div
@@ -425,9 +427,9 @@ export function Variables({ panelWidth }: VariablesProps) {
               <Plus className='mr-1.5 h-3.5 w-3.5' />
               Add variable
             </Button>
-          </>
-        )}
-      </div>
-    </ScrollArea>
+          </div>
+        </ScrollArea>
+      )}
+    </div>
   )
 }

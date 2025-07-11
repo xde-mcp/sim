@@ -329,20 +329,20 @@ export function Chat({ panelWidth, chatMessage, setChatMessage }: ChatProps) {
       <div className='flex flex-1 flex-col overflow-hidden'>
         {/* Chat messages section - Scrollable area */}
         <div className='flex-1 overflow-hidden'>
-          <ScrollArea className='h-full pb-2' hideScrollbar={true}>
-            <div>
-              {workflowMessages.length === 0 ? (
-                <div className='flex h-32 items-center justify-center text-muted-foreground text-sm'>
-                  No messages yet
-                </div>
-              ) : (
-                workflowMessages.map((message) => (
-                  <ChatMessage key={message.id} message={message} />
-                ))
-              )}
-              <div ref={messagesEndRef} />
+          {workflowMessages.length === 0 ? (
+            <div className='flex h-full items-center justify-center text-muted-foreground text-sm'>
+              No messages yet
             </div>
-          </ScrollArea>
+          ) : (
+            <ScrollArea className='h-full pb-2' hideScrollbar={true}>
+              <div>
+                {workflowMessages.map((message) => (
+                  <ChatMessage key={message.id} message={message} />
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+          )}
         </div>
 
         {/* Input section - Fixed height */}
