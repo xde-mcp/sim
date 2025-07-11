@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { createLogger } from '@/lib/logs/console-logger'
 import { getBlock } from '@/blocks'
 import type { ConsoleEntry as ConsoleEntryType } from '@/stores/panel/console/types'
+import { CodeDisplay } from '../code-display/code-display'
 import { JSONView } from '../json-view/json-view'
 
 const logger = createLogger('ConsoleEntry')
@@ -211,6 +212,18 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
     )
   }, [entry.input])
 
+  // Check if this is a function block with code input
+  const shouldShowCodeDisplay = useMemo(() => {
+    return (
+      entry.blockType === 'function' &&
+      showInput &&
+      entry.input &&
+      typeof entry.input === 'object' &&
+      'code' in entry.input &&
+      typeof entry.input.code === 'string'
+    )
+  }, [entry.blockType, showInput, entry.input])
+
   // Audio player logic
   useEffect(() => {
     if (!hasAudio || !audioUrl) return
@@ -322,9 +335,18 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
   }, [entry.blockType])
 
   const handleCopy = () => {
-    const dataToCopy = showInput ? entry.input : entry.output
-    const stringified = JSON.stringify(dataToCopy, null, 2)
-    navigator.clipboard.writeText(stringified)
+    let textToCopy: string
+
+    if (shouldShowCodeDisplay) {
+      // For code display, copy just the code string
+      textToCopy = entry.input.code
+    } else {
+      // For regular JSON display, copy the full JSON
+      const dataToCopy = showInput ? entry.input : entry.output
+      textToCopy = JSON.stringify(dataToCopy, null, 2)
+    }
+
+    navigator.clipboard.writeText(textToCopy)
     setShowCopySuccess(true)
   }
 
@@ -410,6 +432,21 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
             >
               <span className='font-normal text-xs leading-normal'>Input</span>
             </button>
+            {/* Copy button for code input - only show when input is selected and it's a function block with code */}
+            {shouldShowCodeDisplay && (
+              <Button
+                variant='ghost'
+                size='sm'
+                className='h-5 w-5 p-0 hover:bg-transparent'
+                onClick={handleCopy}
+              >
+                {showCopySuccess ? (
+                  <Check className='h-3 w-3 text-gray-500' />
+                ) : (
+                  <Copy className='h-3 w-3 text-muted-foreground' />
+                )}
+              </Button>
+            )}
           </>
         )}
       </div>
@@ -417,7 +454,7 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
       {/* Response area */}
       <div className='space-y-2 pb-2'>
         {/* Error display */}
-        {entry.error && (
+        {entry.error && !showInput && (
           <div className='rounded-lg bg-[#F6D2D2] p-3 dark:bg-[#442929]'>
             <div className='overflow-hidden whitespace-pre-wrap break-all font-normal text-[#DC2626] text-sm leading-normal dark:text-[#F87171]'>
               {entry.error}
@@ -426,7 +463,7 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
         )}
 
         {/* Warning display */}
-        {entry.warning && (
+        {entry.warning && !showInput && (
           <div className='rounded-lg border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800/50'>
             <div className='mb-1 font-normal text-sm text-yellow-800 leading-normal dark:text-yellow-200'>
               Warning
@@ -437,106 +474,111 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
           </div>
         )}
 
-        {/* Success output */}
-        {!entry.error && !entry.warning && (showInput ? hasInputData : entry.output != null) && (
-          <div className='rounded-lg bg-secondary/50 p-3'>
-            <div className='relative'>
-              {/* Copy and Expand/Collapse buttons */}
-              <div className='absolute top-[-2.8] right-0 z-10 flex items-center gap-1'>
-                {/* Audio controls - only show if audio data exists and we're showing output */}
-                {hasAudio && !showInput && (
-                  <>
+        {/* Content display */}
+        {(showInput ? hasInputData : entry.output != null && !entry.error) && (
+          <div className={`rounded-lg bg-secondary/50 ${shouldShowCodeDisplay ? 'p-0' : 'p-3'}`}>
+            {shouldShowCodeDisplay ? (
+              /* Code display - replace entire content */
+              <CodeDisplay code={entry.input.code} />
+            ) : (
+              <div className='relative'>
+                {/* Copy and Expand/Collapse buttons */}
+                <div className='absolute top-[-2.8] right-0 z-10 flex items-center gap-1'>
+                  {/* Audio controls - only show if audio data exists and we're showing output */}
+                  {hasAudio && !showInput && (
+                    <>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='h-6 w-6 p-0 hover:bg-transparent'
+                        onClick={togglePlay}
+                        aria-label={isPlaying ? 'Pause' : 'Play'}
+                      >
+                        {isPlaying ? (
+                          <Pause className='h-3 w-3 text-muted-foreground' />
+                        ) : (
+                          <Play className='h-3 w-3 text-muted-foreground' />
+                        )}
+                      </Button>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='h-6 w-6 p-0 hover:bg-transparent'
+                        onClick={downloadAudio}
+                        aria-label='Download audio'
+                      >
+                        <Download className='h-3 w-3 text-muted-foreground' />
+                      </Button>
+                    </>
+                  )}
+                  {/* Image controls - only show if image data exists and didn't fail to load and we're showing output */}
+                  {showImageDownload && !showInput && (
                     <Button
                       variant='ghost'
                       size='sm'
                       className='h-6 w-6 p-0 hover:bg-transparent'
-                      onClick={togglePlay}
-                      aria-label={isPlaying ? 'Pause' : 'Play'}
-                    >
-                      {isPlaying ? (
-                        <Pause className='h-3 w-3 text-muted-foreground' />
-                      ) : (
-                        <Play className='h-3 w-3 text-muted-foreground' />
-                      )}
-                    </Button>
-                    <Button
-                      variant='ghost'
-                      size='sm'
-                      className='h-6 w-6 p-0 hover:bg-transparent'
-                      onClick={downloadAudio}
-                      aria-label='Download audio'
+                      onClick={downloadImage}
+                      aria-label='Download image'
                     >
                       <Download className='h-3 w-3 text-muted-foreground' />
                     </Button>
-                  </>
-                )}
-                {/* Image controls - only show if image data exists and didn't fail to load and we're showing output */}
-                {showImageDownload && !showInput && (
+                  )}
                   <Button
                     variant='ghost'
                     size='sm'
                     className='h-6 w-6 p-0 hover:bg-transparent'
-                    onClick={downloadImage}
-                    aria-label='Download image'
+                    onClick={handleCopy}
                   >
-                    <Download className='h-3 w-3 text-muted-foreground' />
+                    {showCopySuccess ? (
+                      <Check className='h-3 w-3 text-gray-500' />
+                    ) : (
+                      <Copy className='h-3 w-3 text-muted-foreground' />
+                    )}
                   </Button>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='h-6 w-6 p-0 hover:bg-transparent'
+                    onClick={() => setIsExpanded(!isExpanded)}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className='h-3 w-3 text-muted-foreground' />
+                    ) : (
+                      <ChevronDown className='h-3 w-3 text-muted-foreground' />
+                    )}
+                  </Button>
+                </div>
+
+                {/* Image preview - show before JSON content - only for output mode */}
+                {hasImage && !showInput && (
+                  <ImagePreview
+                    imageUrl={imageUrl || undefined}
+                    imageData={imageData || undefined}
+                    isBase64={isBase64Image}
+                    onLoadError={handleImageLoadError}
+                  />
                 )}
-                <Button
-                  variant='ghost'
-                  size='sm'
-                  className='h-6 w-6 p-0 hover:bg-transparent'
-                  onClick={handleCopy}
-                >
-                  {showCopySuccess ? (
-                    <Check className='h-3 w-3 text-gray-500' />
-                  ) : (
-                    <Copy className='h-3 w-3 text-muted-foreground' />
-                  )}
-                </Button>
-                <Button
-                  variant='ghost'
-                  size='sm'
-                  className='h-6 w-6 p-0 hover:bg-transparent'
-                  onClick={() => setIsExpanded(!isExpanded)}
-                >
-                  {isExpanded ? (
-                    <ChevronUp className='h-3 w-3 text-muted-foreground' />
-                  ) : (
-                    <ChevronDown className='h-3 w-3 text-muted-foreground' />
-                  )}
-                </Button>
+
+                {/* Content */}
+                {isExpanded ? (
+                  <div className='max-w-full overflow-hidden break-all font-mono font-normal text-muted-foreground text-sm leading-normal'>
+                    <JSONView data={displayData} />
+                  </div>
+                ) : (
+                  <div
+                    className='max-w-full cursor-pointer overflow-hidden break-all font-mono font-normal text-muted-foreground text-sm leading-normal'
+                    onClick={() => setIsExpanded(true)}
+                  >
+                    {'{...}'}
+                  </div>
+                )}
               </div>
-
-              {/* Image preview - show before JSON content - only for output mode */}
-              {hasImage && !showInput && (
-                <ImagePreview
-                  imageUrl={imageUrl || undefined}
-                  imageData={imageData || undefined}
-                  isBase64={isBase64Image}
-                  onLoadError={handleImageLoadError}
-                />
-              )}
-
-              {/* Content */}
-              {isExpanded ? (
-                <div className='max-w-full overflow-hidden break-all font-mono font-normal text-muted-foreground text-sm leading-normal'>
-                  <JSONView data={displayData} />
-                </div>
-              ) : (
-                <div
-                  className='max-w-full cursor-pointer overflow-hidden break-all font-mono font-normal text-muted-foreground text-sm leading-normal'
-                  onClick={() => setIsExpanded(true)}
-                >
-                  {'{...}'}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         )}
 
         {/* No output message */}
-        {!entry.error && !entry.warning && !showInput && entry.output == null && (
+        {!showInput && entry.output == null && !entry.error && (
           <div className='rounded-lg bg-secondary/50 p-3'>
             <div className='text-center font-normal text-muted-foreground text-sm leading-normal'>
               No output
@@ -545,7 +587,7 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
         )}
 
         {/* No input message */}
-        {!entry.error && !entry.warning && showInput && !hasInputData && (
+        {showInput && !hasInputData && (
           <div className='rounded-lg bg-secondary/50 p-3'>
             <div className='text-center font-normal text-muted-foreground text-sm leading-normal'>
               No input
