@@ -11,11 +11,11 @@ export function CopilotWelcome({ onQuestionClick, mode = 'ask' }: CopilotWelcome
   const askQuestions = [
     'How do I create a workflow?',
     'What tools are available?',
-    'Help me with my current workflow',
+    'What does my workflow do?',
   ]
 
   const agentQuestions = [
-    'Help me build my workflow',
+    'Help me build a workflow',
     'I want to edit my workflow',
     'Build me a small sample workflow',
   ]

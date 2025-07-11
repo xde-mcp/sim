@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
+import { getToolDisplayName } from '@/lib/tool-call-parser'
 import type { ToolCallGroup, ToolCallState } from '@/types/tool-call'
 
 interface ToolCallProps {
@@ -131,7 +132,7 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
                   isError && 'text-red-800 dark:text-red-200'
                 )}
               >
-                {toolCall.displayName || toolCall.name}
+                {getToolDisplayName(toolCall.name, true)}
               </span>
               {toolCall.duration && (
                 <Badge

@@ -9,17 +9,20 @@ import type {
 const TOOL_DISPLAY_NAMES: Record<string, string> = {
   docs_search_internal: 'Searching documentation',
   get_user_workflow: 'Analyzing your workflow',
-  get_blocks_and_tools: 'Designing an approach',
-  get_blocks_metadata: 'Designing an approach',
-  get_yaml_structure: 'Designing an approach',
+  get_blocks_and_tools: 'Getting context',
+  get_blocks_metadata: 'Getting context',
+  get_yaml_structure: 'Getting context',
   edit_workflow: 'Building your workflow',
-  search_web: 'Searching web',
-  file_read: 'Reading file',
-  file_write: 'Writing file',
-  function_call: 'Executing function',
-  knowledge_search: 'Searching knowledge base',
-  memory_store: 'Storing to memory',
-  memory_retrieve: 'Retrieving from memory',
+}
+
+// Past tense versions for completed tool calls
+const TOOL_PAST_TENSE_NAMES: Record<string, string> = {
+  docs_search_internal: 'Searched documentation',
+  get_user_workflow: 'Analyzed your workflow',
+  get_blocks_and_tools: 'Understood context',
+  get_blocks_metadata: 'Understood context',
+  get_yaml_structure: 'Understood context',
+  edit_workflow: 'Built your workflow',
 }
 
 // Regex patterns to detect structured tool call events
@@ -53,7 +56,10 @@ export function extractToolNames(statusMessage: string): string[] {
 /**
  * Get display name for a tool
  */
-export function getToolDisplayName(toolId: string): string {
+export function getToolDisplayName(toolId: string, isCompleted: boolean = false): string {
+  if (isCompleted) {
+    return TOOL_PAST_TENSE_NAMES[toolId] || TOOL_DISPLAY_NAMES[toolId] || toolId.replace(/_/g, ' ')
+  }
   return TOOL_DISPLAY_NAMES[toolId] || toolId.replace(/_/g, ' ')
 }
 
