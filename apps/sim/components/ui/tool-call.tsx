@@ -198,36 +198,7 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
                 </div>
               </div>
             )}
-            {toolCall.result && (
-              <div
-                className={cn(
-                  'min-w-0 max-w-full rounded p-2',
-                  isSuccess && 'bg-green-100 dark:bg-green-900',
-                  isError && 'bg-red-100 dark:bg-red-900'
-                )}
-              >
-                <div
-                  className={cn(
-                    'mb-1 font-medium text-xs',
-                    isSuccess && 'text-green-800 dark:text-green-200',
-                    isError && 'text-red-800 dark:text-red-200'
-                  )}
-                >
-                  Result:
-                </div>
-                <div
-                  className={cn(
-                    'min-w-0 max-w-full break-all font-mono text-xs',
-                    isSuccess && 'text-green-700 dark:text-green-300',
-                    isError && 'text-red-700 dark:text-red-300'
-                  )}
-                >
-                  {typeof toolCall.result === 'string'
-                    ? toolCall.result
-                    : JSON.stringify(toolCall.result, null, 2)}
-                </div>
-              </div>
-            )}
+
             {toolCall.error && (
               <div className='min-w-0 max-w-full rounded bg-red-100 p-2 dark:bg-red-900'>
                 <div className='mb-1 font-medium text-red-800 text-xs dark:text-red-200'>
