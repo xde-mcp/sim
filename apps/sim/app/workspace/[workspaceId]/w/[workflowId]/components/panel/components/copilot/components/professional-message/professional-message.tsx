@@ -234,15 +234,28 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
             white-space: pre-wrap !important;
             word-break: break-all !important;
           }
+          .aggressive-pulse {
+            animation: aggressivePulse 1s ease-in-out infinite;
+          }
+          @keyframes aggressivePulse {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.4;
+              transform: scale(0.95);
+            }
+          }
         `}</style>
         <div className='message-container group flex w-full max-w-full justify-start overflow-hidden px-4 py-3'>
           <div className='flex w-full max-w-[85%] flex-col'>
             {/* Main message content with icon */}
             <div className='mb-3 flex items-end gap-3'>
               {/* Bot icon aligned with bottom of message bubble */}
-              <div className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm'>
-                <Bot className={`h-4 w-4 ${isStreaming ? 'animate-spin' : ''}`} />
-              </div>
+                              <div className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm'>
+                  <Bot className={`h-4 w-4 ${isStreaming ? 'aggressive-pulse' : ''}`} />
+                </div>
 
               {/* Message content */}
               <div className='flex min-w-0 flex-1 flex-col items-start space-y-2'>
