@@ -2,7 +2,7 @@ import type { ToolConfig } from '../types'
 import type { QdrantFetchParams, QdrantResponse } from './types'
 
 export const fetchPointsTool: ToolConfig<QdrantFetchParams, QdrantResponse> = {
-  id: 'qdrant_fetch',
+  id: 'qdrant_fetch_points',
   name: 'Qdrant Fetch Points',
   description: 'Fetch points by ID from a Qdrant collection',
   version: '1.0',

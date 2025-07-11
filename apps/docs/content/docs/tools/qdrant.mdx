@@ -88,38 +88,71 @@ Store, search, and retrieve vector embeddings using Qdrant. Perform semantic sim
 
 ## Tools
 
-### `qdrant_upsert`
+### `qdrant_upsert_points`
+
+Insert or update points in a Qdrant collection
 
 #### Input
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
+| `url` | string | Yes | Qdrant base URL |
+| `apiKey` | string | No | Qdrant API key \(optional\) |
+| `collection` | string | Yes | Collection name |
+| `points` | array | Yes | Array of points to upsert |
 
 #### Output
 
-This tool does not produce any outputs.
+| Parameter | Type |
+| --------- | ---- |
+| `status` | string |
+| `data` | string |
 
-### `qdrant_search`
+### `qdrant_search_vector`
+
+Search for similar vectors in a Qdrant collection
 
 #### Input
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
+| `url` | string | Yes | Qdrant base URL |
+| `apiKey` | string | No | Qdrant API key \(optional\) |
+| `collection` | string | Yes | Collection name |
+| `vector` | array | Yes | Vector to search for |
+| `limit` | number | No | Number of results to return |
+| `filter` | object | No | Filter to apply to the search |
+| `with_payload` | boolean | No | Include payload in response |
+| `with_vector` | boolean | No | Include vector in response |
 
 #### Output
 
-This tool does not produce any outputs.
+| Parameter | Type |
+| --------- | ---- |
+| `data` | string |
+| `status` | string |
 
-### `qdrant_fetch`
+### `qdrant_fetch_points`
+
+Fetch points by ID from a Qdrant collection
 
 #### Input
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
+| `url` | string | Yes | Qdrant base URL |
+| `apiKey` | string | No | Qdrant API key \(optional\) |
+| `collection` | string | Yes | Collection name |
+| `ids` | array | Yes | Array of point IDs to fetch |
+| `with_payload` | boolean | No | Include payload in response |
+| `with_vector` | boolean | No | Include vector in response |
 
 #### Output
 
-This tool does not produce any outputs.
+| Parameter | Type |
+| --------- | ---- |
+| `data` | string |
+| `status` | string |
 
 
 

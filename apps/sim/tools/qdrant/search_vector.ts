@@ -2,7 +2,7 @@ import type { ToolConfig } from '../types'
 import type { QdrantResponse, QdrantSearchParams } from './types'
 
 export const searchVectorTool: ToolConfig<QdrantSearchParams, QdrantResponse> = {
-  id: 'qdrant_search',
+  id: 'qdrant_search_vector',
   name: 'Qdrant Search Vector',
   description: 'Search for similar vectors in a Qdrant collection',
   version: '1.0',

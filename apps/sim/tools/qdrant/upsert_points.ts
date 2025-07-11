@@ -2,7 +2,7 @@ import type { ToolConfig } from '../types'
 import type { QdrantResponse, QdrantUpsertParams } from './types'
 
 export const upsertPointsTool: ToolConfig<QdrantUpsertParams, QdrantResponse> = {
-  id: 'qdrant_upsert',
+  id: 'qdrant_upsert_points',
   name: 'Qdrant Upsert Points',
   description: 'Insert or update points in a Qdrant collection',
   version: '1.0',
