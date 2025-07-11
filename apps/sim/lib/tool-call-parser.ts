@@ -56,7 +56,7 @@ export function extractToolNames(statusMessage: string): string[] {
 /**
  * Get display name for a tool
  */
-export function getToolDisplayName(toolId: string, isCompleted: boolean = false): string {
+export function getToolDisplayName(toolId: string, isCompleted = false): string {
   if (isCompleted) {
     return TOOL_PAST_TENSE_NAMES[toolId] || TOOL_DISPLAY_NAMES[toolId] || toolId.replace(/_/g, ' ')
   }

@@ -5,8 +5,8 @@ import { CheckCircle, ChevronDown, ChevronRight, Loader2, Settings, XCircle } fr
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { cn } from '@/lib/utils'
 import { getToolDisplayName } from '@/lib/tool-call-parser'
+import { cn } from '@/lib/utils'
 import type { ToolCallGroup, ToolCallState } from '@/types/tool-call'
 
 interface ToolCallProps {
