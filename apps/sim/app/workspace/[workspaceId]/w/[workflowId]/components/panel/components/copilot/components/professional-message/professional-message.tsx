@@ -236,138 +236,146 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
           }
         `}</style>
         <div className='message-container group flex w-full max-w-full justify-start overflow-hidden px-4 py-3'>
-          <div className='flex w-full max-w-[85%] items-start gap-3'>
-            <div className='flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm'>
-              <Bot className='h-4 w-4' />
-            </div>
-            <div className='flex min-w-0 flex-1 flex-col items-start space-y-3'>
-              {/* Inline content rendering - tool calls and text in order */}
-              {parsedContent?.inlineContent && parsedContent.inlineContent.length > 0 ? (
-                <div className='w-full max-w-full space-y-2'>
-                  {parsedContent.inlineContent.map((item, index) => {
-                    if (item.type === 'tool_call' && item.toolCall) {
-                      const toolCall = item.toolCall
-                      return (
-                        <div key={`${toolCall.id}-${index}`}>
-                          {toolCall.state === 'detecting' && (
-                            <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
-                              <div className='h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-blue-400' />
-                              <span className='text-blue-800 dark:text-blue-200'>
-                                Detecting {toolCall.displayName || toolCall.name}...
-                              </span>
-                            </div>
-                          )}
-                          {toolCall.state === 'executing' && (
-                            <ToolCallExecution toolCall={toolCall} isCompact={false} />
-                          )}
-                          {(toolCall.state === 'completed' || toolCall.state === 'error') && (
-                            <ToolCallCompletion toolCall={toolCall} isCompact={false} />
-                          )}
-                        </div>
-                      )
-                    }
-                    if (item.type === 'text' && item.content.trim()) {
-                      return (
-                        <div
-                          key={`text-${index}`}
-                          className='w-full max-w-full overflow-hidden rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'
-                        >
-                          <div
-                            className='prose prose-sm dark:prose-invert w-full max-w-none overflow-hidden'
-                            style={{
-                              maxWidth: '100%',
-                              width: '100%',
-                              overflow: 'hidden',
-                              wordBreak: 'break-word',
-                            }}
-                          >
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={markdownComponents}
-                            >
-                              {item.content}
-                            </ReactMarkdown>
+          <div className='flex w-full max-w-[85%] flex-col'>
+            {/* Main message content with icon */}
+            <div className='flex items-end gap-3 mb-3'>
+              {/* Bot icon aligned with bottom of message bubble */}
+              <div className='flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm flex-shrink-0'>
+                <Bot className={`h-4 w-4 ${isStreaming ? 'animate-spin' : ''}`} />
+              </div>
+              
+              {/* Message content */}
+              <div className='flex min-w-0 flex-1 flex-col items-start space-y-2'>
+                {/* Inline content rendering - tool calls and text in order */}
+                {parsedContent?.inlineContent && parsedContent.inlineContent.length > 0 ? (
+                  <div className='w-full max-w-full space-y-2'>
+                    {parsedContent.inlineContent.map((item, index) => {
+                      if (item.type === 'tool_call' && item.toolCall) {
+                        const toolCall = item.toolCall
+                        return (
+                          <div key={`${toolCall.id}-${index}`}>
+                            {toolCall.state === 'detecting' && (
+                              <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
+                                <div className='h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-blue-400' />
+                                <span className='text-blue-800 dark:text-blue-200'>
+                                  Detecting {toolCall.displayName || toolCall.name}...
+                                </span>
+                              </div>
+                            )}
+                            {toolCall.state === 'executing' && (
+                              <ToolCallExecution toolCall={toolCall} isCompact={false} />
+                            )}
+                            {(toolCall.state === 'completed' || toolCall.state === 'error') && (
+                              <ToolCallCompletion toolCall={toolCall} isCompact={false} />
+                            )}
                           </div>
-                        </div>
-                      )
-                    }
-                    return null
-                  })}
-                </div>
-              ) : (
-                /* Fallback for empty content or streaming */
-                <div className='w-full max-w-full overflow-hidden rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'>
-                  {cleanTextContent ? (
-                    <div
-                      className='prose prose-sm dark:prose-invert w-full max-w-none overflow-hidden'
-                      style={{
-                        maxWidth: '100%',
-                        width: '100%',
-                        overflow: 'hidden',
-                        wordBreak: 'break-word',
-                      }}
-                    >
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                        {cleanTextContent}
-                      </ReactMarkdown>
-                    </div>
-                  ) : isStreaming ? (
-                    <div className='flex items-center gap-2 py-1 text-muted-foreground'>
-                      <div className='flex space-x-1'>
-                        <div
-                          className='h-2 w-2 animate-bounce rounded-full bg-current'
-                          style={{ animationDelay: '0ms' }}
-                        />
-                        <div
-                          className='h-2 w-2 animate-bounce rounded-full bg-current'
-                          style={{ animationDelay: '150ms' }}
-                        />
-                        <div
-                          className='h-2 w-2 animate-bounce rounded-full bg-current'
-                          style={{ animationDelay: '300ms' }}
-                        />
+                        )
+                      }
+                      if (item.type === 'text' && item.content.trim()) {
+                        return (
+                          <div
+                            key={`text-${index}`}
+                            className='w-full max-w-full overflow-hidden rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'
+                          >
+                            <div
+                              className='prose prose-sm dark:prose-invert w-full max-w-none overflow-hidden'
+                              style={{
+                                maxWidth: '100%',
+                                width: '100%',
+                                overflow: 'hidden',
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={markdownComponents}
+                              >
+                                {item.content}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        )
+                      }
+                      return null
+                    })}
+                  </div>
+                ) : (
+                  /* Fallback for empty content or streaming */
+                  <div className='w-full max-w-full overflow-hidden rounded-2xl rounded-tl-md border bg-muted/50 px-4 py-3 shadow-sm'>
+                    {cleanTextContent ? (
+                      <div
+                        className='prose prose-sm dark:prose-invert w-full max-w-none overflow-hidden'
+                        style={{
+                          maxWidth: '100%',
+                          width: '100%',
+                          overflow: 'hidden',
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                          {cleanTextContent}
+                        </ReactMarkdown>
                       </div>
-                      <span className='text-sm'>Thinking...</span>
-                    </div>
-                  ) : null}
-                </div>
-              )}
-              <div className='flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100'>
-                <span className='text-muted-foreground text-xs'>
-                  {formatTimestamp(message.timestamp)}
-                </span>
-                {cleanTextContent && (
-                  <Button
-                    variant='ghost'
-                    size='sm'
-                    onClick={handleCopyContent}
-                    className='h-6 w-6 p-0 text-muted-foreground hover:text-foreground'
-                  >
-                    <Copy className='h-3 w-3' />
-                  </Button>
+                    ) : isStreaming ? (
+                      <div className='flex items-center gap-2 py-1 text-muted-foreground'>
+                        <div className='flex space-x-1'>
+                          <div
+                            className='h-2 w-2 animate-bounce rounded-full bg-current'
+                            style={{ animationDelay: '0ms' }}
+                          />
+                          <div
+                            className='h-2 w-2 animate-bounce rounded-full bg-current'
+                            style={{ animationDelay: '150ms' }}
+                          />
+                          <div
+                            className='h-2 w-2 animate-bounce rounded-full bg-current'
+                            style={{ animationDelay: '300ms' }}
+                          />
+                        </div>
+                        <span className='text-sm'>Thinking...</span>
+                      </div>
+                    ) : null}
+                  </div>
                 )}
               </div>
-
-              {/* Citations if available */}
-              {message.citations && message.citations.length > 0 && (
-                <div className='mt-2 max-w-full space-y-1'>
-                  <div className='font-medium text-muted-foreground text-xs'>Sources:</div>
-                  <div className='flex flex-wrap gap-1'>
-                    {message.citations.map((citation) => (
-                      <a
-                        key={citation.id}
-                        href={citation.url}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        className='inline-flex max-w-full items-center break-all rounded-md border bg-muted/50 px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground'
-                      >
-                        {citation.title}
-                      </a>
-                    ))}
-                  </div>
-                </div>
+            </div>
+            
+            {/* Timestamp and actions - separate from main content */}
+            <div className='flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100 ml-11'>
+              <span className='text-muted-foreground text-xs'>
+                {formatTimestamp(message.timestamp)}
+              </span>
+              {cleanTextContent && (
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={handleCopyContent}
+                  className='h-6 w-6 p-0 text-muted-foreground hover:text-foreground'
+                >
+                  <Copy className='h-3 w-3' />
+                </Button>
               )}
             </div>
+
+            {/* Citations if available */}
+            {message.citations && message.citations.length > 0 && (
+              <div className='mt-2 max-w-full space-y-1 ml-11'>
+                <div className='font-medium text-muted-foreground text-xs'>Sources:</div>
+                <div className='flex flex-wrap gap-1'>
+                  {message.citations.map((citation) => (
+                    <a
+                      key={citation.id}
+                      href={citation.url}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='inline-flex max-w-full items-center break-all rounded-md border bg-muted/50 px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground'
+                    >
+                      {citation.title}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </>
