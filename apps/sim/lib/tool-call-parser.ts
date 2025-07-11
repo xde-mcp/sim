@@ -11,7 +11,7 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   get_user_workflow: 'Analyzing your workflow',
   get_blocks_and_tools: 'Getting context',
   get_blocks_metadata: 'Getting context',
-  get_yaml_structure: 'Getting context',
+  get_yaml_structure: 'Designing an approach',
   edit_workflow: 'Building your workflow',
 }
 
@@ -21,7 +21,7 @@ const TOOL_PAST_TENSE_NAMES: Record<string, string> = {
   get_user_workflow: 'Analyzed your workflow',
   get_blocks_and_tools: 'Understood context',
   get_blocks_metadata: 'Understood context',
-  get_yaml_structure: 'Understood context',
+  get_yaml_structure: 'Designed an approach',
   edit_workflow: 'Built your workflow',
 }
 
