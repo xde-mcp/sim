@@ -8,7 +8,7 @@ const logger = createLogger('CopilotConfig')
 /**
  * Valid provider IDs for validation
  */
-const VALID_PROVIDER_IDS: ProviderId[] = [
+const VALID_PROVIDER_IDS: readonly ProviderId[] = [
   'openai',
   'azure-openai',
   'anthropic',
@@ -18,7 +18,61 @@ const VALID_PROVIDER_IDS: ProviderId[] = [
   'cerebras',
   'groq',
   'ollama',
-]
+] as const
+
+/**
+ * Configuration validation constraints
+ */
+const VALIDATION_CONSTRAINTS = {
+  temperature: { min: 0, max: 2 },
+  maxTokens: { min: 1, max: 100000 },
+  maxSources: { min: 1, max: 20 },
+  similarityThreshold: { min: 0, max: 1 },
+  maxConversationHistory: { min: 1, max: 50 },
+} as const
+
+/**
+ * Copilot model types
+ */
+export type CopilotModelType = 'chat' | 'rag' | 'title'
+
+/**
+ * Configuration validation result
+ */
+export interface ValidationResult {
+  isValid: boolean
+  errors: string[]
+}
+
+/**
+ * Copilot configuration interface
+ */
+export interface CopilotConfig {
+  // Chat LLM configuration
+  chat: {
+    defaultProvider: ProviderId
+    defaultModel: string
+    temperature: number
+    maxTokens: number
+    systemPrompt: string
+  }
+  // RAG (documentation search) LLM configuration
+  rag: {
+    defaultProvider: ProviderId
+    defaultModel: string
+    temperature: number
+    maxTokens: number
+    embeddingModel: string
+    maxSources: number
+    similarityThreshold: number
+  }
+  // General configuration
+  general: {
+    streamingEnabled: boolean
+    maxConversationHistory: number
+    titleGenerationModel: string
+  }
+}
 
 /**
  * Validate and return a ProviderId if valid, otherwise return null
@@ -55,33 +109,11 @@ function parseIntEnv(value: string | undefined, name: string): number | null {
 }
 
 /**
- * Copilot configuration interface
+ * Safely parse a boolean from environment variable
  */
-export interface CopilotConfig {
-  // Chat LLM configuration
-  chat: {
-    defaultProvider: ProviderId
-    defaultModel: string
-    temperature: number
-    maxTokens: number
-    systemPrompt: string
-  }
-  // RAG (documentation search) LLM configuration
-  rag: {
-    defaultProvider: ProviderId
-    defaultModel: string
-    temperature: number
-    maxTokens: number
-    embeddingModel: string
-    maxSources: number
-    similarityThreshold: number
-  }
-  // General configuration
-  general: {
-    streamingEnabled: boolean
-    maxConversationHistory: number
-    titleGenerationModel: string // Lighter model for generating chat titles
-  }
+function parseBooleanEnv(value: string | undefined): boolean | null {
+  if (!value) return null
+  return value.toLowerCase() === 'true'
 }
 
 /**
@@ -108,95 +140,103 @@ export const DEFAULT_COPILOT_CONFIG: CopilotConfig = {
   general: {
     streamingEnabled: true,
     maxConversationHistory: 10,
-    titleGenerationModel: 'claude-3-haiku-20240307', // Faster model for titles
+    titleGenerationModel: 'claude-3-haiku-20240307',
   },
+}
+
+/**
+ * Apply environment variable overrides to configuration
+ */
+function applyEnvironmentOverrides(config: CopilotConfig): void {
+  // Chat configuration overrides
+  const chatProvider = validateProviderId(process.env.COPILOT_CHAT_PROVIDER)
+  if (chatProvider) {
+    config.chat.defaultProvider = chatProvider
+  } else if (process.env.COPILOT_CHAT_PROVIDER) {
+    logger.warn(
+      `Invalid COPILOT_CHAT_PROVIDER: ${process.env.COPILOT_CHAT_PROVIDER}. Valid providers: ${VALID_PROVIDER_IDS.join(', ')}`
+    )
+  }
+
+  if (process.env.COPILOT_CHAT_MODEL) {
+    config.chat.defaultModel = process.env.COPILOT_CHAT_MODEL
+  }
+
+  const chatTemperature = parseFloatEnv(process.env.COPILOT_CHAT_TEMPERATURE, 'COPILOT_CHAT_TEMPERATURE')
+  if (chatTemperature !== null) {
+    config.chat.temperature = chatTemperature
+  }
+
+  const chatMaxTokens = parseIntEnv(process.env.COPILOT_CHAT_MAX_TOKENS, 'COPILOT_CHAT_MAX_TOKENS')
+  if (chatMaxTokens !== null) {
+    config.chat.maxTokens = chatMaxTokens
+  }
+
+  // RAG configuration overrides
+  const ragProvider = validateProviderId(process.env.COPILOT_RAG_PROVIDER)
+  if (ragProvider) {
+    config.rag.defaultProvider = ragProvider
+  } else if (process.env.COPILOT_RAG_PROVIDER) {
+    logger.warn(
+      `Invalid COPILOT_RAG_PROVIDER: ${process.env.COPILOT_RAG_PROVIDER}. Valid providers: ${VALID_PROVIDER_IDS.join(', ')}`
+    )
+  }
+
+  if (process.env.COPILOT_RAG_MODEL) {
+    config.rag.defaultModel = process.env.COPILOT_RAG_MODEL
+  }
+
+  const ragTemperature = parseFloatEnv(process.env.COPILOT_RAG_TEMPERATURE, 'COPILOT_RAG_TEMPERATURE')
+  if (ragTemperature !== null) {
+    config.rag.temperature = ragTemperature
+  }
+
+  const ragMaxTokens = parseIntEnv(process.env.COPILOT_RAG_MAX_TOKENS, 'COPILOT_RAG_MAX_TOKENS')
+  if (ragMaxTokens !== null) {
+    config.rag.maxTokens = ragMaxTokens
+  }
+
+  const ragMaxSources = parseIntEnv(process.env.COPILOT_RAG_MAX_SOURCES, 'COPILOT_RAG_MAX_SOURCES')
+  if (ragMaxSources !== null) {
+    config.rag.maxSources = ragMaxSources
+  }
+
+  const ragSimilarityThreshold = parseFloatEnv(
+    process.env.COPILOT_RAG_SIMILARITY_THRESHOLD,
+    'COPILOT_RAG_SIMILARITY_THRESHOLD'
+  )
+  if (ragSimilarityThreshold !== null) {
+    config.rag.similarityThreshold = ragSimilarityThreshold
+  }
+
+  // General configuration overrides
+  const streamingEnabled = parseBooleanEnv(process.env.COPILOT_STREAMING_ENABLED)
+  if (streamingEnabled !== null) {
+    config.general.streamingEnabled = streamingEnabled
+  }
+
+  const maxConversationHistory = parseIntEnv(
+    process.env.COPILOT_MAX_CONVERSATION_HISTORY,
+    'COPILOT_MAX_CONVERSATION_HISTORY'
+  )
+  if (maxConversationHistory !== null) {
+    config.general.maxConversationHistory = maxConversationHistory
+  }
+
+  if (process.env.COPILOT_TITLE_GENERATION_MODEL) {
+    config.general.titleGenerationModel = process.env.COPILOT_TITLE_GENERATION_MODEL
+  }
 }
 
 /**
  * Get copilot configuration with environment variable overrides
  */
 export function getCopilotConfig(): CopilotConfig {
-  const config = { ...DEFAULT_COPILOT_CONFIG }
+  const config = structuredClone(DEFAULT_COPILOT_CONFIG)
 
-  // Allow environment variable overrides
   try {
-    // Chat configuration overrides
-    const chatProvider = validateProviderId(process.env.COPILOT_CHAT_PROVIDER)
-    if (chatProvider) {
-      config.chat.defaultProvider = chatProvider
-    } else if (process.env.COPILOT_CHAT_PROVIDER) {
-      logger.warn(
-        `Invalid COPILOT_CHAT_PROVIDER: ${process.env.COPILOT_CHAT_PROVIDER}. Valid providers: ${VALID_PROVIDER_IDS.join(', ')}`
-      )
-    }
-    if (process.env.COPILOT_CHAT_MODEL) {
-      config.chat.defaultModel = process.env.COPILOT_CHAT_MODEL
-    }
-    const chatTemperature = parseFloatEnv(
-      process.env.COPILOT_CHAT_TEMPERATURE,
-      'COPILOT_CHAT_TEMPERATURE'
-    )
-    if (chatTemperature !== null) {
-      config.chat.temperature = chatTemperature
-    }
-    const chatMaxTokens = parseIntEnv(
-      process.env.COPILOT_CHAT_MAX_TOKENS,
-      'COPILOT_CHAT_MAX_TOKENS'
-    )
-    if (chatMaxTokens !== null) {
-      config.chat.maxTokens = chatMaxTokens
-    }
-
-    // RAG configuration overrides
-    const ragProvider = validateProviderId(process.env.COPILOT_RAG_PROVIDER)
-    if (ragProvider) {
-      config.rag.defaultProvider = ragProvider
-    } else if (process.env.COPILOT_RAG_PROVIDER) {
-      logger.warn(
-        `Invalid COPILOT_RAG_PROVIDER: ${process.env.COPILOT_RAG_PROVIDER}. Valid providers: ${VALID_PROVIDER_IDS.join(', ')}`
-      )
-    }
-    if (process.env.COPILOT_RAG_MODEL) {
-      config.rag.defaultModel = process.env.COPILOT_RAG_MODEL
-    }
-    const ragTemperature = parseFloatEnv(
-      process.env.COPILOT_RAG_TEMPERATURE,
-      'COPILOT_RAG_TEMPERATURE'
-    )
-    if (ragTemperature !== null) {
-      config.rag.temperature = ragTemperature
-    }
-    const ragMaxTokens = parseIntEnv(process.env.COPILOT_RAG_MAX_TOKENS, 'COPILOT_RAG_MAX_TOKENS')
-    if (ragMaxTokens !== null) {
-      config.rag.maxTokens = ragMaxTokens
-    }
-    const ragMaxSources = parseIntEnv(
-      process.env.COPILOT_RAG_MAX_SOURCES,
-      'COPILOT_RAG_MAX_SOURCES'
-    )
-    if (ragMaxSources !== null) {
-      config.rag.maxSources = ragMaxSources
-    }
-    const ragSimilarityThreshold = parseFloatEnv(
-      process.env.COPILOT_RAG_SIMILARITY_THRESHOLD,
-      'COPILOT_RAG_SIMILARITY_THRESHOLD'
-    )
-    if (ragSimilarityThreshold !== null) {
-      config.rag.similarityThreshold = ragSimilarityThreshold
-    }
-
-    // General configuration overrides
-    if (process.env.COPILOT_STREAMING_ENABLED) {
-      config.general.streamingEnabled = process.env.COPILOT_STREAMING_ENABLED === 'true'
-    }
-    const maxConversationHistory = parseIntEnv(
-      process.env.COPILOT_MAX_CONVERSATION_HISTORY,
-      'COPILOT_MAX_CONVERSATION_HISTORY'
-    )
-    if (maxConversationHistory !== null) {
-      config.general.maxConversationHistory = maxConversationHistory
-    }
-
+    applyEnvironmentOverrides(config)
+    
     logger.info('Copilot configuration loaded', {
       chatProvider: config.chat.defaultProvider,
       chatModel: config.chat.defaultModel,
@@ -214,7 +254,7 @@ export function getCopilotConfig(): CopilotConfig {
 /**
  * Get the model to use for a specific copilot function
  */
-export function getCopilotModel(type: 'chat' | 'rag' | 'title'): {
+export function getCopilotModel(type: CopilotModelType): {
   provider: ProviderId
   model: string
 } {
@@ -233,7 +273,7 @@ export function getCopilotModel(type: 'chat' | 'rag' | 'title'): {
       }
     case 'title':
       return {
-        provider: config.chat.defaultProvider, // Use same provider as chat
+        provider: config.chat.defaultProvider,
         model: config.general.titleGenerationModel,
       }
     default:
@@ -242,12 +282,23 @@ export function getCopilotModel(type: 'chat' | 'rag' | 'title'): {
 }
 
 /**
+ * Validate a numeric value against constraints
+ */
+function validateNumericValue(
+  value: number,
+  constraint: { min: number; max: number },
+  name: string
+): string | null {
+  if (value < constraint.min || value > constraint.max) {
+    return `${name} must be between ${constraint.min} and ${constraint.max}`
+  }
+  return null
+}
+
+/**
  * Validate that a provider/model combination is available
  */
-export function validateCopilotConfig(config: CopilotConfig): {
-  isValid: boolean
-  errors: string[]
-} {
+export function validateCopilotConfig(config: CopilotConfig): ValidationResult {
   const errors: string[] = []
 
   // Validate chat provider/model
@@ -270,27 +321,22 @@ export function validateCopilotConfig(config: CopilotConfig): {
     errors.push(`Invalid RAG provider: ${config.rag.defaultProvider}`)
   }
 
-  // Validate configuration values
-  if (config.chat.temperature < 0 || config.chat.temperature > 2) {
-    errors.push('Chat temperature must be between 0 and 2')
-  }
-  if (config.rag.temperature < 0 || config.rag.temperature > 2) {
-    errors.push('RAG temperature must be between 0 and 2')
-  }
-  if (config.chat.maxTokens < 1 || config.chat.maxTokens > 100000) {
-    errors.push('Chat maxTokens must be between 1 and 100000')
-  }
-  if (config.rag.maxTokens < 1 || config.rag.maxTokens > 100000) {
-    errors.push('RAG maxTokens must be between 1 and 100000')
-  }
-  if (config.rag.maxSources < 1 || config.rag.maxSources > 20) {
-    errors.push('RAG maxSources must be between 1 and 20')
-  }
-  if (config.rag.similarityThreshold < 0 || config.rag.similarityThreshold > 1) {
-    errors.push('RAG similarityThreshold must be between 0 and 1')
-  }
-  if (config.general.maxConversationHistory < 1 || config.general.maxConversationHistory > 50) {
-    errors.push('General maxConversationHistory must be between 1 and 50')
+  // Validate configuration values using constraints
+  const validationChecks = [
+    { value: config.chat.temperature, constraint: VALIDATION_CONSTRAINTS.temperature, name: 'Chat temperature' },
+    { value: config.rag.temperature, constraint: VALIDATION_CONSTRAINTS.temperature, name: 'RAG temperature' },
+    { value: config.chat.maxTokens, constraint: VALIDATION_CONSTRAINTS.maxTokens, name: 'Chat maxTokens' },
+    { value: config.rag.maxTokens, constraint: VALIDATION_CONSTRAINTS.maxTokens, name: 'RAG maxTokens' },
+    { value: config.rag.maxSources, constraint: VALIDATION_CONSTRAINTS.maxSources, name: 'RAG maxSources' },
+    { value: config.rag.similarityThreshold, constraint: VALIDATION_CONSTRAINTS.similarityThreshold, name: 'RAG similarityThreshold' },
+    { value: config.general.maxConversationHistory, constraint: VALIDATION_CONSTRAINTS.maxConversationHistory, name: 'General maxConversationHistory' },
+  ]
+
+  for (const check of validationChecks) {
+    const error = validateNumericValue(check.value, check.constraint, check.name)
+    if (error) {
+      errors.push(error)
+    }
   }
 
   return {

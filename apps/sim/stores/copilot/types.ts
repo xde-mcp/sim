@@ -1,4 +1,14 @@
 /**
+ * Citation interface for documentation references
+ */
+export interface Citation {
+  id: number
+  title: string
+  url: string
+  similarity?: number
+}
+
+/**
  * Copilot message structure
  */
 export interface CopilotMessage {
@@ -6,11 +16,7 @@ export interface CopilotMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: string
-  citations?: Array<{
-    id: number
-    title: string
-    url: string
-  }>
+  citations?: Citation[]
 }
 
 /**
@@ -42,6 +48,29 @@ export interface CopilotChat {
   messageCount: number
   createdAt: Date
   updatedAt: Date
+}
+
+/**
+ * Options for creating a new chat
+ */
+export interface CreateChatOptions {
+  title?: string
+  initialMessage?: string
+}
+
+/**
+ * Options for sending messages
+ */
+export interface SendMessageOptions {
+  stream?: boolean
+}
+
+/**
+ * Options for sending docs messages
+ */
+export interface SendDocsMessageOptions {
+  stream?: boolean
+  topK?: number
 }
 
 /**
@@ -86,12 +115,12 @@ export interface CopilotActions {
   validateCurrentChat: () => boolean
   loadChats: () => Promise<void>
   selectChat: (chat: CopilotChat) => Promise<void>
-  createNewChat: (options?: { title?: string; initialMessage?: string }) => Promise<void>
+  createNewChat: (options?: CreateChatOptions) => Promise<void>
   deleteChat: (chatId: string) => Promise<void>
 
   // Message handling
-  sendMessage: (message: string, options?: { stream?: boolean }) => Promise<void>
-  sendDocsMessage: (query: string, options?: { stream?: boolean; topK?: number }) => Promise<void>
+  sendMessage: (message: string, options?: SendMessageOptions) => Promise<void>
+  sendDocsMessage: (query: string, options?: SendDocsMessageOptions) => Promise<void>
   saveChatMessages: (chatId: string) => Promise<void>
 
   // Checkpoint management
@@ -106,8 +135,9 @@ export interface CopilotActions {
   retrySave: (chatId: string) => Promise<void>
   reset: () => void
 
-  // Internal helper (not exposed publicly)
+  // Internal helpers (not exposed publicly)
   handleStreamingResponse: (stream: ReadableStream, messageId: string) => Promise<void>
+  handleNewChatCreation: (newChatId: string) => Promise<void>
 }
 
 /**

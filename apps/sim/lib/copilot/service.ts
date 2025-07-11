@@ -1,10 +1,12 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import { createLogger } from '@/lib/logs/console-logger'
 import { db } from '@/db'
-import { copilotChats } from '@/db/schema'
+import { copilotChats, docsEmbeddings } from '@/db/schema'
 import { executeProviderRequest } from '@/providers'
 import type { ProviderToolConfig } from '@/providers/types'
 import { getApiKey } from '@/providers/utils'
+import { getRotatingApiKey } from '@/lib/utils'
+import { generateEmbeddings } from '@/app/api/knowledge/utils'
 import { getCopilotConfig, getCopilotModel } from './config'
 import {
   AGENT_MODE_SYSTEM_PROMPT,
@@ -24,11 +26,15 @@ if (!promptValidation.askMode.valid) {
 if (!promptValidation.agentMode.valid) {
   logger.error('Agent mode system prompt validation failed:', promptValidation.agentMode.issues)
 }
-if (promptValidation.askMode.valid && promptValidation.agentMode.valid) {
-  logger.info('System prompt validation passed for both modes', {
-    askModeLength: ASK_MODE_SYSTEM_PROMPT.length,
-    agentModeLength: AGENT_MODE_SYSTEM_PROMPT.length,
-  })
+
+/**
+ * Citation information for documentation references
+ */
+export interface Citation {
+  id: number
+  title: string
+  url: string
+  similarity?: number
 }
 
 /**
@@ -39,12 +45,7 @@ export interface CopilotMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: string
-  citations?: Array<{
-    id: number
-    title: string
-    url: string
-    similarity?: number
-  }>
+  citations?: Citation[]
 }
 
 /**
@@ -58,6 +59,17 @@ export interface CopilotChat {
   messageCount: number
   createdAt: Date
   updatedAt: Date
+}
+
+/**
+ * Options for generating chat responses
+ */
+export interface GenerateChatResponseOptions {
+  stream?: boolean
+  workflowId?: string
+  requestId?: string
+  mode?: 'ask' | 'agent'
+  chatId?: string
 }
 
 /**
@@ -79,13 +91,219 @@ export interface SendMessageRequest {
 export interface SendMessageResponse {
   content: string
   chatId?: string
-  citations?: Array<{
-    id: number
-    title: string
-    url: string
-    similarity?: number
-  }>
+  citations?: Citation[]
   metadata?: Record<string, any>
+}
+
+/**
+ * Documentation search result
+ */
+export interface DocumentationSearchResult {
+  id: number
+  title: string
+  url: string
+  content: string
+  similarity: number
+}
+
+/**
+ * Options for creating a new chat
+ */
+export interface CreateChatOptions {
+  title?: string
+  initialMessage?: string
+}
+
+/**
+ * Options for updating a chat
+ */
+export interface UpdateChatOptions {
+  title?: string
+  messages?: CopilotMessage[]
+}
+
+/**
+ * Options for listing chats
+ */
+export interface ListChatsOptions {
+  limit?: number
+  offset?: number
+}
+
+/**
+ * Options for documentation search
+ */
+export interface SearchDocumentationOptions {
+  topK?: number
+  threshold?: number
+}
+
+/**
+ * Get API key for the given provider
+ */
+function getProviderApiKey(provider: string, model: string): string {
+  if (provider === 'openai' || provider === 'anthropic') {
+    return getRotatingApiKey(provider)
+  }
+  return getApiKey(provider, model)
+}
+
+/**
+ * Build conversation messages for LLM
+ */
+function buildConversationMessages(
+  message: string,
+  conversationHistory: CopilotMessage[],
+  maxHistory: number
+): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
+  const messages = []
+  
+  // Add conversation history (limited by config)
+  const recentHistory = conversationHistory.slice(-maxHistory)
+  
+  for (const msg of recentHistory) {
+    messages.push({
+      role: msg.role as 'user' | 'assistant' | 'system',
+      content: msg.content,
+    })
+  }
+  
+  // Add current user message
+  messages.push({
+    role: 'user' as const,
+    content: message,
+  })
+  
+  return messages
+}
+
+/**
+ * Get available tools for the given mode
+ */
+function getAvailableTools(mode: 'ask' | 'agent'): ProviderToolConfig[] {
+  const allTools: ProviderToolConfig[] = [
+    {
+      id: 'docs_search_internal',
+      name: 'Search Documentation',
+      description: 'Search Sim Studio documentation for information about features, tools, workflows, and functionality',
+      params: {},
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'The search query to find relevant documentation',
+          },
+          topK: {
+            type: 'number',
+            description: 'Number of results to return (default: 10, max: 10)',
+            default: 10,
+          },
+        },
+        required: ['query'],
+      },
+    },
+    {
+      id: 'get_user_workflow',
+      name: "Get User's Specific Workflow",
+      description: 'Get the user\'s current workflow - this shows ONLY the blocks they have actually built and configured in their specific workflow, not general Sim Studio capabilities.',
+      params: {},
+      parameters: {
+        type: 'object',
+        properties: {
+          includeMetadata: {
+            type: 'boolean',
+            description: 'Whether to include additional metadata about the workflow (default: false)',
+            default: false,
+          },
+        },
+        required: [],
+      },
+    },
+    {
+      id: 'get_blocks_and_tools',
+      name: 'Get All Blocks and Tools',
+      description: 'Get a comprehensive list of all available blocks and tools in Sim Studio with their descriptions, categories, and capabilities.',
+      params: {},
+      parameters: {
+        type: 'object',
+        properties: {
+          includeDetails: {
+            type: 'boolean',
+            description: 'Whether to include detailed information like inputs, outputs, and sub-blocks (default: false)',
+            default: false,
+          },
+          filterCategory: {
+            type: 'string',
+            description: 'Optional category filter for blocks (e.g., "tools", "blocks", "ai")',
+          },
+        },
+        required: [],
+      },
+    },
+    {
+      id: 'get_blocks_metadata',
+      name: 'Get Block Metadata',
+      description: 'Get detailed metadata including descriptions, schemas, inputs, outputs, and subblocks for specific blocks and their associated tools.',
+      params: {},
+      parameters: {
+        type: 'object',
+        properties: {
+          blockIds: {
+            type: 'array',
+            items: {
+              type: 'string',
+            },
+            description: 'Array of block IDs to get metadata for',
+          },
+        },
+        required: ['blockIds'],
+      },
+    },
+    {
+      id: 'get_yaml_structure',
+      name: 'Get YAML Workflow Structure Guide',
+      description: 'Get comprehensive YAML workflow syntax guide and examples to understand how to structure Sim Studio workflows.',
+      params: {},
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+    {
+      id: 'edit_workflow',
+      name: 'Edit Workflow',
+      description: 'Save/edit the current workflow by providing YAML content. This performs the same action as saving in the YAML code editor.',
+      params: {},
+      parameters: {
+        type: 'object',
+        properties: {
+          yamlContent: {
+            type: 'string',
+            description: 'The complete YAML workflow content to save',
+          },
+          description: {
+            type: 'string',
+            description: 'Optional description of the changes being made',
+          },
+        },
+        required: ['yamlContent'],
+      },
+    },
+  ]
+
+  // Filter tools based on mode
+  return mode === 'ask' ? allTools.filter((tool) => tool.id !== 'edit_workflow') : allTools
+}
+
+/**
+ * Validate system prompt for the given mode
+ */
+function validateSystemPrompt(mode: 'ask' | 'agent', systemPrompt: string): void {
+  if (!systemPrompt || systemPrompt.length < 100) {
+    throw new Error(`System prompt not properly configured for mode: ${mode}`)
+  }
 }
 
 /**
@@ -94,19 +312,7 @@ export interface SendMessageResponse {
 export async function generateChatTitle(userMessage: string): Promise<string> {
   try {
     const { provider, model } = getCopilotModel('title')
-    let apiKey: string
-    try {
-      // Use rotating key directly for hosted providers
-      if (provider === 'openai' || provider === 'anthropic') {
-        const { getRotatingApiKey } = await import('@/lib/utils')
-        apiKey = getRotatingApiKey(provider)
-      } else {
-        apiKey = getApiKey(provider, model)
-      }
-    } catch (error) {
-      logger.error(`Failed to get API key for title generation (${provider} ${model}):`, error)
-      return 'New Chat' // Fallback if API key is not available
-    }
+    const apiKey = getProviderApiKey(provider, model)
 
     const response = await executeProviderRequest(provider, {
       model,
@@ -134,29 +340,12 @@ export async function generateChatTitle(userMessage: string): Promise<string> {
  */
 export async function searchDocumentation(
   query: string,
-  options: {
-    topK?: number
-    threshold?: number
-  } = {}
-): Promise<
-  Array<{
-    id: number
-    title: string
-    url: string
-    content: string
-    similarity: number
-  }>
-> {
-  const { generateEmbeddings } = await import('@/app/api/knowledge/utils')
-  const { docsEmbeddings } = await import('@/db/schema')
-  const { sql } = await import('drizzle-orm')
-
+  options: SearchDocumentationOptions = {}
+): Promise<DocumentationSearchResult[]> {
   const config = getCopilotConfig()
   const { topK = config.rag.maxSources, threshold = config.rag.similarityThreshold } = options
 
   try {
-    logger.info('Documentation search requested', { query, topK, threshold })
-
     // Generate embedding for the query
     const embeddings = await generateEmbeddings([query])
     const queryEmbedding = embeddings[0]
@@ -184,12 +373,6 @@ export async function searchDocumentation(
     // Filter by similarity threshold
     const filteredResults = results.filter((result) => result.similarity >= threshold)
 
-    logger.info(`Found ${filteredResults.length} relevant documentation chunks`, {
-      totalResults: results.length,
-      afterFiltering: filteredResults.length,
-      threshold,
-    })
-
     return filteredResults.map((result, index) => ({
       id: index + 1,
       title: String(result.headerText || 'Untitled Section'),
@@ -209,213 +392,26 @@ export async function searchDocumentation(
 export async function generateChatResponse(
   message: string,
   conversationHistory: CopilotMessage[] = [],
-  options: {
-    stream?: boolean
-    workflowId?: string
-    requestId?: string
-    mode?: 'ask' | 'agent'
-    chatId?: string
-  } = {}
+  options: GenerateChatResponseOptions = {}
 ): Promise<string | ReadableStream> {
   const config = getCopilotConfig()
   const { provider, model } = getCopilotModel('chat')
   const { stream = config.general.streamingEnabled, mode = 'ask' } = options
 
   try {
-    let apiKey: string
-    try {
-      // Use rotating key directly for hosted providers
-      if (provider === 'openai' || provider === 'anthropic') {
-        const { getRotatingApiKey } = await import('@/lib/utils')
-        apiKey = getRotatingApiKey(provider)
-      } else {
-        apiKey = getApiKey(provider, model)
-      }
-    } catch (error) {
-      logger.error(`Failed to get API key for chat (${provider} ${model}):`, error)
-      throw new Error(
-        `API key not configured for ${provider}. Please set up API keys for this provider or use a different one.`
-      )
-    }
-
+    const apiKey = getProviderApiKey(provider, model)
+    
     // Build conversation context
-    const messages = []
-
-    // Add conversation history (limited by config)
-    const historyLimit = config.general.maxConversationHistory
-    const recentHistory = conversationHistory.slice(-historyLimit)
-
-    for (const msg of recentHistory) {
-      messages.push({
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content,
-      })
-    }
-
-    // Add current user message
-    messages.push({
-      role: 'user' as const,
-      content: message,
-    })
-
-    // Define the base tools available to the LLM
-    const allTools: ProviderToolConfig[] = [
-      {
-        id: 'docs_search_internal',
-        name: 'Search Documentation',
-        description:
-          'Search Sim Studio documentation for information about features, tools, workflows, and functionality',
-        params: {},
-        parameters: {
-          type: 'object',
-          properties: {
-            query: {
-              type: 'string',
-              description: 'The search query to find relevant documentation',
-            },
-            topK: {
-              type: 'number',
-              description: 'Number of results to return (default: 10, max: 10)',
-              default: 10,
-            },
-          },
-          required: ['query'],
-        },
-      },
-      {
-        id: 'get_user_workflow',
-        name: "Get User's Specific Workflow",
-        description:
-          'Get the user\'s current workflow - this shows ONLY the blocks they have actually built and configured in their specific workflow, not general Sim Studio capabilities. Use this when the user asks about "my workflow", "this workflow", wants to know what blocks they currently have, OR when they ask "How do I..." questions about their workflow so you can give specific, actionable advice based on their actual setup.',
-        params: {},
-        parameters: {
-          type: 'object',
-          properties: {
-            includeMetadata: {
-              type: 'boolean',
-              description:
-                'Whether to include additional metadata about the workflow (default: false)',
-              default: false,
-            },
-          },
-          required: [],
-        },
-      },
-      {
-        id: 'get_blocks_and_tools',
-        name: 'Get All Blocks and Tools',
-        description:
-          'Get a comprehensive list of all available blocks and tools in Sim Studio with their descriptions, categories, and capabilities. Use this when users ask about what blocks or tools are available, or when they want to know what options they have for building workflows.',
-        params: {},
-        parameters: {
-          type: 'object',
-          properties: {
-            includeDetails: {
-              type: 'boolean',
-              description:
-                'Whether to include detailed information like inputs, outputs, and sub-blocks (default: false)',
-              default: false,
-            },
-            filterCategory: {
-              type: 'string',
-              description: 'Optional category filter for blocks (e.g., "tools", "blocks", "ai")',
-            },
-          },
-          required: [],
-        },
-      },
-      {
-        id: 'get_blocks_metadata',
-        name: 'Get Block Metadata',
-        description:
-          'Get detailed metadata including descriptions, schemas, inputs, outputs, and subblocks for specific blocks and their associated tools. Use this after getting the list of blocks to get comprehensive information about selected blocks.',
-        params: {},
-        parameters: {
-          type: 'object',
-          properties: {
-            blockIds: {
-              type: 'array',
-              items: {
-                type: 'string',
-              },
-              description: 'Array of block IDs to get metadata for',
-            },
-          },
-          required: ['blockIds'],
-        },
-      },
-      {
-        id: 'get_yaml_structure',
-        name: 'Get YAML Workflow Structure Guide',
-        description:
-          'Get comprehensive YAML workflow syntax guide and examples to understand how to structure Sim Studio workflows. Use this when users ask to create workflows or need help with YAML syntax.',
-        params: {},
-        parameters: {
-          type: 'object',
-          properties: {},
-          required: [],
-        },
-      },
-      {
-        id: 'edit_workflow',
-        name: 'Edit Workflow',
-        description:
-          'Save/edit the current workflow by providing YAML content. This performs the same action as saving in the YAML code editor. Only call this after getting blocks info, metadata, and YAML structure guide.',
-        params: {},
-        parameters: {
-          type: 'object',
-          properties: {
-            yamlContent: {
-              type: 'string',
-              description: 'The complete YAML workflow content to save',
-            },
-            description: {
-              type: 'string',
-              description: 'Optional description of the changes being made',
-            },
-          },
-          required: ['yamlContent'],
-        },
-      },
-    ]
-
-    // Filter tools based on mode
-    const tools = mode === 'ask' ? allTools.filter((tool) => tool.id !== 'edit_workflow') : allTools
-
+    const messages = buildConversationMessages(message, conversationHistory, config.general.maxConversationHistory)
+    
+    // Get available tools for the mode
+    const tools = getAvailableTools(mode)
+    
     // Get the appropriate system prompt for the mode
     const systemPrompt = mode === 'ask' ? ASK_MODE_SYSTEM_PROMPT : AGENT_MODE_SYSTEM_PROMPT
-
-    // Validate that the prompt is properly defined
-    if (!systemPrompt || systemPrompt.length < 100) {
-      logger.error(`Invalid system prompt for mode: ${mode}`, {
-        mode,
-        promptLength: systemPrompt?.length || 0,
-        promptType: mode === 'ask' ? 'ASK_MODE_SYSTEM_PROMPT' : 'AGENT_MODE_SYSTEM_PROMPT',
-      })
-      throw new Error(`System prompt not properly configured for mode: ${mode}`)
-    }
-
-    // Verify mode-specific content is present
-    if (mode === 'ask' && !systemPrompt.includes('ASK mode')) {
-      logger.warn(`Ask mode prompt may not contain expected ASK mode content`)
-    }
-    if (mode === 'agent' && !systemPrompt.includes('WORKFLOW BUILDING PATTERN')) {
-      logger.warn(`Agent mode prompt may not contain expected workflow building content`)
-    }
-
-    logger.info(`Copilot mode: ${mode}, available tools: ${tools.length}`, {
-      mode,
-      toolIds: tools.map((t) => t.id),
-      filteredOut: mode === 'ask' ? ['edit_workflow'] : [],
-      promptType: mode === 'ask' ? 'ASK_MODE_SYSTEM_PROMPT' : 'AGENT_MODE_SYSTEM_PROMPT',
-      promptLength: systemPrompt.length,
-    })
-
-    // Log the first 200 characters of the prompt to verify it's correct
-    logger.debug(`System prompt preview (${mode} mode):`, {
-      promptPreview: `${systemPrompt.substring(0, 200)}...`,
-      fullPromptLength: systemPrompt.length,
-    })
+    
+    // Validate system prompt
+    validateSystemPrompt(mode, systemPrompt)
 
     const response = await executeProviderRequest(provider, {
       model,
@@ -437,7 +433,6 @@ export async function generateChatResponse(
       'stream' in response &&
       'execution' in response
     ) {
-      logger.info('Detected StreamingExecution from provider')
       return (response as any).stream
     }
 
@@ -479,12 +474,8 @@ export async function generateChatResponse(
 export async function createChat(
   userId: string,
   workflowId: string,
-  options: {
-    title?: string
-    initialMessage?: string
-  } = {}
+  options: CreateChatOptions = {}
 ): Promise<CopilotChat> {
-  const config = getCopilotConfig()
   const { provider, model } = getCopilotModel('chat')
   const { title, initialMessage } = options
 
@@ -507,7 +498,7 @@ export async function createChat(
       .values({
         userId,
         workflowId,
-        title: title || null, // Will be generated later if null
+        title: title || null,
         model,
         messages: initialMessages,
       })
@@ -516,8 +507,6 @@ export async function createChat(
     if (!newChat) {
       throw new Error('Failed to create chat')
     }
-
-    logger.info(`Created chat ${newChat.id} for user ${userId}`)
 
     return {
       id: newChat.id,
@@ -572,10 +561,7 @@ export async function getChat(chatId: string, userId: string): Promise<CopilotCh
 export async function listChats(
   userId: string,
   workflowId: string,
-  options: {
-    limit?: number
-    offset?: number
-  } = {}
+  options: ListChatsOptions = {}
 ): Promise<CopilotChat[]> {
   const { limit = 50, offset = 0 } = options
 
@@ -609,10 +595,7 @@ export async function listChats(
 export async function updateChat(
   chatId: string,
   userId: string,
-  updates: {
-    title?: string
-    messages?: CopilotMessage[]
-  }
+  updates: UpdateChatOptions
 ): Promise<CopilotChat | null> {
   try {
     // Verify the chat exists and belongs to the user
@@ -705,10 +688,7 @@ export async function sendMessage(request: SendMessageRequest): Promise<{
       chatId: currentChat?.id,
     })
 
-    // No need to extract citations - LLM generates direct markdown links
-
     // For non-streaming responses, save immediately
-    // For streaming responses, save will be handled by the API layer after stream completes
     if (currentChat && typeof response === 'string') {
       const userMessage: CopilotMessage = {
         id: crypto.randomUUID(),
@@ -744,6 +724,26 @@ export async function sendMessage(request: SendMessageRequest): Promise<{
     }
   } catch (error) {
     logger.error('Failed to send message:', error)
+    throw error
+  }
+}
+
+// Update existing chat messages (for streaming responses)
+export async function updateChatMessages(
+  chatId: string,
+  messages: CopilotMessage[]
+): Promise<void> {
+  try {
+    await db
+      .update(copilotChats)
+      .set({
+        messages,
+        updatedAt: new Date(),
+      })
+      .where(eq(copilotChats.id, chatId))
+      .execute()
+  } catch (error) {
+    logger.error('Failed to update chat messages:', error)
     throw error
   }
 }

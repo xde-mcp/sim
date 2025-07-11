@@ -3,6 +3,16 @@ import { createLogger } from '@/lib/logs/console-logger'
 const logger = createLogger('CopilotAPI')
 
 /**
+ * Citation interface for documentation references
+ */
+export interface Citation {
+  id: number
+  title: string
+  url: string
+  similarity?: number
+}
+
+/**
  * Checkpoint interface for copilot workflow checkpoints
  */
 export interface CopilotCheckpoint {
@@ -23,12 +33,7 @@ export interface CopilotMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: string
-  citations?: Array<{
-    id: number
-    title: string
-    url: string
-    similarity?: number
-  }>
+  citations?: Citation[]
 }
 
 /**
@@ -71,45 +76,156 @@ export interface DocsQueryRequest {
 }
 
 /**
+ * Options for creating a new chat
+ */
+export interface CreateChatOptions {
+  title?: string
+  initialMessage?: string
+}
+
+/**
+ * Options for listing chats
+ */
+export interface ListChatsOptions {
+  limit?: number
+  offset?: number
+}
+
+/**
+ * Options for listing checkpoints
+ */
+export interface ListCheckpointsOptions {
+  limit?: number
+  offset?: number
+}
+
+/**
+ * API response interface
+ */
+export interface ApiResponse<T = any> {
+  success: boolean
+  error?: string
+  data?: T
+}
+
+/**
+ * Chat response interface
+ */
+export interface ChatResponse extends ApiResponse<CopilotChat> {
+  chat?: CopilotChat
+}
+
+/**
+ * Chats list response interface
+ */
+export interface ChatsListResponse extends ApiResponse<CopilotChat[]> {
+  chats: CopilotChat[]
+}
+
+/**
+ * Message response interface
+ */
+export interface MessageResponse extends ApiResponse {
+  response?: string
+  chatId?: string
+  citations?: Citation[]
+}
+
+/**
+ * Streaming response interface
+ */
+export interface StreamingResponse extends ApiResponse {
+  stream?: ReadableStream
+  chatId?: string
+}
+
+/**
+ * Docs response interface
+ */
+export interface DocsResponse extends ApiResponse {
+  response?: string
+  chatId?: string
+  sources?: Array<{
+    title: string
+    document: string
+    link: string
+    similarity: number
+  }>
+}
+
+/**
+ * Checkpoints response interface
+ */
+export interface CheckpointsResponse extends ApiResponse<CopilotCheckpoint[]> {
+  checkpoints: CopilotCheckpoint[]
+}
+
+/**
+ * Helper function to handle API errors
+ */
+async function handleApiError(response: Response, defaultMessage: string): Promise<string> {
+  try {
+    const errorData = await response.json()
+    return errorData.error || defaultMessage
+  } catch {
+    return response.statusText || defaultMessage
+  }
+}
+
+/**
+ * Helper function to make API requests with consistent error handling
+ */
+async function makeApiRequest<T>(
+  url: string,
+  options: RequestInit = {},
+  defaultErrorMessage: string
+): Promise<ApiResponse<T>> {
+  try {
+    const response = await fetch(url, options)
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || defaultErrorMessage)
+    }
+
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    logger.error(`API request failed: ${defaultErrorMessage}`, error)
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+/**
  * Create a new copilot chat
  */
 export async function createChat(
   workflowId: string,
-  options: {
-    title?: string
-    initialMessage?: string
-  } = {}
-): Promise<{
-  success: boolean
-  chat?: CopilotChat
-  error?: string
-}> {
-  try {
-    const response = await fetch('/api/copilot', {
+  options: CreateChatOptions = {}
+): Promise<ChatResponse> {
+  const result = await makeApiRequest<any>(
+    '/api/copilot',
+    {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         workflowId,
         ...options,
       }),
-    })
+    },
+    'Failed to create chat'
+  )
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to create chat')
-    }
-
-    return {
-      success: true,
-      chat: data.chat,
-    }
-  } catch (error) {
-    logger.error('Failed to create chat:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
+  return {
+    success: result.success,
+    chat: result.data?.chat,
+    error: result.error,
   }
 }
 
@@ -118,69 +234,41 @@ export async function createChat(
  */
 export async function listChats(
   workflowId: string,
-  options: {
-    limit?: number
-    offset?: number
-  } = {}
-): Promise<{
-  success: boolean
-  chats: CopilotChat[]
-  error?: string
-}> {
-  try {
-    const params = new URLSearchParams({
-      workflowId,
-      limit: (options.limit || 50).toString(),
-      offset: (options.offset || 0).toString(),
-    })
+  options: ListChatsOptions = {}
+): Promise<ChatsListResponse> {
+  const params = new URLSearchParams({
+    workflowId,
+    limit: (options.limit || 50).toString(),
+    offset: (options.offset || 0).toString(),
+  })
 
-    const response = await fetch(`/api/copilot?${params}`)
-    const data = await response.json()
+  const result = await makeApiRequest<any>(
+    `/api/copilot?${params}`,
+    {},
+    'Failed to list chats'
+  )
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to list chats')
-    }
-
-    return {
-      success: true,
-      chats: data.chats || [],
-    }
-  } catch (error) {
-    logger.error('Failed to list chats:', error)
-    return {
-      success: false,
-      chats: [],
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
+  return {
+    success: result.success,
+    chats: result.data?.chats || [],
+    error: result.error,
   }
 }
 
 /**
  * Get a specific chat with full message history
  */
-export async function getChat(chatId: string): Promise<{
-  success: boolean
-  chat?: CopilotChat
-  error?: string
-}> {
-  try {
-    const response = await fetch(`/api/copilot?chatId=${chatId}`)
-    const data = await response.json()
+export async function getChat(chatId: string): Promise<ChatResponse> {
+  const result = await makeApiRequest<any>(
+    `/api/copilot?chatId=${chatId}`,
+    {},
+    'Failed to get chat'
+  )
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to get chat')
-    }
-
-    return {
-      success: true,
-      chat: data.chat,
-    }
-  } catch (error) {
-    logger.error('Failed to get chat:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
+  return {
+    success: result.success,
+    chat: result.data?.chat,
+    error: result.error,
   }
 }
 
@@ -190,161 +278,86 @@ export async function getChat(chatId: string): Promise<{
 export async function updateChatMessages(
   chatId: string,
   messages: CopilotMessage[]
-): Promise<{
-  success: boolean
-  chat?: CopilotChat
-  error?: string
-}> {
-  try {
-    const response = await fetch(`/api/copilot`, {
+): Promise<ChatResponse> {
+  const result = await makeApiRequest<any>(
+    '/api/copilot',
+    {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chatId,
         messages,
       }),
-    })
+    },
+    'Failed to update chat'
+  )
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to update chat')
-    }
-
-    return {
-      success: true,
-      chat: data.chat,
-    }
-  } catch (error) {
-    logger.error('Failed to update chat messages:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
+  return {
+    success: result.success,
+    chat: result.data?.chat,
+    error: result.error,
   }
 }
 
 /**
  * Delete a chat
  */
-export async function deleteChat(chatId: string): Promise<{
-  success: boolean
-  error?: string
-}> {
-  try {
-    const response = await fetch(`/api/copilot?chatId=${chatId}`, {
-      method: 'DELETE',
-    })
+export async function deleteChat(chatId: string): Promise<ApiResponse> {
+  const result = await makeApiRequest<any>(
+    `/api/copilot?chatId=${chatId}`,
+    { method: 'DELETE' },
+    'Failed to delete chat'
+  )
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to delete chat')
-    }
-
-    return { success: true }
-  } catch (error) {
-    logger.error('Failed to delete chat:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
+  return {
+    success: result.success,
+    error: result.error,
   }
 }
 
 /**
  * Send a message using the unified copilot API
  */
-export async function sendMessage(request: SendMessageRequest): Promise<{
-  success: boolean
-  response?: string
-  chatId?: string
-  citations?: Array<{
-    id: number
-    title: string
-    url: string
-    similarity?: number
-  }>
-  error?: string
-}> {
-  try {
-    const response = await fetch('/api/copilot', {
+export async function sendMessage(request: SendMessageRequest): Promise<MessageResponse> {
+  const result = await makeApiRequest<any>(
+    '/api/copilot',
+    {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
-    })
+    },
+    'Failed to send message'
+  )
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to send message')
-    }
-
-    return {
-      success: true,
-      response: data.response,
-      chatId: data.chatId,
-      citations: data.citations,
-    }
-  } catch (error) {
-    logger.error('Failed to send message:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
+  return {
+    success: result.success,
+    response: result.data?.response,
+    chatId: result.data?.chatId,
+    citations: result.data?.citations,
+    error: result.error,
   }
 }
 
 /**
  * Send a streaming message using the unified copilot API
  */
-export async function sendStreamingMessage(request: SendMessageRequest): Promise<{
-  success: boolean
-  stream?: ReadableStream
-  chatId?: string
-  error?: string
-}> {
+export async function sendStreamingMessage(request: SendMessageRequest): Promise<StreamingResponse> {
   try {
-    logger.debug('Sending streaming message request:', {
-      message: request.message,
-      stream: true,
-      hasWorkflowId: !!request.workflowId,
-    })
-
     const response = await fetch('/api/copilot', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...request, stream: true }),
     })
 
-    logger.debug('Fetch response received:', {
-      ok: response.ok,
-      status: response.status,
-      statusText: response.statusText,
-      hasBody: !!response.body,
-      contentType: response.headers.get('content-type'),
-    })
-
     if (!response.ok) {
-      let errorMessage = 'Failed to send streaming message'
-      try {
-        const errorData = await response.json()
-        logger.error('Error response:', errorData)
-        errorMessage = errorData.error || errorMessage
-      } catch {
-        // Response is not JSON, use status text or default message
-        logger.error('Non-JSON error response:', response.statusText)
-        errorMessage = response.statusText || errorMessage
-      }
+      const errorMessage = await handleApiError(response, 'Failed to send streaming message')
       throw new Error(errorMessage)
     }
 
     if (!response.body) {
-      logger.error('No response body received')
       throw new Error('No response body received')
     }
 
-    logger.debug('Successfully received stream')
     return {
       success: true,
       stream: response.body,
@@ -360,25 +373,13 @@ export async function sendStreamingMessage(request: SendMessageRequest): Promise
 
 /**
  * Send a documentation query using the main copilot API
- * This function now redirects to the main copilot endpoint since the docs endpoint was removed
  */
-export async function sendDocsMessage(request: DocsQueryRequest): Promise<{
-  success: boolean
-  response?: string
-  chatId?: string
-  sources?: Array<{
-    title: string
-    document: string
-    link: string
-    similarity: number
-  }>
-  error?: string
-}> {
-  try {
-    // Convert docs query to a regular message request with docs-focused prompt
-    const message = `Please search the documentation and answer this question: ${request.query}`
+export async function sendDocsMessage(request: DocsQueryRequest): Promise<DocsResponse> {
+  const message = `Please search the documentation and answer this question: ${request.query}`
 
-    const response = await fetch('/api/copilot', {
+  const result = await makeApiRequest<any>(
+    '/api/copilot',
+    {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -388,43 +389,24 @@ export async function sendDocsMessage(request: DocsQueryRequest): Promise<{
         createNewChat: request.createNewChat,
         stream: request.stream,
       }),
-    })
+    },
+    'Failed to send docs message'
+  )
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to send message')
-    }
-
-    return {
-      success: true,
-      response: data.response,
-      chatId: data.chatId,
-      sources: [], // Main agent embeds citations directly in response
-    }
-  } catch (error) {
-    logger.error('Failed to send docs message:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
+  return {
+    success: result.success,
+    response: result.data?.response,
+    chatId: result.data?.chatId,
+    sources: [], // Main agent embeds citations directly in response
+    error: result.error,
   }
 }
 
 /**
  * Send a streaming documentation query using the main copilot API
- * This function now redirects to the main copilot endpoint since the docs endpoint was removed
  */
-export async function sendStreamingDocsMessage(request: DocsQueryRequest): Promise<{
-  success: boolean
-  stream?: ReadableStream
-  chatId?: string
-  error?: string
-}> {
+export async function sendStreamingDocsMessage(request: DocsQueryRequest): Promise<StreamingResponse> {
   try {
-    logger.debug('sendStreamingDocsMessage called with:', request)
-
-    // Convert docs query to a regular message request with docs-focused prompt
     const message = `Please search the documentation and answer this question: ${request.query}`
 
     const response = await fetch('/api/copilot', {
@@ -439,34 +421,15 @@ export async function sendStreamingDocsMessage(request: DocsQueryRequest): Promi
       }),
     })
 
-    logger.debug('Fetch response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries()),
-      ok: response.ok,
-      hasBody: !!response.body,
-    })
-
     if (!response.ok) {
-      let errorMessage = 'Failed to send streaming docs message'
-      try {
-        const errorData = await response.json()
-        logger.error('API error response:', errorData)
-        errorMessage = errorData.error || errorMessage
-      } catch {
-        // Response is not JSON, use status text or default message
-        logger.error('Non-JSON error response:', response.statusText)
-        errorMessage = response.statusText || errorMessage
-      }
+      const errorMessage = await handleApiError(response, 'Failed to send streaming docs message')
       throw new Error(errorMessage)
     }
 
     if (!response.body) {
-      logger.error('No response body received')
       throw new Error('No response body received')
     }
 
-    logger.debug('Returning successful result with stream')
     return {
       success: true,
       stream: response.body,
@@ -485,67 +448,39 @@ export async function sendStreamingDocsMessage(request: DocsQueryRequest): Promi
  */
 export async function listCheckpoints(
   chatId: string,
-  options: {
-    limit?: number
-    offset?: number
-  } = {}
-): Promise<{
-  success: boolean
-  checkpoints: CopilotCheckpoint[]
-  error?: string
-}> {
-  try {
-    const params = new URLSearchParams({
-      chatId,
-      limit: (options.limit || 10).toString(),
-      offset: (options.offset || 0).toString(),
-    })
+  options: ListCheckpointsOptions = {}
+): Promise<CheckpointsResponse> {
+  const params = new URLSearchParams({
+    chatId,
+    limit: (options.limit || 10).toString(),
+    offset: (options.offset || 0).toString(),
+  })
 
-    const response = await fetch(`/api/copilot/checkpoints?${params}`)
-    const data = await response.json()
+  const result = await makeApiRequest<any>(
+    `/api/copilot/checkpoints?${params}`,
+    {},
+    'Failed to list checkpoints'
+  )
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to list checkpoints')
-    }
-
-    return {
-      success: true,
-      checkpoints: data.checkpoints || [],
-    }
-  } catch (error) {
-    logger.error('Failed to list checkpoints:', error)
-    return {
-      success: false,
-      checkpoints: [],
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
+  return {
+    success: result.success,
+    checkpoints: result.data?.checkpoints || [],
+    error: result.error,
   }
 }
 
 /**
  * Revert workflow to a specific checkpoint
  */
-export async function revertToCheckpoint(checkpointId: string): Promise<{
-  success: boolean
-  error?: string
-}> {
-  try {
-    const response = await fetch(`/api/copilot/checkpoints/${checkpointId}/revert`, {
-      method: 'POST',
-    })
+export async function revertToCheckpoint(checkpointId: string): Promise<ApiResponse> {
+  const result = await makeApiRequest<any>(
+    `/api/copilot/checkpoints/${checkpointId}/revert`,
+    { method: 'POST' },
+    'Failed to revert to checkpoint'
+  )
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to revert to checkpoint')
-    }
-
-    return { success: true }
-  } catch (error) {
-    logger.error('Failed to revert to checkpoint:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
+  return {
+    success: result.success,
+    error: result.error,
   }
 }

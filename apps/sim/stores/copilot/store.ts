@@ -40,6 +40,51 @@ const initialState = {
 }
 
 /**
+ * Helper function to create a new user message
+ */
+function createUserMessage(content: string): CopilotMessage {
+  return {
+    id: crypto.randomUUID(),
+    role: 'user',
+    content,
+    timestamp: new Date().toISOString(),
+  }
+}
+
+/**
+ * Helper function to create a streaming placeholder message
+ */
+function createStreamingMessage(): CopilotMessage {
+  return {
+    id: crypto.randomUUID(),
+    role: 'assistant',
+    content: '',
+    timestamp: new Date().toISOString(),
+  }
+}
+
+/**
+ * Helper function to create an error message
+ */
+function createErrorMessage(messageId: string, content: string): CopilotMessage {
+  return {
+    id: messageId,
+    role: 'assistant',
+    content,
+    timestamp: new Date().toISOString(),
+  }
+}
+
+/**
+ * Helper function to handle errors in async operations
+ */
+function handleStoreError(error: unknown, fallbackMessage: string): string {
+  const errorMessage = error instanceof Error ? error.message : fallbackMessage
+  logger.error(fallbackMessage, error)
+  return errorMessage
+}
+
+/**
  * Copilot store using the new unified API
  */
 export const useCopilotStore = create<CopilotStore>()(
@@ -51,22 +96,16 @@ export const useCopilotStore = create<CopilotStore>()(
       setMode: (mode) => {
         const previousMode = get().mode
         set({ mode })
-        logger.info(`Copilot mode changed from ${previousMode} to ${mode}`, {
-          previousMode,
-          newMode: mode,
-          timestamp: new Date().toISOString(),
-        })
+        logger.info(`Copilot mode changed from ${previousMode} to ${mode}`)
       },
 
       // Set current workflow ID
       setWorkflowId: (workflowId: string | null) => {
         const currentWorkflowId = get().workflowId
         if (currentWorkflowId !== workflowId) {
-          logger.info(
-            `Workflow ID changed from ${currentWorkflowId} to ${workflowId}. Clearing all state to prevent cross-workflow data leaks.`
-          )
+          logger.info(`Workflow ID changed from ${currentWorkflowId} to ${workflowId}`)
 
-          // Immediately clear all state to prevent showing wrong workflow data
+          // Clear all state to prevent cross-workflow data leaks
           set({
             workflowId,
             currentChat: null,
@@ -79,13 +118,11 @@ export const useCopilotStore = create<CopilotStore>()(
             isLoadingChats: false,
           })
 
-          // Load chats for the new workflow but don't auto-select any
+          // Load chats for the new workflow
           if (workflowId) {
-            get()
-              .loadChats()
-              .catch((error) => {
-                logger.error('Failed to load chats after workflow change:', error)
-              })
+            get().loadChats().catch((error) => {
+              logger.error('Failed to load chats after workflow change:', error)
+            })
           }
         }
       },
@@ -95,16 +132,14 @@ export const useCopilotStore = create<CopilotStore>()(
         const { currentChat, chats, workflowId } = get()
 
         if (!currentChat || !workflowId) {
-          return true // No chat or workflow to validate
+          return true
         }
 
         // Check if current chat exists in the current workflow's chat list
         const chatBelongsToWorkflow = chats.some((chat) => chat.id === currentChat.id)
 
         if (!chatBelongsToWorkflow) {
-          logger.warn(
-            `Current chat ${currentChat.id} does not belong to workflow ${workflowId}. Clearing for safety.`
-          )
+          logger.warn(`Current chat ${currentChat.id} does not belong to workflow ${workflowId}`)
           set({
             currentChat: null,
             messages: [],
@@ -133,16 +168,13 @@ export const useCopilotStore = create<CopilotStore>()(
               chats: result.chats,
               isLoadingChats: false,
             })
-
-            // NO auto-selection here - let the caller decide what to select
             logger.info(`Loaded ${result.chats.length} chats for workflow ${workflowId}`)
           } else {
             throw new Error(result.error || 'Failed to load chats')
           }
         } catch (error) {
-          logger.error('Failed to load chats:', error)
           set({
-            error: error instanceof Error ? error.message : 'Failed to load chats',
+            error: handleStoreError(error, 'Failed to load chats'),
             isLoadingChats: false,
           })
         }
@@ -152,7 +184,6 @@ export const useCopilotStore = create<CopilotStore>()(
       selectChat: async (chat: CopilotChat) => {
         const { workflowId } = get()
 
-        // Critical: Verify the chat belongs to the current workflow
         if (!workflowId) {
           logger.error('Cannot select chat: no workflow ID set')
           return
@@ -164,11 +195,10 @@ export const useCopilotStore = create<CopilotStore>()(
           const result = await getChat(chat.id)
 
           if (result.success && result.chat) {
-            // Double-check: Ensure the chat belongs to the current workflow
-            // This prevents cross-workflow data leaks
+            // Verify workflow hasn't changed during selection
             const currentWorkflow = get().workflowId
             if (currentWorkflow !== workflowId) {
-              logger.warn(`Workflow changed during chat selection. Ignoring selection.`)
+              logger.warn('Workflow changed during chat selection')
               set({ isLoading: false })
               return
             }
@@ -179,16 +209,13 @@ export const useCopilotStore = create<CopilotStore>()(
               isLoading: false,
             })
 
-            logger.info(
-              `Selected chat: ${result.chat.title || 'Untitled'} for workflow: ${workflowId}`
-            )
+            logger.info(`Selected chat: ${result.chat.title || 'Untitled'}`)
           } else {
             throw new Error(result.error || 'Failed to load chat')
           }
         } catch (error) {
-          logger.error('Failed to select chat:', error)
           set({
-            error: error instanceof Error ? error.message : 'Failed to load chat',
+            error: handleStoreError(error, 'Failed to load chat'),
             isLoading: false,
           })
         }
@@ -208,14 +235,13 @@ export const useCopilotStore = create<CopilotStore>()(
           const result = await createChat(workflowId, options)
 
           if (result.success && result.chat) {
-            // Clear messages and set the new chat as current
             set({
               currentChat: result.chat,
               messages: result.chat.messages,
               isLoading: false,
             })
 
-            // Add the new chat to the chats list manually instead of reloading
+            // Add the new chat to the chats list
             set((state) => ({
               chats: [result.chat!, ...state.chats],
             }))
@@ -225,9 +251,8 @@ export const useCopilotStore = create<CopilotStore>()(
             throw new Error(result.error || 'Failed to create chat')
           }
         } catch (error) {
-          logger.error('Failed to create new chat:', error)
           set({
-            error: error instanceof Error ? error.message : 'Failed to create chat',
+            error: handleStoreError(error, 'Failed to create chat'),
             isLoading: false,
           })
         }
@@ -253,7 +278,7 @@ export const useCopilotStore = create<CopilotStore>()(
                 messages: [],
               })
 
-              // Select the next most recent chat if available for this workflow
+              // Select the most recent chat if available
               const { chats } = get()
               if (chats.length > 0) {
                 const sortedByCreation = [...chats].sort(
@@ -268,9 +293,8 @@ export const useCopilotStore = create<CopilotStore>()(
             throw new Error(result.error || 'Failed to delete chat')
           }
         } catch (error) {
-          logger.error('Failed to delete chat:', error)
           set({
-            error: error instanceof Error ? error.message : 'Failed to delete chat',
+            error: handleStoreError(error, 'Failed to delete chat'),
           })
         }
       },
@@ -280,49 +304,21 @@ export const useCopilotStore = create<CopilotStore>()(
         const { workflowId, currentChat, mode } = get()
         const { stream = true } = options
 
-        console.log('[CopilotStore] sendMessage called:', {
-          message,
-          workflowId,
-          mode,
-          hasCurrentChat: !!currentChat,
-          stream,
-        })
-
         if (!workflowId) {
-          console.warn('[CopilotStore] No workflow ID set')
           logger.warn('Cannot send message: no workflow ID set')
           return
         }
 
         set({ isSendingMessage: true, error: null })
 
-        // Add user message immediately
-        const userMessage: CopilotMessage = {
-          id: crypto.randomUUID(),
-          role: 'user',
-          content: message,
-          timestamp: new Date().toISOString(),
-        }
-
-        // Add placeholder for streaming response
-        const streamingMessage: CopilotMessage = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: '',
-          timestamp: new Date().toISOString(),
-        }
-
-        console.log('[CopilotStore] Adding messages to state:', {
-          userMessageId: userMessage.id,
-          streamingMessageId: streamingMessage.id,
-        })
+        const userMessage = createUserMessage(message)
+        const streamingMessage = createStreamingMessage()
 
         set((state) => ({
           messages: [...state.messages, userMessage, streamingMessage],
         }))
 
         try {
-          console.log('[CopilotStore] Requesting streaming response')
           const result = await sendStreamingMessage({
             message,
             chatId: currentChat?.id,
@@ -332,37 +328,22 @@ export const useCopilotStore = create<CopilotStore>()(
             stream,
           })
 
-          console.log('[CopilotStore] Streaming result:', {
-            success: result.success,
-            hasStream: !!result.stream,
-            error: result.error,
-          })
-
           if (result.success && result.stream) {
-            console.log('[CopilotStore] Starting stream processing')
             await get().handleStreamingResponse(result.stream, streamingMessage.id)
-            console.log('[CopilotStore] Stream processing completed')
           } else {
-            console.error('[CopilotStore] Stream request failed:', result.error)
             throw new Error(result.error || 'Failed to send message')
           }
         } catch (error) {
-          logger.error('Failed to send message:', error)
-
-          // Replace streaming message with error
-          const errorMessage: CopilotMessage = {
-            id: streamingMessage.id,
-            role: 'assistant',
-            content:
-              'Sorry, I encountered an error while processing your message. Please try again.',
-            timestamp: new Date().toISOString(),
-          }
+          const errorMessage = createErrorMessage(
+            streamingMessage.id,
+            'Sorry, I encountered an error while processing your message. Please try again.'
+          )
 
           set((state) => ({
             messages: state.messages.map((msg) =>
               msg.id === streamingMessage.id ? errorMessage : msg
             ),
-            error: error instanceof Error ? error.message : 'Failed to send message',
+            error: handleStoreError(error, 'Failed to send message'),
             isSendingMessage: false,
           }))
         }
@@ -380,21 +361,8 @@ export const useCopilotStore = create<CopilotStore>()(
 
         set({ isSendingMessage: true, error: null })
 
-        // Add user message immediately
-        const userMessage: CopilotMessage = {
-          id: crypto.randomUUID(),
-          role: 'user',
-          content: query,
-          timestamp: new Date().toISOString(),
-        }
-
-        // Add placeholder for streaming response
-        const streamingMessage: CopilotMessage = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: '',
-          timestamp: new Date().toISOString(),
-        }
+        const userMessage = createUserMessage(query)
+        const streamingMessage = createStreamingMessage()
 
         set((state) => ({
           messages: [...state.messages, userMessage, streamingMessage],
@@ -416,39 +384,27 @@ export const useCopilotStore = create<CopilotStore>()(
             throw new Error(result.error || 'Failed to send docs message')
           }
         } catch (error) {
-          logger.error('Failed to send docs message:', error)
-
-          // Replace streaming message with error
-          const errorMessage: CopilotMessage = {
-            id: streamingMessage.id,
-            role: 'assistant',
-            content:
-              'Sorry, I encountered an error while searching the documentation. Please try again.',
-            timestamp: new Date().toISOString(),
-          }
+          const errorMessage = createErrorMessage(
+            streamingMessage.id,
+            'Sorry, I encountered an error while searching the documentation. Please try again.'
+          )
 
           set((state) => ({
             messages: state.messages.map((msg) =>
               msg.id === streamingMessage.id ? errorMessage : msg
             ),
-            error: error instanceof Error ? error.message : 'Failed to send docs message',
+            error: handleStoreError(error, 'Failed to send docs message'),
             isSendingMessage: false,
           }))
         }
       },
 
-      // Handle streaming response (shared by both message types)
+      // Handle streaming response
       handleStreamingResponse: async (stream: ReadableStream, messageId: string) => {
-        console.log('[CopilotStore] handleStreamingResponse started:', {
-          messageId,
-          hasStream: !!stream,
-        })
-
         const reader = stream.getReader()
         const decoder = new TextDecoder()
         let accumulatedContent = ''
         let newChatId: string | undefined
-        // Citations no longer needed - LLM generates direct markdown links
         let streamComplete = false
 
         try {
@@ -466,41 +422,26 @@ export const useCopilotStore = create<CopilotStore>()(
                   const data = JSON.parse(line.slice(6))
 
                   if (data.type === 'metadata') {
-                    // Get chatId from metadata
                     if (data.chatId) {
                       newChatId = data.chatId
                     }
-                    // Citations no longer needed - LLM generates direct markdown links
                   } else if (data.type === 'content') {
-                    console.log('[CopilotStore] Received content chunk:', data.content)
                     accumulatedContent += data.content
-                    console.log(
-                      '[CopilotStore] Accumulated content length:',
-                      accumulatedContent.length
-                    )
 
                     // Update the streaming message
                     set((state) => ({
                       messages: state.messages.map((msg) =>
                         msg.id === messageId
-                          ? {
-                              ...msg,
-                              content: accumulatedContent,
-                            }
+                          ? { ...msg, content: accumulatedContent }
                           : msg
                       ),
                     }))
-                    console.log('[CopilotStore] Updated message state with content')
                   } else if (data.type === 'complete') {
-                    console.log('[CopilotStore] Received completion marker:', data.type)
                     // Final update
                     set((state) => ({
                       messages: state.messages.map((msg) =>
                         msg.id === messageId
-                          ? {
-                              ...msg,
-                              content: accumulatedContent,
-                            }
+                          ? { ...msg, content: accumulatedContent }
                           : msg
                       ),
                       isSendingMessage: false,
@@ -509,103 +450,71 @@ export const useCopilotStore = create<CopilotStore>()(
                     // Save chat to database after streaming completes
                     const chatIdToSave = newChatId || get().currentChat?.id
                     if (chatIdToSave) {
-                      console.log('[CopilotStore] Saving chat to database:', chatIdToSave)
                       try {
                         await get().saveChatMessages(chatIdToSave)
                       } catch (saveError) {
-                        // Save error is already handled in saveChatMessages and reflected in store state
-                        // Don't break the streaming flow - user gets the message but knows save failed
-                        logger.warn(`Chat save failed after streaming completed: ${saveError}`)
+                        logger.warn(`Chat save failed after streaming: ${saveError}`)
                       }
                     }
 
-                    // Handle new chat creation - reload and select the new chat
+                    // Handle new chat creation
                     if (newChatId && !get().currentChat) {
-                      console.log('[CopilotStore] Handling new chat creation:', newChatId)
-
-                      // Instead of reloading all chats, just fetch the specific new chat
-                      try {
-                        const chatResult = await getChat(newChatId)
-                        if (chatResult.success && chatResult.chat) {
-                          console.log(
-                            '[CopilotStore] Setting new chat as current:',
-                            chatResult.chat.title || 'Untitled'
-                          )
-
-                          // Set the new chat as current
-                          set({
-                            currentChat: chatResult.chat,
-                          })
-
-                          // Add to chats list if not already there
-                          set((state) => {
-                            const chatExists = state.chats.some((chat) => chat.id === newChatId)
-                            if (!chatExists) {
-                              return {
-                                chats: [chatResult.chat!, ...state.chats],
-                              }
-                            }
-                            return state
-                          })
-                        }
-                      } catch (error) {
-                        logger.error('Failed to fetch new chat after creation:', error)
-                        // Fallback: reload all chats
-                        await get().loadChats()
-                      }
+                      await get().handleNewChatCreation(newChatId)
                     }
 
                     streamComplete = true
-                    console.log('[CopilotStore] Stream marked as complete')
                     break
                   } else if (data.type === 'error') {
-                    console.error('[CopilotStore] Received error from stream:', data.error)
                     throw new Error(data.error || 'Streaming error')
                   }
                 } catch (parseError) {
-                  console.warn(
-                    '[CopilotStore] Failed to parse SSE data:',
-                    parseError,
-                    'Line:',
-                    line
-                  )
                   logger.warn('Failed to parse SSE data:', parseError)
                 }
-              } else if (line.trim()) {
-                console.log('[CopilotStore] Non-SSE line (ignored):', line)
               }
             }
           }
 
-          console.log('[CopilotStore] Stream processing completed successfully')
           logger.info(`Completed streaming response, content length: ${accumulatedContent.length}`)
         } catch (error) {
-          console.error('[CopilotStore] Error handling streaming response:', error)
           logger.error('Error handling streaming response:', error)
           throw error
         }
       },
 
-      // Clear current messages
-      clearMessages: () => {
-        set({
-          currentChat: null,
-          messages: [],
-          error: null,
-        })
-        logger.info('Cleared current chat and messages for new conversation')
+      // Handle new chat creation after streaming
+      handleNewChatCreation: async (newChatId: string) => {
+        try {
+          const chatResult = await getChat(newChatId)
+          if (chatResult.success && chatResult.chat) {
+            // Set the new chat as current
+            set({
+              currentChat: chatResult.chat,
+            })
+
+            // Add to chats list if not already there
+            set((state) => {
+              const chatExists = state.chats.some((chat) => chat.id === newChatId)
+              if (!chatExists) {
+                return {
+                  chats: [chatResult.chat!, ...state.chats],
+                }
+              }
+              return state
+            })
+          }
+        } catch (error) {
+          logger.error('Failed to fetch new chat after creation:', error)
+          // Fallback: reload all chats
+          await get().loadChats()
+        }
       },
 
       // Save chat messages to database
       saveChatMessages: async (chatId: string) => {
         const { messages } = get()
-
         set({ isSaving: true, saveError: null })
 
         try {
-          logger.info(`Saving ${messages.length} messages for chat ${chatId}`)
-
-          // Let the API handle title generation if needed
           const result = await updateChatMessages(chatId, messages)
 
           if (result.success && result.chat) {
@@ -617,7 +526,7 @@ export const useCopilotStore = create<CopilotStore>()(
               saveError: null,
             })
 
-            // Update the chat in the chats list to ensure title synchronization
+            // Update the chat in the chats list
             set((state) => {
               const updatedChats = state.chats.map((chat) =>
                 chat.id === result.chat!.id ? result.chat! : chat
@@ -631,17 +540,12 @@ export const useCopilotStore = create<CopilotStore>()(
                 }
               }
 
-              return {
-                chats: updatedChats,
-              }
+              return { chats: updatedChats }
             })
 
-            logger.info(
-              `Successfully saved chat ${chatId} with title: "${result.chat.title}" and ${result.chat.messages.length} messages`
-            )
+            logger.info(`Successfully saved chat ${chatId}`)
           } else {
             const errorMessage = result.error || 'Failed to save chat'
-            logger.error(`Failed to save chat ${chatId}:`, errorMessage)
             set({
               isSaving: false,
               saveError: errorMessage,
@@ -649,24 +553,13 @@ export const useCopilotStore = create<CopilotStore>()(
             throw new Error(errorMessage)
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error saving chat'
-          logger.error(`Error saving chat ${chatId}:`, error)
+          const errorMessage = handleStoreError(error, 'Error saving chat')
           set({
             isSaving: false,
             saveError: errorMessage,
           })
           throw error
         }
-      },
-
-      // Clear error state
-      clearError: () => {
-        set({ error: null })
-      },
-
-      // Clear save error state
-      clearSaveError: () => {
-        set({ saveError: null })
       },
 
       // Load checkpoints for current chat
@@ -686,9 +579,8 @@ export const useCopilotStore = create<CopilotStore>()(
             throw new Error(result.error || 'Failed to load checkpoints')
           }
         } catch (error) {
-          logger.error('Failed to load checkpoints:', error)
           set({
-            checkpointError: error instanceof Error ? error.message : 'Failed to load checkpoints',
+            checkpointError: handleStoreError(error, 'Failed to load checkpoints'),
             isLoadingCheckpoints: false,
           })
         }
@@ -702,24 +594,37 @@ export const useCopilotStore = create<CopilotStore>()(
           const result = await revertToCheckpoint(checkpointId)
 
           if (result.success) {
-            set({
-              isRevertingCheckpoint: false,
-            })
+            set({ isRevertingCheckpoint: false })
             logger.info(`Successfully reverted to checkpoint ${checkpointId}`)
-
-            // Note: The workflow will be updated via socket notification
-            // The UI will automatically refresh when the socket event is received
           } else {
             throw new Error(result.error || 'Failed to revert to checkpoint')
           }
         } catch (error) {
-          logger.error('Failed to revert to checkpoint:', error)
           set({
-            checkpointError:
-              error instanceof Error ? error.message : 'Failed to revert to checkpoint',
+            checkpointError: handleStoreError(error, 'Failed to revert to checkpoint'),
             isRevertingCheckpoint: false,
           })
         }
+      },
+
+      // Clear current messages
+      clearMessages: () => {
+        set({
+          currentChat: null,
+          messages: [],
+          error: null,
+        })
+        logger.info('Cleared current chat and messages')
+      },
+
+      // Clear error state
+      clearError: () => {
+        set({ error: null })
+      },
+
+      // Clear save error state
+      clearSaveError: () => {
+        set({ saveError: null })
       },
 
       // Clear checkpoint error state
