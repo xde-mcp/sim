@@ -253,9 +253,9 @@ const ProfessionalMessage: FC<ProfessionalMessageProps> = memo(({ message, isStr
             {/* Main message content with icon */}
             <div className='mb-3 flex items-end gap-3'>
               {/* Bot icon aligned with bottom of message bubble */}
-                              <div className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm'>
-                  <Bot className={`h-4 w-4 ${isStreaming ? 'aggressive-pulse' : ''}`} />
-                </div>
+              <div className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-sm'>
+                <Bot className={`h-4 w-4 ${isStreaming ? 'aggressive-pulse' : ''}`} />
+              </div>
 
               {/* Message content */}
               <div className='flex min-w-0 flex-1 flex-col items-start space-y-2'>
