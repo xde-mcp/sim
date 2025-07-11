@@ -27,9 +27,9 @@ interface ToolCallIndicatorProps {
 // Detection State Component
 export function ToolCallDetection({ content }: { content: string }) {
   return (
-    <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
-      <Loader2 className='h-4 w-4 animate-spin text-blue-600 dark:text-blue-400' />
-      <span className='text-blue-800 dark:text-blue-200'>{content}</span>
+    <div className='flex min-w-0 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
+      <Loader2 className='h-4 w-4 shrink-0 animate-spin text-blue-600 dark:text-blue-400' />
+      <span className='min-w-0 truncate text-blue-800 dark:text-blue-200'>{content}</span>
     </div>
   )
 }
@@ -39,45 +39,45 @@ export function ToolCallExecution({ toolCall, isCompact = false }: ToolCallProps
   const [isExpanded, setIsExpanded] = useState(!isCompact)
 
   return (
-    <div className='rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950'>
+    <div className='min-w-0 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950'>
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CollapsibleTrigger asChild>
           <Button
             variant='ghost'
-            className='w-full justify-between p-3 hover:bg-amber-100 dark:hover:bg-amber-900'
+            className='w-full min-w-0 justify-between p-3 hover:bg-amber-100 dark:hover:bg-amber-900'
           >
-            <div className='flex items-center gap-2'>
-              <Settings className='h-4 w-4 animate-pulse text-amber-600 dark:text-amber-400' />
-              <span className='font-mono text-amber-800 text-sm dark:text-amber-200'>
+            <div className='flex min-w-0 items-center gap-2 overflow-hidden'>
+              <Settings className='h-4 w-4 shrink-0 animate-pulse text-amber-600 dark:text-amber-400' />
+              <span className='min-w-0 truncate font-mono text-amber-800 text-sm dark:text-amber-200'>
                 {toolCall.displayName || toolCall.name}
               </span>
               {toolCall.progress && (
-                <Badge variant='outline' className='text-amber-700 text-xs dark:text-amber-300'>
+                <Badge variant='outline' className='shrink-0 text-amber-700 text-xs dark:text-amber-300'>
                   {toolCall.progress}
                 </Badge>
               )}
             </div>
             {isExpanded ? (
-              <ChevronDown className='h-4 w-4 text-amber-600 dark:text-amber-400' />
+              <ChevronDown className='h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400' />
             ) : (
-              <ChevronRight className='h-4 w-4 text-amber-600 dark:text-amber-400' />
+              <ChevronRight className='h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400' />
             )}
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent className='px-3 pb-3'>
-          <div className='space-y-2'>
+        <CollapsibleContent className='min-w-0 px-3 pb-3'>
+          <div className='min-w-0 space-y-2'>
             <div className='flex items-center gap-2 text-amber-700 text-xs dark:text-amber-300'>
-              <Loader2 className='h-3 w-3 animate-spin' />
+              <Loader2 className='h-3 w-3 shrink-0 animate-spin' />
               <span>Executing...</span>
             </div>
             {toolCall.parameters && Object.keys(toolCall.parameters).length > 0 && (
-              <div className='rounded bg-amber-100 p-2 dark:bg-amber-900'>
+              <div className='min-w-0 rounded bg-amber-100 p-2 dark:bg-amber-900'>
                 <div className='mb-1 font-medium text-amber-800 text-xs dark:text-amber-200'>
                   Parameters:
                 </div>
-                <pre className='overflow-x-auto text-amber-700 text-xs dark:text-amber-300'>
+                <div className='min-w-0 break-all font-mono text-amber-700 text-xs dark:text-amber-300'>
                   {JSON.stringify(toolCall.parameters, null, 2)}
-                </pre>
+                </div>
               </div>
             )}
           </div>
@@ -101,7 +101,7 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
   return (
     <div
       className={cn(
-        'rounded-lg border',
+        'min-w-0 rounded-lg border',
         isSuccess && 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950',
         isError && 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
       )}
@@ -111,48 +111,41 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
           <Button
             variant='ghost'
             className={cn(
-              'w-full justify-between p-3',
+              'w-full min-w-0 justify-between p-3',
               isSuccess && 'hover:bg-green-100 dark:hover:bg-green-900',
               isError && 'hover:bg-red-100 dark:hover:bg-red-900'
             )}
           >
-            <div className='flex items-center gap-2'>
-              {isSuccess && <CheckCircle className='h-4 w-4 text-green-600 dark:text-green-400' />}
-              {isError && <XCircle className='h-4 w-4 text-red-600 dark:text-red-400' />}
-              <span
-                className={cn(
-                  'font-mono text-sm',
-                  isSuccess && 'text-green-800 dark:text-green-200',
-                  isError && 'text-red-800 dark:text-red-200'
-                )}
-              >
-                {toolCall.displayName || toolCall.name}
-              </span>
-              {toolCall.duration && (
-                <Badge
-                  variant='outline'
-                  className={cn(
-                    'text-xs',
-                    isSuccess && 'text-green-700 dark:text-green-300',
-                    isError && 'text-red-700 dark:text-red-300'
-                  )}
-                >
-                  {formatDuration(toolCall.duration)}
-                </Badge>
-              )}
-            </div>
-            <div className='flex items-center gap-2'>
-              {!isCompact && (
+            <div className='flex min-w-0 flex-col gap-1'>
+              <div className='flex min-w-0 items-center gap-2 overflow-hidden'>
+                {isSuccess && <CheckCircle className='h-4 w-4 shrink-0 text-green-600 dark:text-green-400' />}
+                {isError && <XCircle className='h-4 w-4 shrink-0 text-red-600 dark:text-red-400' />}
                 <span
                   className={cn(
-                    'text-xs',
-                    isSuccess && 'text-green-600 dark:text-green-400',
-                    isError && 'text-red-600 dark:text-red-400'
+                    'min-w-0 truncate font-mono text-sm',
+                    isSuccess && 'text-green-800 dark:text-green-200',
+                    isError && 'text-red-800 dark:text-red-200'
                   )}
                 >
-                  {isSuccess ? 'Completed' : 'Failed'}
+                  {toolCall.displayName || toolCall.name}
                 </span>
+              </div>
+              {toolCall.duration && (
+                <div className='flex justify-start'>
+                  <Badge
+                    variant='outline'
+                    className={cn(
+                      'text-xs',
+                      isSuccess && 'text-green-700 dark:text-green-300',
+                      isError && 'text-red-700 dark:text-red-300'
+                    )}
+                  >
+                    {formatDuration(toolCall.duration)}
+                  </Badge>
+                </div>
               )}
+            </div>
+            <div className='flex shrink-0 items-center'>
               {isExpanded ? (
                 <ChevronDown
                   className={cn(
@@ -173,12 +166,12 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
             </div>
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent className='px-3 pb-3'>
-          <div className='space-y-2'>
+        <CollapsibleContent className='min-w-0 px-3 pb-3'>
+          <div className='min-w-0 space-y-2'>
             {toolCall.parameters && Object.keys(toolCall.parameters).length > 0 && (
               <div
                 className={cn(
-                  'rounded p-2',
+                  'min-w-0 rounded p-2',
                   isSuccess && 'bg-green-100 dark:bg-green-900',
                   isError && 'bg-red-100 dark:bg-red-900'
                 )}
@@ -192,21 +185,21 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
                 >
                   Parameters:
                 </div>
-                <pre
+                <div
                   className={cn(
-                    'overflow-x-auto text-xs',
+                    'min-w-0 break-all font-mono text-xs',
                     isSuccess && 'text-green-700 dark:text-green-300',
                     isError && 'text-red-700 dark:text-red-300'
                   )}
                 >
                   {JSON.stringify(toolCall.parameters, null, 2)}
-                </pre>
+                </div>
               </div>
             )}
             {toolCall.result && (
               <div
                 className={cn(
-                  'rounded p-2',
+                  'min-w-0 rounded p-2',
                   isSuccess && 'bg-green-100 dark:bg-green-900',
                   isError && 'bg-red-100 dark:bg-red-900'
                 )}
@@ -220,9 +213,9 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
                 >
                   Result:
                 </div>
-                <pre
+                <div
                   className={cn(
-                    'overflow-x-auto text-xs',
+                    'min-w-0 break-all font-mono text-xs',
                     isSuccess && 'text-green-700 dark:text-green-300',
                     isError && 'text-red-700 dark:text-red-300'
                   )}
@@ -230,17 +223,17 @@ export function ToolCallCompletion({ toolCall, isCompact = false }: ToolCallProp
                   {typeof toolCall.result === 'string'
                     ? toolCall.result
                     : JSON.stringify(toolCall.result, null, 2)}
-                </pre>
+                </div>
               </div>
             )}
             {toolCall.error && (
-              <div className='rounded bg-red-100 p-2 dark:bg-red-900'>
+              <div className='min-w-0 rounded bg-red-100 p-2 dark:bg-red-900'>
                 <div className='mb-1 font-medium text-red-800 text-xs dark:text-red-200'>
                   Error:
                 </div>
-                <pre className='overflow-x-auto text-red-700 text-xs dark:text-red-300'>
+                <div className='min-w-0 break-all font-mono text-red-700 text-xs dark:text-red-300'>
                   {toolCall.error}
-                </pre>
+                </div>
               </div>
             )}
           </div>
@@ -260,13 +253,13 @@ export function ToolCallGroupComponent({ group, isCompact = false }: ToolCallGro
   const hasErrors = group.toolCalls.some((t) => t.state === 'error')
 
   return (
-    <div className='space-y-2'>
+    <div className='min-w-0 space-y-2'>
       {group.summary && (
-        <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
-          <Settings className='h-4 w-4 text-blue-600 dark:text-blue-400' />
-          <span className='text-blue-800 dark:text-blue-200'>{group.summary}</span>
+        <div className='flex min-w-0 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
+          <Settings className='h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400' />
+          <span className='min-w-0 truncate text-blue-800 dark:text-blue-200'>{group.summary}</span>
           {!isAllCompleted && (
-            <Badge variant='outline' className='text-blue-700 text-xs dark:text-blue-300'>
+            <Badge variant='outline' className='shrink-0 text-blue-700 text-xs dark:text-blue-300'>
               {completedCount}/{totalCount}
             </Badge>
           )}
@@ -275,27 +268,27 @@ export function ToolCallGroupComponent({ group, isCompact = false }: ToolCallGro
 
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CollapsibleTrigger asChild>
-          <Button variant='ghost' className='w-full justify-between p-2 text-sm hover:bg-muted'>
-            <div className='flex items-center gap-2'>
-              <span className='text-muted-foreground'>
+          <Button variant='ghost' className='w-full min-w-0 justify-between p-2 text-sm hover:bg-muted'>
+            <div className='flex min-w-0 items-center gap-2 overflow-hidden'>
+              <span className='min-w-0 truncate text-muted-foreground'>
                 {isAllCompleted ? 'Completed' : 'In Progress'} ({completedCount}/{totalCount})
               </span>
               {hasErrors && (
-                <Badge variant='destructive' className='text-xs'>
+                <Badge variant='destructive' className='shrink-0 text-xs'>
                   Errors
                 </Badge>
               )}
             </div>
             {isExpanded ? (
-              <ChevronDown className='h-4 w-4 text-muted-foreground' />
+              <ChevronDown className='h-4 w-4 shrink-0 text-muted-foreground' />
             ) : (
-              <ChevronRight className='h-4 w-4 text-muted-foreground' />
+              <ChevronRight className='h-4 w-4 shrink-0 text-muted-foreground' />
             )}
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent className='space-y-2'>
+        <CollapsibleContent className='min-w-0 space-y-2'>
           {group.toolCalls.map((toolCall) => (
-            <div key={toolCall.id}>
+            <div key={toolCall.id} className='min-w-0'>
               {toolCall.state === 'executing' && (
                 <ToolCallExecution toolCall={toolCall} isCompact={isCompact} />
               )}
@@ -314,17 +307,17 @@ export function ToolCallGroupComponent({ group, isCompact = false }: ToolCallGro
 export function ToolCallIndicator({ type, content, toolNames }: ToolCallIndicatorProps) {
   if (type === 'status' && toolNames) {
     return (
-      <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
-        <Loader2 className='h-4 w-4 animate-spin text-blue-600 dark:text-blue-400' />
-        <span className='text-blue-800 dark:text-blue-200'>🔄 {toolNames.join(' • ')}</span>
+      <div className='flex min-w-0 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
+        <Loader2 className='h-4 w-4 shrink-0 animate-spin text-blue-600 dark:text-blue-400' />
+        <span className='min-w-0 truncate text-blue-800 dark:text-blue-200'>🔄 {toolNames.join(' • ')}</span>
       </div>
     )
   }
 
   return (
-    <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
-      <Loader2 className='h-4 w-4 animate-spin text-blue-600 dark:text-blue-400' />
-      <span className='text-blue-800 dark:text-blue-200'>{content}</span>
+    <div className='flex min-w-0 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-950'>
+      <Loader2 className='h-4 w-4 shrink-0 animate-spin text-blue-600 dark:text-blue-400' />
+      <span className='min-w-0 truncate text-blue-800 dark:text-blue-200'>{content}</span>
     </div>
   )
 }
