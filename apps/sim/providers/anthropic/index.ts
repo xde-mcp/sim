@@ -423,8 +423,8 @@ ${fieldDescriptions}
         // Actual copilot tool IDs
         docs_search_internal: 'Searching documentation',
         get_user_workflow: 'Analyzing your workflow',
-        get_blocks_and_tools: 'Designing an approach',
-        get_blocks_metadata: 'Designing an approach',
+        get_blocks_and_tools: 'Getting context',
+        get_blocks_metadata: 'Getting context',
         get_yaml_structure: 'Designing an approach',
         edit_workflow: 'Building your workflow',
       }

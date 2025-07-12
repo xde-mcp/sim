@@ -171,6 +171,19 @@ export const useCopilotStore = create<CopilotStore>()(
               isLoadingChats: false,
             })
             logger.info(`Loaded ${result.chats.length} chats for workflow ${workflowId}`)
+
+            // Auto-select the most recent chat if no current chat is selected and chats exist
+            const { currentChat } = get()
+            if (!currentChat && result.chats.length > 0) {
+              // Sort by updatedAt descending to get the most recent chat
+              const sortedChats = [...result.chats].sort(
+                (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+              )
+              const mostRecentChat = sortedChats[0]
+              
+              logger.info(`Auto-selecting most recent chat: ${mostRecentChat.title || 'Untitled'}`)
+              await get().selectChat(mostRecentChat)
+            }
           } else {
             throw new Error(result.error || 'Failed to load chats')
           }
