@@ -10,6 +10,7 @@ import {
   Pause,
   Play,
 } from 'lucide-react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { createLogger } from '@/lib/logs/console-logger'
 import { getBlock } from '@/blocks'
@@ -142,10 +143,13 @@ const ImagePreview = ({
 
   return (
     <div className='my-2 w-1/2'>
-      <img
+      <Image
         src={imageSrc}
         alt='Generated image'
+        width={400}
+        height={300}
         className='h-auto w-full rounded-lg border'
+        unoptimized
         onError={(e) => {
           console.error('Image failed to load:', imageSrc)
           setLoadError(true)
