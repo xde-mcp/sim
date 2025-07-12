@@ -199,7 +199,7 @@ export function Panel() {
             ) : activeTab === 'console' ? (
               <Console panelWidth={panelWidth} />
             ) : (
-              <Variables panelWidth={panelWidth} />
+              <Variables />
             )}
           </div>
         </div>

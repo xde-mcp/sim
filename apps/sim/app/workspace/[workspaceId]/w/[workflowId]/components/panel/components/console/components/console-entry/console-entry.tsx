@@ -5,7 +5,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Copy,
+  Clipboard,
   Download,
   Pause,
   Play,
@@ -443,7 +443,7 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
                 {showCopySuccess ? (
                   <Check className='h-3 w-3 text-gray-500' />
                 ) : (
-                  <Copy className='h-3 w-3 text-muted-foreground' />
+                  <Clipboard className='h-3 w-3 text-muted-foreground' />
                 )}
               </Button>
             )}
@@ -532,7 +532,7 @@ export function ConsoleEntry({ entry, consoleWidth }: ConsoleEntryProps) {
                     {showCopySuccess ? (
                       <Check className='h-3 w-3 text-gray-500' />
                     ) : (
-                      <Copy className='h-3 w-3 text-muted-foreground' />
+                      <Clipboard className='h-3 w-3 text-muted-foreground' />
                     )}
                   </Button>
                   <Button
