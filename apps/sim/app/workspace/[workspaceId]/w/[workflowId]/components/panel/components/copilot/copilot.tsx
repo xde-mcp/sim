@@ -1,7 +1,7 @@
 'use client'
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { ChevronDown, History, MessageSquarePlus, MoreHorizontal, Trash2, Bot } from 'lucide-react'
+import { Bot, ChevronDown, History, MessageSquarePlus, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -195,14 +195,17 @@ export const Copilot = forwardRef<CopilotRef, CopilotProps>(
                       onMouseLeave={() => setIsDropdownOpen(false)}
                     >
                       {isLoadingChats ? (
-                        <div className='px-4 py-3 text-muted-foreground text-sm'>Loading chats...</div>
+                        <div className='px-4 py-3 text-muted-foreground text-sm'>
+                          Loading chats...
+                        </div>
                       ) : chats.length === 0 ? (
                         <div className='px-4 py-3 text-muted-foreground text-sm'>No chats yet</div>
                       ) : (
                         // Sort chats by updated date (most recent first) for display
                         [...chats]
                           .sort(
-                            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+                            (a, b) =>
+                              new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
                           )
                           .map((chat) => (
                             <div key={chat.id} className='group flex items-center gap-2 px-2 py-1'>

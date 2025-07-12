@@ -1,7 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, History, MessageSquarePlus, MoreHorizontal, Trash2, X, Bot } from 'lucide-react'
+import {
+  Bot,
+  ChevronDown,
+  History,
+  MessageSquarePlus,
+  MoreHorizontal,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -147,7 +155,9 @@ export function CopilotModal({
                   ) : (
                     // Sort chats by updated date (most recent first) for display
                     [...chats]
-                      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                      .sort(
+                        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+                      )
                       .map((chat) => (
                         <div key={chat.id} className='group flex items-center gap-2 px-2 py-1'>
                           <DropdownMenuItem asChild>

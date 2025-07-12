@@ -180,7 +180,7 @@ export const useCopilotStore = create<CopilotStore>()(
                 (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
               )
               const mostRecentChat = sortedChats[0]
-              
+
               logger.info(`Auto-selecting most recent chat: ${mostRecentChat.title || 'Untitled'}`)
               await get().selectChat(mostRecentChat)
             }
