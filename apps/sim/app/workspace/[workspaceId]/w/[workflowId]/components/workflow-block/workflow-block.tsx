@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, Code, Info, RectangleHorizontal, RectangleVertical } from 'lucide-react'
+import { BookOpen, Code, Info } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import { Handle, type NodeProps, Position, useUpdateNodeInternals } from 'reactflow'
 import { Badge } from '@/components/ui/badge'
@@ -9,15 +9,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { parseCronToHumanReadable } from '@/lib/schedules/utils'
 import { cn, formatDateTime, validateName } from '@/lib/utils'
 import { useUserPermissionsContext } from '@/app/workspace/[workspaceId]/w/components/providers/workspace-permissions-provider'
-import type { BlockConfig, SubBlockConfig } from '@/blocks/types'
+import type { BlockConfig } from '@/blocks/types'
 import { useCollaborativeWorkflow } from '@/hooks/use-collaborative-workflow'
 import { useExecutionStore } from '@/stores/execution/store'
+import { useBlockDetailsStore } from '@/stores/panel/block-details/store'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
-import { mergeSubblockState } from '@/stores/workflows/utils'
 import { useWorkflowStore } from '@/stores/workflows/workflow/store'
 import { ActionBar } from './components/action-bar/action-bar'
 import { ConnectionBlocks } from './components/connection-blocks/connection-blocks'
-import { SubBlock } from './components/sub-block/sub-block'
 
 interface WorkflowBlockProps {
   type: string
@@ -35,7 +34,6 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
 
   // State management
   const [isConnecting, setIsConnecting] = useState(false)
-
   const [isEditing, setIsEditing] = useState(false)
   const [editedName, setEditedName] = useState('')
   const [isLoadingScheduleInfo, setIsLoadingScheduleInfo] = useState(false)
@@ -55,37 +53,30 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
 
   // Refs
   const blockRef = useRef<HTMLDivElement>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const updateNodeInternals = useUpdateNodeInternals()
 
   // Workflow store selectors
-  const lastUpdate = useWorkflowStore((state) => state.lastUpdate)
   const isEnabled = useWorkflowStore((state) => state.blocks[id]?.enabled ?? true)
   const horizontalHandles = useWorkflowStore(
     (state) => state.blocks[id]?.horizontalHandles ?? false
   )
-  const isWide = useWorkflowStore((state) => state.blocks[id]?.isWide ?? false)
-  const blockHeight = useWorkflowStore((state) => state.blocks[id]?.height ?? 0)
   const hasActiveWebhook = useWorkflowStore((state) => state.hasActiveWebhook ?? false)
   const blockAdvancedMode = useWorkflowStore((state) => state.blocks[id]?.advancedMode ?? false)
 
-  // Collaborative workflow actions
-  const {
-    collaborativeUpdateBlockName,
-    collaborativeToggleBlockWide,
-    collaborativeToggleBlockAdvancedMode,
-  } = useCollaborativeWorkflow()
+  // Block selection state
+  const { selectedBlockId } = useBlockDetailsStore()
+  const isSelected = selectedBlockId === id
 
-  // Workflow store actions
-  const updateBlockHeight = useWorkflowStore((state) => state.updateBlockHeight)
+  // Collaborative workflow actions
+  const { collaborativeUpdateBlockName, collaborativeToggleBlockAdvancedMode } =
+    useCollaborativeWorkflow()
 
   // Execution store
   const isActiveBlock = useExecutionStore((state) => state.activeBlockIds.has(id))
   const isActive = dataIsActive || isActiveBlock
 
   // Get the current workflow ID from URL params instead of global state
-  // This prevents race conditions when switching workflows rapidly
   const params = useParams()
   const currentWorkflowId = params.workflowId as string
 
@@ -241,132 +232,10 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
     }
   }
 
-  // Add effect to observe size changes with debounced updates
+  // Update node internals when handles change
   useEffect(() => {
-    if (!contentRef.current) return
-
-    let rafId: number
-    const debouncedUpdate = debounce((height: number) => {
-      if (height !== blockHeight) {
-        updateBlockHeight(id, height)
-        updateNodeInternals(id)
-      }
-    }, 100)
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      // Cancel any pending animation frame
-      if (rafId) {
-        cancelAnimationFrame(rafId)
-      }
-
-      // Schedule the update on the next animation frame
-      rafId = requestAnimationFrame(() => {
-        for (const entry of entries) {
-          const height =
-            entry.borderBoxSize[0]?.blockSize ?? entry.target.getBoundingClientRect().height
-          debouncedUpdate(height)
-        }
-      })
-    })
-
-    resizeObserver.observe(contentRef.current)
-
-    return () => {
-      resizeObserver.disconnect()
-      if (rafId) {
-        cancelAnimationFrame(rafId)
-      }
-    }
-  }, [id, blockHeight, updateBlockHeight, updateNodeInternals, lastUpdate])
-
-  // SubBlock layout management
-  function groupSubBlocks(subBlocks: SubBlockConfig[], blockId: string) {
-    const rows: SubBlockConfig[][] = []
-    let currentRow: SubBlockConfig[] = []
-    let currentRowWidth = 0
-
-    // Get the appropriate state for conditional evaluation
-    let stateToUse: Record<string, any> = {}
-
-    if (data.isPreview && data.subBlockValues) {
-      // In preview mode, use the preview values
-      stateToUse = data.subBlockValues
-    } else {
-      // In normal mode, use merged state
-      const blocks = useWorkflowStore.getState().blocks
-      const activeWorkflowId = useWorkflowRegistry.getState().activeWorkflowId || undefined
-      const mergedState = mergeSubblockState(blocks, activeWorkflowId, blockId)[blockId]
-      stateToUse = mergedState?.subBlocks || {}
-    }
-
-    const isAdvancedMode = useWorkflowStore.getState().blocks[blockId]?.advancedMode ?? false
-
-    // Filter visible blocks and those that meet their conditions
-    const visibleSubBlocks = subBlocks.filter((block) => {
-      if (block.hidden) return false
-
-      // Filter by mode if specified
-      if (block.mode) {
-        if (block.mode === 'basic' && isAdvancedMode) return false
-        if (block.mode === 'advanced' && !isAdvancedMode) return false
-      }
-
-      // If there's no condition, the block should be shown
-      if (!block.condition) return true
-
-      // Get the values of the fields this block depends on from the appropriate state
-      const fieldValue = stateToUse[block.condition.field]?.value
-      const andFieldValue = block.condition.and
-        ? stateToUse[block.condition.and.field]?.value
-        : undefined
-
-      // Check if the condition value is an array
-      const isValueMatch = Array.isArray(block.condition.value)
-        ? fieldValue != null &&
-          (block.condition.not
-            ? !block.condition.value.includes(fieldValue as string | number | boolean)
-            : block.condition.value.includes(fieldValue as string | number | boolean))
-        : block.condition.not
-          ? fieldValue !== block.condition.value
-          : fieldValue === block.condition.value
-
-      // Check both conditions if 'and' is present
-      const isAndValueMatch =
-        !block.condition.and ||
-        (Array.isArray(block.condition.and.value)
-          ? andFieldValue != null &&
-            (block.condition.and.not
-              ? !block.condition.and.value.includes(andFieldValue as string | number | boolean)
-              : block.condition.and.value.includes(andFieldValue as string | number | boolean))
-          : block.condition.and.not
-            ? andFieldValue !== block.condition.and.value
-            : andFieldValue === block.condition.and.value)
-
-      return isValueMatch && isAndValueMatch
-    })
-
-    visibleSubBlocks.forEach((block) => {
-      const blockWidth = block.layout === 'half' ? 0.5 : 1
-      if (currentRowWidth + blockWidth > 1) {
-        if (currentRow.length > 0) {
-          rows.push([...currentRow])
-        }
-        currentRow = [block]
-        currentRowWidth = blockWidth
-      } else {
-        currentRow.push(block)
-        currentRowWidth += blockWidth
-      }
-    })
-
-    if (currentRow.length > 0) {
-      rows.push(currentRow)
-    }
-
-    return rows
-  }
-
-  const subBlockRows = groupSubBlocks(config.subBlocks, id)
+    updateNodeInternals(id)
+  }, [id, horizontalHandles, updateNodeInternals])
 
   // Name editing handlers
   const handleNameClick = (e: React.MouseEvent) => {
@@ -430,12 +299,13 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
       <Card
         ref={blockRef}
         className={cn(
-          'relative cursor-default select-none shadow-md',
-          'transition-block-bg transition-ring',
-          isWide ? 'w-[480px]' : 'w-[320px]',
-          !isEnabled && 'shadow-sm',
+          'relative cursor-default select-none rounded-[14px] border border-border bg-card shadow-xs',
+          'transition-all duration-200',
+          'w-[280px]',
+          !isEnabled && 'opacity-50',
           isActive && 'animate-pulse-ring ring-2 ring-blue-500',
           isPending && 'ring-2 ring-amber-500',
+          isSelected && 'bg-secondary',
           'z-[20]'
         )}
       >
@@ -520,7 +390,7 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
                   onClick={handleNameClick}
                   title={name}
                   style={{
-                    maxWidth: !isEnabled ? (isWide ? '200px' : '140px') : '180px',
+                    maxWidth: !isEnabled ? '140px' : '180px',
                   }}
                 >
                   {name}
@@ -725,69 +595,7 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
                 </Tooltip>
               )
             )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant='ghost'
-                  size='sm'
-                  onClick={() => {
-                    if (userPermissions.canEdit) {
-                      collaborativeToggleBlockWide(id)
-                    }
-                  }}
-                  className={cn(
-                    'h-7 p-1 text-gray-500',
-                    !userPermissions.canEdit && 'cursor-not-allowed opacity-50'
-                  )}
-                  disabled={!userPermissions.canEdit}
-                >
-                  {isWide ? (
-                    <RectangleHorizontal className='h-5 w-5' />
-                  ) : (
-                    <RectangleVertical className='h-5 w-5' />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side='top'>
-                {!userPermissions.canEdit
-                  ? 'Read-only mode'
-                  : isWide
-                    ? 'Narrow Block'
-                    : 'Expand Block'}
-              </TooltipContent>
-            </Tooltip>
           </div>
-        </div>
-
-        {/* Block Content */}
-        <div
-          ref={contentRef}
-          className='cursor-pointer space-y-4 px-4 pt-3 pb-4'
-          onMouseDown={(e) => {
-            e.stopPropagation()
-          }}
-        >
-          {subBlockRows.length > 0
-            ? subBlockRows.map((row, rowIndex) => (
-                <div key={`row-${rowIndex}`} className='flex gap-4'>
-                  {row.map((subBlock, blockIndex) => (
-                    <div
-                      key={`${id}-${rowIndex}-${blockIndex}`}
-                      className={cn('space-y-1', subBlock.layout === 'half' ? 'flex-1' : 'w-full')}
-                    >
-                      <SubBlock
-                        blockId={id}
-                        config={subBlock}
-                        isConnecting={isConnecting}
-                        isPreview={data.isPreview}
-                        subBlockValues={data.subBlockValues}
-                        disabled={!userPermissions.canEdit}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ))
-            : null}
         </div>
 
         {/* Output Handle */}
@@ -822,6 +630,7 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
             />
 
             {/* Error Handle - Don't show for starter blocks */}
+            {/* Temporarily commented out
             {type !== 'starter' && (
               <Handle
                 type='source'
@@ -861,6 +670,7 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
                 isValidConnection={(connection) => connection.target !== id}
               />
             )}
+            */}
           </>
         )}
       </Card>

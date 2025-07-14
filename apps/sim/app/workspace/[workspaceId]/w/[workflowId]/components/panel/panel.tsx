@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowDownToLine, CircleSlash, X } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { getBlock } from '@/blocks'
+import { useBlockDetailsStore } from '@/stores/panel/block-details/store'
 import { useChatStore } from '@/stores/panel/chat/store'
 import { useConsoleStore } from '@/stores/panel/console/store'
 import { usePanelStore } from '@/stores/panel/store'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
+import { useWorkflowStore } from '@/stores/workflows/workflow/store'
+import { BlockDetails } from './components/block-details/block-details'
 import { Chat } from './components/chat/chat'
 import { ChatModal } from './components/chat/components/chat-modal/chat-modal'
 import { Console } from './components/console/console'
@@ -26,33 +30,49 @@ export function Panel() {
   const panelWidth = usePanelStore((state) => state.panelWidth)
   const setPanelWidth = usePanelStore((state) => state.setPanelWidth)
 
+  const { selectedBlockId, isOpen: isBlockDetailsOpen, closeDetails } = useBlockDetailsStore()
+  const { blocks } = useWorkflowStore()
+
   const clearConsole = useConsoleStore((state) => state.clearConsole)
   const exportConsoleCSV = useConsoleStore((state) => state.exportConsoleCSV)
   const clearChat = useChatStore((state) => state.clearChat)
   const exportChatCSV = useChatStore((state) => state.exportChatCSV)
   const { activeWorkflowId } = useWorkflowRegistry()
 
+  const selectedBlock = selectedBlockId ? blocks[selectedBlockId] : null
+  const blockConfig = selectedBlock ? getBlock(selectedBlock.type) : null
+
+  // Determine what to show: block details or regular panel
+  const showBlockDetails = isBlockDetailsOpen && selectedBlock && blockConfig
+
   const handleTabClick = (tab: 'chat' | 'console' | 'variables') => {
     setActiveTab(tab)
+    if (showBlockDetails) {
+      closeDetails()
+    }
     if (!isOpen) {
       togglePanel()
     }
   }
 
   const handleClosePanel = () => {
-    togglePanel()
+    if (showBlockDetails) {
+      closeDetails()
+    } else {
+      togglePanel()
+    }
   }
 
   // Resize functionality
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
-      if (!isOpen) return
+      if (!isOpen && !showBlockDetails) return
       e.preventDefault()
       setIsResizing(true)
       setResizeStartX(e.clientX)
       setResizeStartWidth(panelWidth)
     },
-    [isOpen, panelWidth]
+    [isOpen, showBlockDetails, panelWidth]
   )
 
   const handleResize = useCallback(
@@ -116,8 +136,8 @@ export function Panel() {
         </button>
       </div>
 
-      {/* Panel Content - Only visible when isOpen is true */}
-      {isOpen && (
+      {/* Panel Content - Show when regular panel is open OR when block details is open */}
+      {(isOpen || showBlockDetails) && (
         <div
           className='fixed top-[124px] right-4 bottom-4 z-10 flex flex-col rounded-[14px] border bg-card shadow-xs'
           style={{ width: `${panelWidth}px` }}
@@ -128,55 +148,72 @@ export function Panel() {
             onMouseDown={handleResizeStart}
           />
 
-          {/* Header - Fixed width content */}
+          {/* Header */}
           <div className='flex items-center justify-between px-3 pt-3 pb-1'>
-            <h2 className='font-[450] text-base text-card-foreground capitalize'>{activeTab}</h2>
+            {showBlockDetails && blockConfig && selectedBlock ? (
+              <div className='flex items-center gap-2'>
+                <div
+                  className='flex h-5 w-5 flex-shrink-0 items-center justify-center rounded'
+                  style={{ backgroundColor: blockConfig.bgColor }}
+                >
+                  <blockConfig.icon className='h-3 w-3 text-white' />
+                </div>
+                <h2 className='font-[450] text-base text-card-foreground'>{selectedBlock.name}</h2>
+              </div>
+            ) : (
+              <h2 className='font-[450] text-base text-card-foreground capitalize'>{activeTab}</h2>
+            )}
+
             <div className='flex items-center gap-2'>
-              {activeTab === 'console' && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => activeWorkflowId && exportConsoleCSV(activeWorkflowId)}
-                      className='font-medium text-md leading-normal transition-all hover:brightness-75 dark:hover:brightness-125'
-                      style={{ color: 'var(--base-muted-foreground)' }}
-                    >
-                      <ArrowDownToLine className='h-4 w-4' strokeWidth={2} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side='bottom'>Export console data</TooltipContent>
-                </Tooltip>
-              )}
-              {activeTab === 'chat' && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => activeWorkflowId && exportChatCSV(activeWorkflowId)}
-                      className='font-medium text-md leading-normal transition-all hover:brightness-75 dark:hover:brightness-125'
-                      style={{ color: 'var(--base-muted-foreground)' }}
-                    >
-                      <ArrowDownToLine className='h-4 w-4' strokeWidth={2} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side='bottom'>Export chat data</TooltipContent>
-                </Tooltip>
-              )}
-              {(activeTab === 'console' || activeTab === 'chat') && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() =>
-                        activeTab === 'console'
-                          ? clearConsole(activeWorkflowId)
-                          : clearChat(activeWorkflowId)
-                      }
-                      className='font-medium text-md leading-normal transition-all hover:brightness-75 dark:hover:brightness-125'
-                      style={{ color: 'var(--base-muted-foreground)' }}
-                    >
-                      <CircleSlash className='h-4 w-4' strokeWidth={2} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side='bottom'>Clear {activeTab}</TooltipContent>
-                </Tooltip>
+              {!showBlockDetails && (
+                <>
+                  {activeTab === 'console' && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => activeWorkflowId && exportConsoleCSV(activeWorkflowId)}
+                          className='font-medium text-md leading-normal transition-all hover:brightness-75 dark:hover:brightness-125'
+                          style={{ color: 'var(--base-muted-foreground)' }}
+                        >
+                          <ArrowDownToLine className='h-4 w-4' strokeWidth={2} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side='bottom'>Export console data</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {activeTab === 'chat' && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => activeWorkflowId && exportChatCSV(activeWorkflowId)}
+                          className='font-medium text-md leading-normal transition-all hover:brightness-75 dark:hover:brightness-125'
+                          style={{ color: 'var(--base-muted-foreground)' }}
+                        >
+                          <ArrowDownToLine className='h-4 w-4' strokeWidth={2} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side='bottom'>Export chat data</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {(activeTab === 'console' || activeTab === 'chat') && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() =>
+                            activeTab === 'console'
+                              ? clearConsole(activeWorkflowId)
+                              : clearChat(activeWorkflowId)
+                          }
+                          className='font-medium text-md leading-normal transition-all hover:brightness-75 dark:hover:brightness-125'
+                          style={{ color: 'var(--base-muted-foreground)' }}
+                        >
+                          <CircleSlash className='h-4 w-4' strokeWidth={2} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side='bottom'>Clear {activeTab}</TooltipContent>
+                    </Tooltip>
+                  )}
+                </>
               )}
               <button
                 onClick={handleClosePanel}
@@ -190,7 +227,9 @@ export function Panel() {
 
           {/* Panel Content Area - Resizable */}
           <div className='flex-1 overflow-hidden px-3'>
-            {activeTab === 'chat' ? (
+            {showBlockDetails ? (
+              <BlockDetails />
+            ) : activeTab === 'chat' ? (
               <Chat
                 panelWidth={panelWidth}
                 chatMessage={chatMessage}

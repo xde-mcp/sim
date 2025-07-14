@@ -23,6 +23,7 @@ import { useSocket } from '@/contexts/socket-context'
 import { useCollaborativeWorkflow } from '@/hooks/use-collaborative-workflow'
 import { useWorkspacePermissions } from '@/hooks/use-workspace-permissions'
 import { useExecutionStore } from '@/stores/execution/store'
+import { useBlockDetailsStore } from '@/stores/panel/block-details/store'
 import { useVariablesStore } from '@/stores/panel/variables/store'
 import { useGeneralStore } from '@/stores/settings/general/store'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
@@ -113,6 +114,7 @@ const WorkflowContent = React.memo(() => {
   } = useCollaborativeWorkflow()
   const { emitSubblockUpdate } = useSocket()
   const { resetLoaded: resetVariablesLoaded } = useVariablesStore()
+  const { selectBlock, closeDetails } = useBlockDetailsStore()
 
   // Execution and debug mode state
   const { activeBlockIds, pendingBlocks } = useExecutionStore()
@@ -1380,10 +1382,11 @@ const WorkflowContent = React.memo(() => {
     ]
   )
 
-  // Update onPaneClick to only handle edge selection
+  // Update onPaneClick to handle edge selection and close block details
   const onPaneClick = useCallback(() => {
     setSelectedEdgeInfo(null)
-  }, [])
+    closeDetails()
+  }, [closeDetails])
 
   // Edge selection
   const onEdgeClick = useCallback(
@@ -1540,8 +1543,12 @@ const WorkflowContent = React.memo(() => {
             strokeDasharray: '5,5',
           }}
           connectionLineType={ConnectionLineType.SmoothStep}
-          onNodeClick={(e, _node) => {
+          onNodeClick={(e, node) => {
             e.stopPropagation()
+            // Open block details when clicking on a workflow block
+            if (node.type === 'workflowBlock') {
+              selectBlock(node.id)
+            }
           }}
           onPaneClick={onPaneClick}
           onEdgeClick={onEdgeClick}

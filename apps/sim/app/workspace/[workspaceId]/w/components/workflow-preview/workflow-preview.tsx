@@ -58,52 +58,37 @@ export function WorkflowPreview({
   defaultZoom,
   onNodeClick,
 }: WorkflowPreviewProps) {
-  // Handle migrated logs that don't have complete workflow state
-  if (!workflowState || !workflowState.blocks || !workflowState.edges) {
-    return (
-      <div
-        style={{ height, width }}
-        className='flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900'
-      >
-        <div className='text-center text-gray-500 dark:text-gray-400'>
-          <div className='mb-2 font-medium text-lg'>⚠️ Logged State Not Found</div>
-          <div className='text-sm'>
-            This log was migrated from the old system and doesn't contain workflow state data.
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // Move all hooks to the top, before any conditional logic
   const blocksStructure = useMemo(
     () => ({
-      count: Object.keys(workflowState.blocks || {}).length,
-      ids: Object.keys(workflowState.blocks || {}).join(','),
+      count: Object.keys(workflowState?.blocks || {}).length,
+      ids: Object.keys(workflowState?.blocks || {}).join(','),
     }),
-    [workflowState.blocks]
+    [workflowState?.blocks]
   )
 
   const loopsStructure = useMemo(
     () => ({
-      count: Object.keys(workflowState.loops || {}).length,
-      ids: Object.keys(workflowState.loops || {}).join(','),
+      count: Object.keys(workflowState?.loops || {}).length,
+      ids: Object.keys(workflowState?.loops || {}).join(','),
     }),
-    [workflowState.loops]
+    [workflowState?.loops]
   )
 
   const parallelsStructure = useMemo(
     () => ({
-      count: Object.keys(workflowState.parallels || {}).length,
-      ids: Object.keys(workflowState.parallels || {}).join(','),
+      count: Object.keys(workflowState?.parallels || {}).length,
+      ids: Object.keys(workflowState?.parallels || {}).join(','),
     }),
-    [workflowState.parallels]
+    [workflowState?.parallels]
   )
 
   const edgesStructure = useMemo(
     () => ({
-      count: workflowState.edges?.length || 0,
-      ids: workflowState.edges?.map((e) => e.id).join(',') || '',
+      count: workflowState?.edges?.length || 0,
+      ids: workflowState?.edges?.map((e) => e.id).join(',') || '',
     }),
-    [workflowState.edges]
+    [workflowState?.edges]
   )
 
   const calculateAbsolutePosition = (
@@ -131,13 +116,13 @@ export function WorkflowPreview({
   const nodes: Node[] = useMemo(() => {
     const nodeArray: Node[] = []
 
-    Object.entries(workflowState.blocks || {}).forEach(([blockId, block]) => {
+    Object.entries(workflowState?.blocks || {}).forEach(([blockId, block]) => {
       if (!block || !block.type) {
         logger.warn(`Skipping invalid block: ${blockId}`)
         return
       }
 
-      const absolutePosition = calculateAbsolutePosition(block, workflowState.blocks)
+      const absolutePosition = calculateAbsolutePosition(block, workflowState?.blocks || {})
 
       if (block.type === 'loop') {
         nodeArray.push({
@@ -202,7 +187,7 @@ export function WorkflowPreview({
       })
 
       if (block.type === 'loop') {
-        const childBlocks = Object.entries(workflowState.blocks || {}).filter(
+        const childBlocks = Object.entries(workflowState?.blocks || {}).filter(
           ([_, childBlock]) => childBlock.data?.parentId === blockId
         )
 
@@ -236,10 +221,10 @@ export function WorkflowPreview({
     })
 
     return nodeArray
-  }, [blocksStructure, loopsStructure, parallelsStructure, showSubBlocks, workflowState.blocks])
+  }, [blocksStructure, loopsStructure, parallelsStructure, showSubBlocks, workflowState?.blocks])
 
   const edges: Edge[] = useMemo(() => {
-    return (workflowState.edges || []).map((edge) => ({
+    return (workflowState?.edges || []).map((edge) => ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
@@ -247,7 +232,24 @@ export function WorkflowPreview({
       targetHandle: edge.targetHandle,
       type: 'workflowEdge',
     }))
-  }, [edgesStructure, workflowState.edges])
+  }, [edgesStructure, workflowState?.edges])
+
+  // Handle migrated logs that don't have complete workflow state
+  if (!workflowState || !workflowState.blocks || !workflowState.edges) {
+    return (
+      <div
+        style={{ height, width }}
+        className='flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900'
+      >
+        <div className='text-center text-gray-500 dark:text-gray-400'>
+          <div className='mb-2 font-medium text-lg'>⚠️ Logged State Not Found</div>
+          <div className='text-sm'>
+            This log was migrated from the old system and doesn't contain workflow state data.
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <ReactFlowProvider>
