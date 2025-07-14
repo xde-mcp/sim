@@ -24,11 +24,10 @@ import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { getBaseURL } from './auth-client'
 import { env, isTruthy } from './env'
+import { isProd } from './environment'
 import { getEmailDomain } from './urls/utils'
 
 const logger = createLogger('Auth')
-
-const isProd = env.NODE_ENV === 'production'
 
 // Only initialize Stripe if the key is provided
 // This allows local development without a Stripe account

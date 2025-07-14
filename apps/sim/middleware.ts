@@ -2,12 +2,9 @@ import { getSessionCookie } from 'better-auth/cookies'
 import { type NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/logs/console-logger'
 import { getBaseDomain } from '@/lib/urls/utils'
-import { env } from './lib/env'
+import { isDev } from './lib/environment'
 
 const logger = createLogger('Middleware')
-
-// Environment flag to check if we're in development mode
-const isDevelopment = env.NODE_ENV === 'development'
 
 const SUSPICIOUS_UA_PATTERNS = [
   /^\s*$/, // Empty user agents
@@ -31,7 +28,7 @@ export async function middleware(request: NextRequest) {
   const isCustomDomain =
     hostname !== BASE_DOMAIN &&
     !hostname.startsWith('www.') &&
-    hostname.includes(isDevelopment ? 'localhost' : 'simstudio.ai')
+    hostname.includes(isDev ? 'localhost' : 'simstudio.ai')
   const subdomain = isCustomDomain ? hostname.split('.')[0] : null
 
   // Handle chat subdomains
@@ -96,16 +93,6 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/invite/${token}?token=${token}`, request.url))
       }
     }
-    return NextResponse.next()
-  }
-
-  // If self-hosted skip waitlist
-  if (env.DOCKER_BUILD) {
-    return NextResponse.next()
-  }
-
-  // Skip waitlist protection for development environment
-  if (isDevelopment) {
     return NextResponse.next()
   }
 

@@ -11,6 +11,7 @@
 import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api'
 import { createLogger } from '@/lib/logs/console-logger'
 import { env } from './env'
+import { isProd } from './environment'
 
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ERROR)
 
@@ -142,7 +143,7 @@ function initializeClientTelemetry(): void {
       return
     }
 
-    if (env.NODE_ENV === 'production') {
+    if (isProd) {
       trackEvent('page_view', window.location.pathname)
 
       if (typeof window.history !== 'undefined') {
@@ -265,7 +266,7 @@ export async function trackEvent(
   if (!status.enabled) return
 
   try {
-    if (env.NODE_ENV === 'production') {
+    if (isProd) {
       await fetch('/api/telemetry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

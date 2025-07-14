@@ -4,12 +4,10 @@
  * This file contains all server-side instrumentation logic.
  */
 import { createLogger } from '@/lib/logs/console-logger'
-import { env } from './lib/env.ts'
+import { env } from './lib/env'
+import { isProd } from './lib/environment'
 
-const Sentry =
-  process.env.NODE_ENV === 'production'
-    ? require('@sentry/nextjs')
-    : { captureRequestError: () => {} }
+const Sentry = isProd ? require('@sentry/nextjs') : { captureRequestError: () => {} }
 
 const logger = createLogger('OtelInstrumentation')
 
@@ -103,7 +101,7 @@ async function initializeOpenTelemetry() {
 }
 
 async function initializeSentry() {
-  if (env.NODE_ENV !== 'production') return
+  if (!isProd) return
 
   try {
     const Sentry = await import('@sentry/nextjs')
