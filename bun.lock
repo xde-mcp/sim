@@ -7,6 +7,7 @@
         "@linear/sdk": "40.0.0",
         "@t3-oss/env-nextjs": "0.13.4",
         "@vercel/analytics": "1.5.0",
+        "geist": "^1.4.2",
         "remark-gfm": "4.0.1",
         "socket.io-client": "4.8.1",
       },
@@ -64,6 +65,7 @@
         "@browserbasehq/stagehand": "^2.0.0",
         "@cerebras/cerebras_cloud_sdk": "^1.23.0",
         "@hookform/resolvers": "^4.1.3",
+        "@next/font": "14.2.15",
         "@opentelemetry/api": "^1.9.0",
         "@opentelemetry/exporter-collector": "^0.25.0",
         "@opentelemetry/exporter-jaeger": "^2.0.0",
@@ -112,6 +114,7 @@
         "drizzle-orm": "^0.41.0",
         "framer-motion": "^12.5.0",
         "freestyle-sandboxes": "^0.0.38",
+        "geist": "1.4.2",
         "groq-sdk": "^0.15.0",
         "input-otp": "^1.4.2",
         "ioredis": "^5.6.0",
@@ -605,6 +608,8 @@
     "@mdx-js/mdx": ["@mdx-js/mdx@3.1.0", "", { "dependencies": { "@types/estree": "^1.0.0", "@types/estree-jsx": "^1.0.0", "@types/hast": "^3.0.0", "@types/mdx": "^2.0.0", "collapse-white-space": "^2.0.0", "devlop": "^1.0.0", "estree-util-is-identifier-name": "^3.0.0", "estree-util-scope": "^1.0.0", "estree-walker": "^3.0.0", "hast-util-to-jsx-runtime": "^2.0.0", "markdown-extensions": "^2.0.0", "recma-build-jsx": "^1.0.0", "recma-jsx": "^1.0.0", "recma-stringify": "^1.0.0", "rehype-recma": "^1.0.0", "remark-mdx": "^3.0.0", "remark-parse": "^11.0.0", "remark-rehype": "^11.0.0", "source-map": "^0.7.0", "unified": "^11.0.0", "unist-util-position-from-estree": "^2.0.0", "unist-util-stringify-position": "^4.0.0", "unist-util-visit": "^5.0.0", "vfile": "^6.0.0" } }, "sha512-/QxEhPAvGwbQmy1Px8F899L5Uc2KZ6JtXwlCgJmjSTBedwOZkByYcBG4GceIGPXRDsmfxhHazuS+hlOShRLeDw=="],
 
     "@next/env": ["@next/env@15.3.4", "", {}, "sha512-ZkdYzBseS6UjYzz6ylVKPOK+//zLWvD6Ta+vpoye8cW11AjiQjGYVibF0xuvT4L0iJfAPfZLFidaEzAOywyOAQ=="],
+
+    "@next/font": ["@next/font@14.2.15", "", { "peerDependencies": { "next": "*" } }, "sha512-QopYhBmCDDrNDynbi+ZD1hDZXmQXVFo7TmAFp4DQgO/kogz1OLbQ92hPigJbj572eZ3GaaVxNIyYVn3/eAsehg=="],
 
     "@next/swc-darwin-arm64": ["@next/swc-darwin-arm64@15.3.4", "", { "os": "darwin", "cpu": "arm64" }, "sha512-z0qIYTONmPRbwHWvpyrFXJd5F9YWLCsw3Sjrzj2ZvMYy9NPQMPZ1NjOJh4ojr4oQzcGYwgJKfidzehaNa1BpEg=="],
 
@@ -1953,6 +1958,8 @@
     "gaxios": ["gaxios@6.7.1", "", { "dependencies": { "extend": "^3.0.2", "https-proxy-agent": "^7.0.1", "is-stream": "^2.0.0", "node-fetch": "^2.6.9", "uuid": "^9.0.1" } }, "sha512-LDODD4TMYx7XXdpwxAVRAIAuB0bzv0s+ywFonY46k126qzQHT9ygyoa9tncmOiQmmDrik65UYsEkv3lbfqQ3yQ=="],
 
     "gcp-metadata": ["gcp-metadata@6.1.1", "", { "dependencies": { "gaxios": "^6.1.1", "google-logging-utils": "^0.0.2", "json-bigint": "^1.0.0" } }, "sha512-a4tiq7E0/5fTjxPAaH4jpjkSv/uCaU2p5KC6HVGrvl0cDjA8iBZv4vv1gyzlmK0ZUKqwpOyQMKzZQe3lTit77A=="],
+
+    "geist": ["geist@1.4.2", "", { "peerDependencies": { "next": ">=13.2.0" } }, "sha512-OQUga/KUc8ueijck6EbtT07L4tZ5+TZgjw8PyWfxo16sL5FWk7gNViPNU8hgCFjy6bJi9yuTP+CRpywzaGN8zw=="],
 
     "gensync": ["gensync@1.0.0-beta.2", "", {}, "sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg=="],
 

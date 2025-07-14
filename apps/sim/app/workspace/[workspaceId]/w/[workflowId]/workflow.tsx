@@ -17,8 +17,6 @@ import { ErrorBoundary } from '@/app/workspace/[workspaceId]/w/[workflowId]/comp
 import { LoopNodeComponent } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/loop-node/loop-node'
 import { Panel } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/panel/panel'
 import { ParallelNodeComponent } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/parallel-node/parallel-node'
-import { SkeletonLoading } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/skeleton-loading/skeleton-loading'
-import { Toolbar } from '@/app/workspace/[workspaceId]/w/[workflowId]/components/toolbar/toolbar'
 import { useUserPermissionsContext } from '@/app/workspace/[workspaceId]/w/components/providers/workspace-permissions-provider'
 import { getBlock } from '@/blocks'
 import { useSocket } from '@/contexts/socket-context'
@@ -27,7 +25,6 @@ import { useWorkspacePermissions } from '@/hooks/use-workspace-permissions'
 import { useExecutionStore } from '@/stores/execution/store'
 import { useVariablesStore } from '@/stores/panel/variables/store'
 import { useGeneralStore } from '@/stores/settings/general/store'
-import { useSidebarStore } from '@/stores/sidebar/store'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
 import { useWorkflowStore } from '@/stores/workflows/workflow/store'
 import { WorkflowBlock } from './components/workflow-block/workflow-block'
@@ -69,13 +66,6 @@ interface BlockData {
 const WorkflowContent = React.memo(() => {
   // State
   const [isWorkflowReady, setIsWorkflowReady] = useState(false)
-  const { mode, isExpanded } = useSidebarStore()
-
-  // In hover mode, act as if sidebar is always collapsed for layout purposes
-  const isSidebarCollapsed = useMemo(
-    () => (mode === 'expanded' ? !isExpanded : mode === 'collapsed' || mode === 'hover'),
-    [mode, isExpanded]
-  )
 
   // State for tracking node dragging
   const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null)
@@ -264,7 +254,6 @@ const WorkflowContent = React.memo(() => {
         ...orientationConfig,
         alignByLayer: true,
         animationDuration: 500, // Smooth 500ms animation
-        isSidebarCollapsed,
         handleOrientation: detectedOrientation, // Explicitly set the detected orientation
         onComplete: (finalPositions) => {
           // Emit collaborative updates for final positions after animation completes
@@ -290,7 +279,6 @@ const WorkflowContent = React.memo(() => {
     storeUpdateBlockPosition,
     collaborativeUpdateBlockPosition,
     fitView,
-    isSidebarCollapsed,
     resizeLoopNodesWrapper,
     getOrientationConfig,
   ])
@@ -1502,16 +1490,11 @@ const WorkflowContent = React.memo(() => {
   if (showSkeletonUI) {
     return (
       <div className='flex h-screen w-full flex-col overflow-hidden'>
-        <SkeletonLoading showSkeleton={true} isSidebarCollapsed={isSidebarCollapsed}>
-          <ControlBar hasValidationErrors={nestedSubflowErrors.size > 0} />
-        </SkeletonLoading>
-        <Toolbar />
-        <div
-          className={`${isSidebarCollapsed ? 'pl-14' : 'pl-60'} relative h-full w-full flex-1 transition-all duration-200`}
-        >
+        <div className='relative h-full w-full flex-1 transition-all duration-200'>
           <div className='fixed top-0 right-0 z-10'>
             <Panel />
           </div>
+          <ControlBar hasValidationErrors={nestedSubflowErrors.size > 0} />
           <div className='workflow-container h-full'>
             <Background
               color='hsl(var(--workflow-dots))'
@@ -1527,10 +1510,7 @@ const WorkflowContent = React.memo(() => {
 
   return (
     <div className='flex h-screen w-full flex-col overflow-hidden'>
-      <Toolbar />
-      <div
-        className={`${isSidebarCollapsed ? 'pl-14' : 'pl-60'} relative h-full w-full flex-1 transition-all duration-200`}
-      >
+      <div className='relative h-full w-full flex-1 transition-all duration-200'>
         <div className='fixed top-0 right-0 z-10'>
           <Panel />
         </div>

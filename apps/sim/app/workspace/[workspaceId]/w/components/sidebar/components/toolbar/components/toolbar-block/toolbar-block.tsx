@@ -37,28 +37,25 @@ export function ToolbarBlock({ config, disabled = false }: ToolbarBlockProps) {
       onDragStart={handleDragStart}
       onClick={handleClick}
       className={cn(
-        'group flex items-center gap-3 rounded-lg border bg-card p-3.5 shadow-sm transition-colors',
+        'group flex items-center gap-3 rounded-lg p-2 transition-colors',
         disabled
           ? 'cursor-not-allowed opacity-60'
           : 'cursor-pointer hover:bg-accent/50 active:cursor-grabbing'
       )}
     >
       <div
-        className='relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg'
+        className='relative flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md'
         style={{ backgroundColor: config.bgColor }}
       >
         <config.icon
           className={cn(
             'text-white transition-transform duration-200',
             !disabled && 'group-hover:scale-110',
-            config.type === 'agent' ? 'h-[24px] w-[24px]' : 'h-[22px] w-[22px]'
+            'h-[14px] w-[14px]'
           )}
         />
       </div>
-      <div className='mb-[-2px] flex flex-col gap-1'>
-        <h3 className='font-medium leading-none'>{config.name}</h3>
-        <p className='text-muted-foreground text-sm leading-snug'>{config.description}</p>
-      </div>
+      <span className='font-medium text-sm leading-none'>{config.name}</span>
     </div>
   )
 

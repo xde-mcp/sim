@@ -3,7 +3,6 @@
 import { Bug, Copy, Layers, Play, Rocket, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useSidebarStore } from '@/stores/sidebar/store'
 
 const SkeletonControlBar = () => {
   return (
@@ -147,10 +146,8 @@ export function SkeletonLoading({
   isSidebarCollapsed,
   children,
 }: SkeletonLoadingProps) {
-  const { mode, isExpanded } = useSidebarStore()
-
   return (
-    <div className='flex h-screen w-full flex-col overflow-hidden'>
+    <div className='flex h-screen w-full flex-col overflow-hidden pl-64'>
       {/* Skeleton Control Bar */}
       <div
         className={`transition-opacity duration-500 ${showSkeleton ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}

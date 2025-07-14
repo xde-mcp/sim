@@ -61,7 +61,6 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
   // Store hooks
   const { history, revertToHistoryState, lastSaved, setNeedsRedeploymentFlag, blocks } =
     useWorkflowStore()
-  const { workflowValues } = useSubBlockStore()
   const {
     workflows,
     updateWorkflow,
@@ -369,7 +368,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
     const getTooltipText = () => {
       if (!canEdit) return 'Admin permission required to delete workflows'
       if (!hasMultipleWorkflows) return 'Cannot delete the last workflow'
-      return 'Delete Workflow'
+      return 'Delete workflow'
     }
 
     if (isDisabled) {
@@ -452,7 +451,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
     const getTooltipText = () => {
       if (!canEdit) return 'Admin permission required to duplicate workflows'
       if (isDebugging) return 'Cannot duplicate workflow while debugging'
-      return 'Duplicate Workflow'
+      return 'Duplicate workflow'
     }
 
     return (
@@ -497,7 +496,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
       if (!canEdit) return 'Admin permission required to use auto-layout'
       if (isDebugging) return 'Cannot auto-layout while debugging'
       if (isExecuting) return 'Cannot auto-layout while workflow is running'
-      return 'Auto Layout'
+      return 'Auto layout'
     }
 
     return (
@@ -639,7 +638,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
     const getTooltipText = () => {
       if (!canDebug) return 'Read permission required to use debug mode'
       if (!hasExecutableBlocks) return 'Add blocks to enable debug mode'
-      return isDebugging ? 'Stop Debugging' : 'Start Debugging'
+      return isDebugging ? 'Stop debugging' : 'Start debugging'
     }
 
     const buttonClass = cn(
@@ -710,7 +709,7 @@ export function ControlBar({ hasValidationErrors = false }: ControlBarProps) {
         )
       }
 
-      return 'Run Workflow'
+      return 'Run'
     }
 
     const handleRunClick = () => {
