@@ -3,9 +3,10 @@
  *
  * This file contains all server-side instrumentation logic.
  */
-import { createLogger } from '@/lib/logs/console-logger'
+
 import { env } from './lib/env'
 import { isProd } from './lib/environment'
+import { createLogger } from './lib/logs/console-logger'
 
 const Sentry = isProd ? require('@sentry/nextjs') : { captureRequestError: () => {} }
 

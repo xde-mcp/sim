@@ -1,5 +1,5 @@
-import { env } from '../env'
-import { isProd } from '../environment'
+import { env } from '@/lib/env'
+import { isProd } from '@/lib/environment'
 
 /**
  * Returns the base URL of the application, respecting environment variables for deployment environments

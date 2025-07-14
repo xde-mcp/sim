@@ -22,8 +22,8 @@ import {
   SupabaseIcon,
   xIcon,
 } from '@/components/icons'
+import { env } from '@/lib/env'
 import { createLogger } from '@/lib/logs/console-logger'
-import { env } from '../env'
 
 const logger = createLogger('OAuth')
 

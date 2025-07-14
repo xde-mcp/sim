@@ -9,9 +9,9 @@
  * Please maintain ethical telemetry practices if modified.
  */
 import { DiagConsoleLogger, DiagLogLevel, diag } from '@opentelemetry/api'
+import { env } from '@/lib/env'
+import { isProd } from '@/lib/environment'
 import { createLogger } from '@/lib/logs/console-logger'
-import { env } from './env'
-import { isProd } from './environment'
 
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ERROR)
 

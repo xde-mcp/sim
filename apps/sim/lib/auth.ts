@@ -19,13 +19,13 @@ import {
   renderOTPEmail,
   renderPasswordResetEmail,
 } from '@/components/emails/render-email'
+import { env, isTruthy } from '@/lib/env'
+import { isProd } from '@/lib/environment'
 import { createLogger } from '@/lib/logs/console-logger'
+import { getEmailDomain } from '@/lib/urls/utils'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { getBaseURL } from './auth-client'
-import { env, isTruthy } from './env'
-import { isProd } from './environment'
-import { getEmailDomain } from './urls/utils'
 
 const logger = createLogger('Auth')
 
