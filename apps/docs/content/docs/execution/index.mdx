@@ -38,13 +38,8 @@ Sim Studio provides a powerful execution engine that brings your workflows to li
     workflow
   </Card>
 
-<Card title="Loops" href="/execution/loops">
-  Master the powerful loop functionality to create iterative processes and feedback mechanisms
-</Card>
-
-  <Card title="Advanced Features" href="/execution/advanced">
-    Discover advanced capabilities like error handling, environment variables, and performance
-    optimization
+  <Card title="Logging and Cost Calculation" href="/execution/advanced">
+    Understand workflow logs and how execution costs are calculated in Sim Studio
   </Card>
 </Cards>
 
@@ -52,7 +47,6 @@ Sim Studio provides a powerful execution engine that brings your workflows to li
 
 - **Topological Execution** - Blocks are executed in dependency order, ensuring data flows correctly
 - **Path Tracking** - The system tracks active execution paths based on routing decisions
-- **Loop Management** - Sophisticated loop handling allows for iterative processing with safeguards
 - **Real-time Monitoring** - Watch your workflow execute with detailed logs and visual indicators
 - **Error Handling** - Robust error management keeps your workflows resilient
 
@@ -66,14 +60,13 @@ When you execute a workflow in Sim Studio, the system follows a predictable patt
   <Step>
     ### Validation The workflow is validated to ensure it has an enabled starter block and proper
     connections. This includes checking that: - The starter block has no incoming connections - All
-    required blocks are present and properly connected - Loop configurations are valid with
-    appropriate iteration limits
+    required blocks are present and properly connected
   </Step>
 
 <Step>
   ### Initialization The execution context is created with environment variables and input values.
   This context maintains the state of the workflow throughout execution, including: - Block outputs
-  and states - Execution path tracking - Routing decisions - Loop iteration counters
+  and states - Execution path tracking - Routing decisions
 </Step>
 
 <Step>
@@ -211,15 +204,6 @@ Sim Studio offers multiple ways to trigger workflow execution:
 
 ## Advanced Execution Features
 
-### Loops
-
-Sim Studio supports sophisticated loop constructs, allowing parts of your workflow to execute repeatedly:
-
-- **Iteration Limits** - Configure maximum iterations (default: 5) to prevent infinite loops and minimum iterations to ensure the loop executes a certain number of times.
-- **Conditional Looping** - Continue looping until specific conditions are met, with the loop manager tracking iteration counts.
-- **Loop Reset** - Automatically resets block states between iterations, allowing blocks to be re-executed with updated inputs.
-- **Feedback Paths** - Create feedback loops where outputs from later blocks feed back into earlier blocks in the workflow.
-
 ### Error Handling
 
 The execution engine includes built-in error handling mechanisms:
@@ -245,7 +229,6 @@ Each workflow execution maintains a detailed context that includes:
 - **Block States** - Outputs and execution status of each block, indexed by block ID.
 - **Execution Path** - The active path through the workflow based on routing decisions.
 - **Routing Decisions** - Records which paths were selected by router and conditional blocks.
-- **Loop Iterations** - Tracks current iteration count for each loop in the workflow.
 - **Environment Variables** - Configuration values available to all blocks during execution.
 - **Execution Logs** - A chronological record of block executions with timing information.
 
