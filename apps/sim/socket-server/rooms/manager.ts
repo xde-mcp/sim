@@ -14,7 +14,7 @@ const db = drizzle(
     prepare: false,
     idle_timeout: 15,
     connect_timeout: 20,
-    max: 5, // Increased from 2 for better concurrent presence handling
+    max: 5,
     onnotice: () => {},
   }),
   { schema }

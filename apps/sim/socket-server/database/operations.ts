@@ -16,7 +16,7 @@ const socketDb = drizzle(
     prepare: false,
     idle_timeout: 10,
     connect_timeout: 20,
-    max: 25, // Increased from 5 to handle more concurrent operations
+    max: 25,
     onnotice: () => {},
     debug: false,
   }),
