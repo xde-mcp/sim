@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
 import { checkServerSideUsageLimits } from '@/lib/billing'
+import { env } from '@/lib/env'
 import { createLogger } from '@/lib/logs/console-logger'
 import { EnhancedLoggingSession } from '@/lib/logs/enhanced-logging-session'
 import { buildTraceSpans } from '@/lib/logs/trace-spans'
@@ -17,6 +18,7 @@ import { db } from '@/db'
 import { environment as environmentTable, userStats } from '@/db/schema'
 import { Executor } from '@/executor'
 import { Serializer } from '@/serializer'
+import { JobQueueService } from '@/services/queue'
 import { mergeSubblockState } from '@/stores/workflows/server-utils'
 import { validateWorkflowAccess } from '../../middleware'
 import { createErrorResponse, createSuccessResponse } from '../../utils'
@@ -307,7 +309,7 @@ async function executeWorkflow(workflow: any, requestId: string, input?: any) {
         .update(userStats)
         .set({
           totalApiCalls: sql`total_api_calls + 1`,
-          lastActive: new Date(),
+          lastActive: sql`now()`,
         })
         .where(eq(userStats.userId, workflow.userId))
     }
@@ -350,15 +352,68 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return createErrorResponse(validation.error.message, validation.error.status)
     }
 
-    const result = await executeWorkflow(validation.workflow, requestId)
+    // Check if we should use the queue system
+    const useQueue = env.USE_WORKFLOW_QUEUE
 
-    // Check if the workflow execution contains a response block output
-    const hasResponseBlock = workflowHasResponseBlock(result)
-    if (hasResponseBlock) {
-      return createHttpResponseFromBlock(result)
+    if (useQueue) {
+      // Create job in queue
+      const jobQueue = new JobQueueService()
+
+      try {
+        const jobResult = await jobQueue.createJob({
+          workflowId: id,
+          userId: validation.workflow.userId,
+          input: {},
+          triggerType: 'api',
+          metadata: {
+            requestId,
+          },
+        })
+
+        logger.info(`[${requestId}] Created job ${jobResult.jobId} for workflow ${id}`)
+
+        // Return job information
+        return NextResponse.json(
+          {
+            success: true,
+            jobId: jobResult.jobId,
+            status: jobResult.status,
+            createdAt: jobResult.createdAt.toISOString(),
+            estimatedStartTime: jobResult.estimatedStartTime?.toISOString(),
+            position: jobResult.position,
+            links: {
+              status: `/api/jobs/${jobResult.jobId}`,
+              logs: `/api/jobs/${jobResult.jobId}/logs`,
+              cancel: `/api/jobs/${jobResult.jobId}`,
+            },
+          },
+          { status: 202 }
+        )
+      } catch (error: any) {
+        logger.error(`[${requestId}] Error creating job:`, error)
+
+        if (error.message?.includes('Rate limit exceeded')) {
+          return createErrorResponse(error.message, 429, 'RATE_LIMIT_EXCEEDED')
+        }
+
+        if (error.message?.includes('Concurrent execution limit')) {
+          return createErrorResponse(error.message, 429, 'CONCURRENT_LIMIT_EXCEEDED')
+        }
+
+        throw error
+      }
+    } else {
+      // Legacy synchronous execution
+      const result = await executeWorkflow(validation.workflow, requestId)
+
+      // Check if the workflow execution contains a response block output
+      const hasResponseBlock = workflowHasResponseBlock(result)
+      if (hasResponseBlock) {
+        return createHttpResponseFromBlock(result)
+      }
+
+      return createSuccessResponse(result)
     }
-
-    return createSuccessResponse(result)
   } catch (error: any) {
     logger.error(`[${requestId}] Error executing workflow: ${id}`, error)
 
@@ -409,16 +464,69 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     logger.info(`[${requestId}] Input passed to workflow:`, JSON.stringify(input, null, 2))
 
-    // Execute workflow with the raw input
-    const result = await executeWorkflow(validation.workflow, requestId, input)
+    // Check if we should use the queue system
+    const useQueue = env.USE_WORKFLOW_QUEUE
 
-    // Check if the workflow execution contains a response block output
-    const hasResponseBlock = workflowHasResponseBlock(result)
-    if (hasResponseBlock) {
-      return createHttpResponseFromBlock(result)
+    if (useQueue) {
+      // Create job in queue
+      const jobQueue = new JobQueueService()
+
+      try {
+        const jobResult = await jobQueue.createJob({
+          workflowId: id,
+          userId: validation.workflow.userId,
+          input,
+          triggerType: 'api',
+          metadata: {
+            requestId,
+          },
+        })
+
+        logger.info(`[${requestId}] Created job ${jobResult.jobId} for workflow ${id}`)
+
+        // Return job information
+        return NextResponse.json(
+          {
+            success: true,
+            jobId: jobResult.jobId,
+            status: jobResult.status,
+            createdAt: jobResult.createdAt.toISOString(),
+            estimatedStartTime: jobResult.estimatedStartTime?.toISOString(),
+            position: jobResult.position,
+            links: {
+              status: `/api/jobs/${jobResult.jobId}`,
+              logs: `/api/jobs/${jobResult.jobId}/logs`,
+              cancel: `/api/jobs/${jobResult.jobId}`,
+            },
+          },
+          { status: 202 }
+        ) // 202 Accepted
+      } catch (error: any) {
+        logger.error(`[${requestId}] Error creating job:`, error)
+
+        // Check if it's a rate limit error
+        if (error.message?.includes('Rate limit exceeded')) {
+          return createErrorResponse(error.message, 429, 'RATE_LIMIT_EXCEEDED')
+        }
+
+        if (error.message?.includes('Concurrent execution limit')) {
+          return createErrorResponse(error.message, 429, 'CONCURRENT_LIMIT_EXCEEDED')
+        }
+
+        throw error
+      }
+    } else {
+      // Legacy synchronous execution
+      const result = await executeWorkflow(validation.workflow, requestId, input)
+
+      // Check if the workflow execution contains a response block output
+      const hasResponseBlock = workflowHasResponseBlock(result)
+      if (hasResponseBlock) {
+        return createHttpResponseFromBlock(result)
+      }
+
+      return createSuccessResponse(result)
     }
-
-    return createSuccessResponse(result)
   } catch (error: any) {
     logger.error(`[${requestId}] Error executing workflow: ${id}`, error)
 

@@ -546,6 +546,54 @@ export const subscription = pgTable(
   })
 )
 
+export const workflowExecutionJobs = pgTable(
+  'workflow_execution_jobs',
+  {
+    id: text('id').primaryKey(),
+    workflowId: text('workflow_id')
+      .notNull()
+      .references(() => workflow.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    status: text('status').notNull().default('pending'), // pending, processing, completed, failed, cancelled
+    priority: integer('priority').notNull().default(0), // Higher number = higher priority
+    input: jsonb('input'),
+    output: jsonb('output'),
+    error: text('error'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    executionId: text('execution_id'), // Links to workflow_execution_logs when processing starts
+    retryCount: integer('retry_count').notNull().default(0),
+    maxRetries: integer('max_retries').notNull().default(3),
+    metadata: jsonb('metadata').notNull().default('{}'), // Additional context (trigger type, etc)
+    triggerType: text('trigger_type').notNull().default('api'), // api, webhook, schedule, manual
+  },
+  (table) => ({
+    // Indexes for performance
+    statusPriorityIdx: index('idx_workflow_execution_jobs_status_priority').on(
+      table.status,
+      table.priority,
+      table.createdAt
+    ),
+    userIdIdx: index('idx_workflow_execution_jobs_user_id').on(table.userId, table.createdAt),
+    workflowIdIdx: index('idx_workflow_execution_jobs_workflow_id').on(table.workflowId),
+    executionIdIdx: index('idx_workflow_execution_jobs_execution_id').on(table.executionId),
+  })
+)
+
+export const userRateLimits = pgTable('user_rate_limits', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  executionRequests: integer('execution_requests').notNull().default(0), // Rolling window counter
+  windowStart: timestamp('window_start').notNull().defaultNow(),
+  lastRequestAt: timestamp('last_request_at').notNull().defaultNow(),
+  isRateLimited: boolean('is_rate_limited').notNull().default(false),
+  rateLimitResetAt: timestamp('rate_limit_reset_at'),
+})
+
 export const chat = pgTable(
   'chat',
   {
