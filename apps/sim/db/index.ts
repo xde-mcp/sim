@@ -11,12 +11,12 @@ const connectionString = env.POSTGRES_URL ?? env.DATABASE_URL
 /**
  * Connection Pool Allocation Strategy
  *
- * Main App: 25 connections per instance
- * Socket Server: 3 connections total
+ * Main App: 22 connections per instance
+ * Socket Server: 5 connections (operations) + 2 connections (room manager) = 7 total
  *
  * With ~3-4 Vercel serverless instances typically active:
  * - Main app: 25 × 4 = 100 connections
- * - Socket server: 3 connections
+ * - Socket server: 7 connections total
  * - Buffer: 25 connections
  * - Total: ~128 connections
  * - Supabase limit: 128 connections (16XL instance)
