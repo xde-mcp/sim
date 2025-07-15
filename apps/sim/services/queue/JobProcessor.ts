@@ -7,7 +7,12 @@ import { decryptSecret } from '@/lib/utils'
 import { loadWorkflowFromNormalizedTables } from '@/lib/workflows/db-helpers'
 import { updateWorkflowRunCounts } from '@/lib/workflows/utils'
 import { db } from '@/db'
-import { environment as environmentTable, userStats, workflow } from '@/db/schema'
+import {
+  environment as environmentTable,
+  userStats,
+  workflow,
+  workflowExecutionJobs,
+} from '@/db/schema'
 import { Executor } from '@/executor'
 import { Serializer } from '@/serializer'
 import { mergeSubblockState } from '@/stores/workflows/server-utils'
@@ -19,15 +24,18 @@ import { SYSTEM_LIMITS } from './types'
 const logger = createLogger('JobProcessor')
 
 export class JobProcessor {
-  private jobQueue: JobQueueService
-  private rateLimiter: RateLimiter
   private isRunning = false
   private activeJobs = new Map<string, NodeJS.Timeout>()
+  private jobQueue: JobQueueService
+  private rateLimiter: RateLimiter
   private cleanupInterval?: NodeJS.Timeout
+  private processorId: string
 
   constructor() {
     this.jobQueue = new JobQueueService()
     this.rateLimiter = new RateLimiter()
+    this.processorId = uuidv4().slice(0, 8)
+    logger.info(`JobProcessor created with ID: ${this.processorId}`)
   }
 
   /**
@@ -35,22 +43,39 @@ export class JobProcessor {
    */
   async start(): Promise<void> {
     if (this.isRunning) {
-      logger.warn('Job processor is already running')
+      logger.warn(`[${this.processorId}] Job processor is already running`)
       return
     }
 
+    logger.info(`[${this.processorId}] Starting job processor...`)
     this.isRunning = true
-    logger.info('Starting job processor...')
+
+    // Clean up stuck jobs on startup
+    logger.info(`[${this.processorId}] Cleaning up stuck processing jobs...`)
+    const stuckJobs = await db
+      .update(workflowExecutionJobs)
+      .set({
+        status: 'failed',
+        error: 'Job processor restarted, marking stuck job as failed',
+        completedAt: new Date(),
+      })
+      .where(eq(workflowExecutionJobs.status, 'processing'))
+      .returning({ id: workflowExecutionJobs.id })
+
+    if (stuckJobs.length > 0) {
+      logger.info(`Cleaned up ${stuckJobs.length} stuck processing jobs`)
+    }
+
+    // Run cleanup task
+    logger.info('Running job cleanup...')
+    await this.performCleanup()
 
     // Start cleanup task - runs every hour
     this.cleanupInterval = setInterval(() => {
       this.performCleanup()
     }, 3600000) // 1 hour
 
-    // Run initial cleanup
-    this.performCleanup()
-
-    // Start processing loop
+    // Start the processing loop
     this.processLoop()
   }
 
@@ -99,30 +124,42 @@ export class JobProcessor {
    * Main processing loop
    */
   private async processLoop(): Promise<void> {
+    logger.info(`[${this.processorId}] Job processor loop started`)
+
     while (this.isRunning) {
       try {
-        // Check if we have capacity
+        // Check if we're at capacity
         if (this.activeJobs.size >= SYSTEM_LIMITS.maxJobProcessors) {
-          // Wait a bit before checking again
+          logger.debug(
+            `[${this.processorId}] At capacity: ${this.activeJobs.size}/${SYSTEM_LIMITS.maxJobProcessors} jobs`
+          )
           await new Promise((resolve) => setTimeout(resolve, 1000))
           continue
         }
 
         // Get next job from queue
+        logger.debug(`[${this.processorId}] Fetching next job from queue...`)
         const job = await this.jobQueue.getNextJob()
-
         if (!job) {
           // No jobs, wait a bit
+          logger.debug(`[${this.processorId}] No jobs available, waiting...`)
           await new Promise((resolve) => setTimeout(resolve, 2000))
           continue
         }
+
+        logger.info(`[${this.processorId}] Found job ${job.id}, attempting to process...`)
 
         // Try to mark job as processing (atomic operation)
         const marked = await this.jobQueue.markJobProcessing(job.id)
         if (!marked) {
           // Another processor got it first
+          logger.info(`[${this.processorId}] Job ${job.id} already taken by another processor`)
           continue
         }
+
+        logger.info(
+          `[${this.processorId}] Successfully claimed job ${job.id}, starting processing...`
+        )
 
         // Process the job
         this.processJob(job)
@@ -132,6 +169,8 @@ export class JobProcessor {
         await new Promise((resolve) => setTimeout(resolve, 5000))
       }
     }
+
+    logger.info('Job processor loop stopped')
   }
 
   /**
@@ -141,7 +180,17 @@ export class JobProcessor {
     const executionId = uuidv4()
     const requestId = job.id.slice(0, 8)
 
-    logger.info(`Processing job ${job.id} for workflow ${job.workflowId}`)
+    logger.info(`Processing job ${job.id} for workflow ${job.workflowId}`, {
+      executionId,
+      userId: job.userId,
+      triggerType: job.triggerType,
+    })
+
+    // Update job with execution ID
+    await db
+      .update(workflowExecutionJobs)
+      .set({ executionId })
+      .where(eq(workflowExecutionJobs.id, job.id))
 
     // Set timeout for job execution
     const timeout = setTimeout(async () => {
@@ -180,7 +229,12 @@ export class JobProcessor {
       this.activeJobs.delete(job.id)
 
       const errorMessage = error.message || 'Unknown error'
-      logger.error(`Job ${job.id} failed:`, error)
+      logger.error(`Job ${job.id} failed:`, {
+        error: errorMessage,
+        stack: error.stack,
+        workflowId: job.workflowId,
+        userId: job.userId,
+      })
 
       // Check if we should retry
       const shouldRetry = !errorMessage.includes('Usage limit exceeded')

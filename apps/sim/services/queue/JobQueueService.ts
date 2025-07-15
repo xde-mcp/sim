@@ -268,6 +268,25 @@ export class JobQueueService {
    */
   async markJobProcessing(jobId: string): Promise<boolean> {
     try {
+      // First check the current status of the job
+      const [currentJob] = await db
+        .select({ status: workflowExecutionJobs.status })
+        .from(workflowExecutionJobs)
+        .where(eq(workflowExecutionJobs.id, jobId))
+        .limit(1)
+
+      if (!currentJob) {
+        logger.warn(`Job ${jobId} not found when trying to mark as processing`)
+        return false
+      }
+
+      if (currentJob.status !== 'pending') {
+        logger.warn(
+          `Job ${jobId} is not pending (status: ${currentJob.status}), cannot mark as processing`
+        )
+        return false
+      }
+
       const result = await db
         .update(workflowExecutionJobs)
         .set({
@@ -277,8 +296,17 @@ export class JobQueueService {
         .where(
           and(eq(workflowExecutionJobs.id, jobId), eq(workflowExecutionJobs.status, 'pending'))
         )
+        .returning({ id: workflowExecutionJobs.id })
 
-      return result.length > 0
+      logger.info(
+        `markJobProcessing ${jobId}: result type=${typeof result}, length=${result.length}, value=`,
+        result
+      )
+      const success = result.length > 0
+      logger.info(
+        `markJobProcessing ${jobId}: ${success ? 'SUCCESS' : 'FAILED'} (affected ${result.length} rows)`
+      )
+      return success
     } catch (error) {
       logger.error('Error marking job as processing:', error)
       return false

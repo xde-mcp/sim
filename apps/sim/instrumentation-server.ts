@@ -1,3 +1,8 @@
+console.log(
+  '[instrumentation-server.ts] File loaded, USE_WORKFLOW_QUEUE:',
+  process.env.USE_WORKFLOW_QUEUE
+)
+
 /**
  * Sim Studio Telemetry - Server-side Instrumentation
  *
@@ -105,8 +110,6 @@ async function initializeSentry() {
   if (!isProd) return
 
   try {
-    const Sentry = await import('@sentry/nextjs')
-
     // Skip initialization if Sentry appears to be already configured
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore accessing internal API
@@ -120,7 +123,7 @@ async function initializeSentry() {
       enabled: true,
       environment: env.NODE_ENV || 'development',
       tracesSampleRate: 0.2,
-      beforeSend(event) {
+      beforeSend(event: any) {
         if (event.request && typeof event.request === 'object') {
           ;(event.request as any).ip = null
         }
@@ -135,8 +138,42 @@ async function initializeSentry() {
 }
 
 export async function register() {
+  console.log('[Instrumentation] register() called with:', {
+    USE_WORKFLOW_QUEUE: process.env.USE_WORKFLOW_QUEUE,
+    NEXT_RUNTIME: process.env.NEXT_RUNTIME,
+    NODE_ENV: process.env.NODE_ENV,
+  })
+
   await initializeSentry()
   await initializeOpenTelemetry()
+
+  // Start job processor if enabled
+  if (process.env.USE_WORKFLOW_QUEUE === 'true') {
+    console.log('[Instrumentation] Starting job processor...', {
+      USE_WORKFLOW_QUEUE: process.env.USE_WORKFLOW_QUEUE,
+      NEXT_RUNTIME: process.env.NEXT_RUNTIME,
+    })
+
+    try {
+      const { JobProcessor } = await import('@/services/queue/JobProcessor')
+      const processor = new JobProcessor()
+      await processor.start()
+      console.log('[Instrumentation] Job processor started successfully')
+
+      // Graceful shutdown
+      process.on('SIGTERM', () => {
+        console.log('[Instrumentation] Stopping job processor...')
+        processor.stop()
+      })
+    } catch (error) {
+      console.error('[Instrumentation] Failed to start job processor:', error)
+    }
+  } else {
+    console.log('[Instrumentation] Job processor not started', {
+      USE_WORKFLOW_QUEUE: process.env.USE_WORKFLOW_QUEUE,
+      NEXT_RUNTIME: process.env.NEXT_RUNTIME,
+    })
+  }
 }
 
 export const onRequestError = Sentry.captureRequestError
