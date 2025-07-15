@@ -18,24 +18,24 @@ The Agent block serves as the interface between your workflow and Large Language
   height={175}
 />
 
-## Capabilities
+## Overview
 
-The Agent block provides the following functionality:
+The Agent block enables you to:
 
-### Natural Language Processing
-Processes unstructured text input through transformer-based neural networks, enabling semantic understanding and context-aware response generation.
-
-### Instruction Following
-Executes tasks based on system-level prompts that define behavioral parameters, response constraints, and operational guidelines.
-
-### Tool Integration
-Invokes external APIs and services through a unified function-calling interface, enabling access to real-time data and external system operations.
-
-### Structured Output Generation
-Produces responses conforming to predefined JSON Schema specifications, ensuring consistent data formats for programmatic consumption.
-
-### Context Management
-Maintains conversational state and memory across multiple interactions within a single workflow execution cycle. 
+<Steps>
+  <Step>
+    <strong>Process natural language</strong>: Analyze user input and generate contextual responses
+  </Step>
+  <Step>
+    <strong>Execute AI-powered tasks</strong>: Perform content analysis, generation, and decision-making
+  </Step>
+  <Step>
+    <strong>Call external tools</strong>: Access APIs, databases, and services during processing
+  </Step>
+  <Step>
+    <strong>Generate structured output</strong>: Return JSON data that matches your schema requirements
+  </Step>
+</Steps> 
 
 ## Configuration Options
 
@@ -154,48 +154,150 @@ The Response Format parameter enforces structured output generation through JSON
 
 This configuration constrains the model's output to comply with the specified schema, preventing free-form text responses and ensuring structured data generation.
 
+### Accessing Results
+
+After an agent completes, you can access its outputs:
+
+- **`<agent.content>`**: The agent's response text or structured data
+- **`<agent.tokens>`**: Token usage statistics (prompt, completion, total)
+- **`<agent.tool_calls>`**: Details of any tools the agent used during execution
+- **`<agent.cost>`**: Estimated cost of the API call (if available)
+
+## Advanced Features
+
+### Memory Integration
+
+Agents can maintain context across interactions using the memory system:
+
+```javascript
+// In a Function block before the agent
+const memory = {
+  conversation_history: previousMessages,
+  user_preferences: userProfile,
+  session_data: currentSession
+};
+```
+
+### Structured Output Validation
+
+Use JSON Schema to ensure consistent, machine-readable responses:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "analysis": {"type": "string"},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "categories": {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["analysis", "confidence"]
+}
+```
+
+### Error Handling
+
+Agents automatically handle common errors:
+- API rate limits with exponential backoff
+- Invalid tool calls with retry logic
+- Network failures with connection recovery
+- Schema validation errors with fallback responses
+
 ## Inputs and Outputs
 
-**Inputs**:
-- **System Prompt**: Instructions that define the agent's behavior and role
-- **User Prompt**: The actual input or question from the user
-- **Memories**: Optional memory context from previous interactions
-- **Model**: Which AI model to use (OpenAI, Anthropic, Google, etc.)
-- **Temperature**: Controls randomness vs. consistency (0-2 depending on model)
-- **API Key**: Authentication for the selected model provider
-- **Tools**: Array of tools the agent can use
-- **Response Format**: JSON Schema for structured output
+<Tabs items={['Configuration', 'Variables', 'Results']}>
+  <Tab>
+    <ul className="list-disc space-y-2 pl-6">
+      <li>
+        <strong>System Prompt</strong>: Instructions defining agent behavior and role
+      </li>
+      <li>
+        <strong>User Prompt</strong>: Input text or data to process
+      </li>
+      <li>
+        <strong>Model</strong>: AI model selection (OpenAI, Anthropic, Google, etc.)
+      </li>
+      <li>
+        <strong>Temperature</strong>: Response randomness control (0-2)
+      </li>
+      <li>
+        <strong>Tools</strong>: Array of available tools for function calling
+      </li>
+      <li>
+        <strong>Response Format</strong>: JSON Schema for structured output
+      </li>
+    </ul>
+  </Tab>
+  <Tab>
+    <ul className="list-disc space-y-2 pl-6">
+      <li>
+        <strong>agent.content</strong>: Agent's response text or structured data
+      </li>
+      <li>
+        <strong>agent.tokens</strong>: Token usage statistics object
+      </li>
+      <li>
+        <strong>agent.tool_calls</strong>: Array of tool execution details
+      </li>
+      <li>
+        <strong>agent.cost</strong>: Estimated API call cost (if available)
+      </li>
+    </ul>
+  </Tab>
+  <Tab>
+    <ul className="list-disc space-y-2 pl-6">
+      <li>
+        <strong>Content</strong>: Primary response output from the agent
+      </li>
+      <li>
+        <strong>Metadata</strong>: Usage statistics and execution details
+      </li>
+      <li>
+        <strong>Access</strong>: Available in blocks after the agent
+      </li>
+    </ul>
+  </Tab>
+</Tabs>
 
-**Outputs**:
-- **Content**: The agent's response text or structured data
-- **Model**: Which model was actually used
-- **Tokens**: Token usage stats (prompt tokens, completion tokens, total)
-- **Tool Calls**: Details of any tools the agent used
-- **Cost**: Estimated cost of the API call (if available)
+## Example Use Cases
 
-## Example Usage
+### Customer Support Automation
 
-Here's an example of how an Agent block might be configured for a customer support workflow:
+<div className="mb-4 rounded-md border p-4">
+  <h4 className="font-medium">Scenario: Handle customer inquiries with database access</h4>
+  <ol className="list-decimal pl-5 text-sm">
+    <li>User submits support ticket via API block</li>
+    <li>Agent processes inquiry with product database tools</li>
+    <li>Agent generates response and creates follow-up ticket</li>
+    <li>Response block sends reply to customer</li>
+  </ol>
+</div>
 
-```yaml
-# Example Agent Configuration
-systemPrompt: |
-  You are a customer support agent for TechCorp.
-  Always maintain a professional, friendly tone.
-  If you don't know an answer, direct the customer to email support@techcorp.com.
-  Never make up information about products or policies.
+### Multi-Model Content Analysis
 
-model: OpenAI/gpt-4
-temperature: 0.2
-tools:
-  - ProductDatabase
-  - OrderHistory
-  - SupportTicketCreator
-```
+<div className="mb-4 rounded-md border p-4">
+  <h4 className="font-medium">Scenario: Analyze content with different AI models</h4>
+  <ol className="list-decimal pl-5 text-sm">
+    <li>Function block processes uploaded document</li>
+    <li>Agent with GPT-4 performs technical analysis</li>
+    <li>Agent with Claude analyzes sentiment and tone</li>
+    <li>Function block combines results for final report</li>
+  </ol>
+</div>
+
+### Tool-Powered Research Assistant
+
+<div className="mb-4 rounded-md border p-4">
+  <h4 className="font-medium">Scenario: Research assistant with web search and document access</h4>
+  <ol className="list-decimal pl-5 text-sm">
+    <li>User query received via input</li>
+    <li>Agent searches web using Google Search tool</li>
+    <li>Agent accesses Notion database for internal docs</li>
+    <li>Agent compiles comprehensive research report</li>
+  </ol>
+</div>
 
 ## Best Practices
 
 - **Be specific in system prompts**: Clearly define the agent's role, tone, and limitations. The more specific your instructions are, the better the agent will be able to fulfill its intended purpose.
 - **Choose the right temperature setting**: Use lower temperature settings (0-0.3) when accuracy is important, or increase temperature (0.7-2.0) for more creative or varied responses
-- **Combine with Evaluator blocks**: Use Evaluator blocks to assess agent responses and ensure quality. This allows you to create feedback loops and implement quality control measures.
-- **Leverage tools effectively**: Integrate tools that complement the agent's purpose and enhance its capabilities. Be selective about which tools you provide to avoid overwhelming the agent.
+- **Leverage tools effectively**: Integrate tools that complement the agent's purpose and enhance its capabilities. Be selective about which tools you provide to avoid overwhelming the agent. For tasks with little overlap, use another Agent block for the best results.
