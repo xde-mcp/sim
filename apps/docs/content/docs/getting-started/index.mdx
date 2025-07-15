@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Build, test, and optimize your agentic workflows
+description: Build your first AI workflow in 5 minutes
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout'
@@ -23,79 +23,140 @@ import {
   SlackIcon,
 } from '@/components/icons'
 
-Sim Studio is a powerful, user-friendly platform for building, testing, and optimizing your agentic workflows. This documentation will help you understand how to use the various components of Sim Studio to create sophisticated agent-based applications.
+Let's build your first AI workflow! We'll create a simple research assistant that can search the web and provide summarized answers.
 
 <Callout type="info">
-  This guide will walk you through the essential concepts and help you get started building your
-  first workflow.
+  This tutorial takes about 5 minutes and will teach you the core concepts of Sim Studio.
 </Callout>
 
-## Core Components
+## Your First Workflow: Research Assistant
 
-Sim Studio is built around two primary components:
+We'll build a workflow that:
+1. Takes a research question from a user
+2. Searches the web for relevant information
+3. Summarizes the findings with an AI model
+4. Returns a helpful response
 
-### Blocks
-
-Blocks are the fundamental building elements of your workflows. Each block serves a specific purpose:
-
-<Files>
-  <File
-    name="Agent Block"
-    icon={<AgentIcon className="h-4 w-4" />}
-    annotation="Create AI agents using any LLM provider"
-  />
-  <File
-    name="API Block"
-    icon={<ApiIcon className="h-4 w-4" />}
-    annotation="Connect to external services and APIs"
-  />
-  <File
-    name="Condition Block"
-    icon={<ConditionalIcon className="h-4 w-4" />}
-    annotation="Add conditional branching to your workflows"
-  />
-  <File
-    name="Function Block"
-    icon={<CodeIcon className="h-4 w-4" />}
-    annotation="Execute custom JavaScript/TypeScript code"
-  />
-  <File
-    name="Evaluator Block"
-    icon={<ChartBarIcon className="h-4 w-4" />}
-    annotation="Assess responses against defined criteria"
-  />
-  <File
-    name="Router Block"
-    icon={<ConnectIcon className="h-4 w-4" />}
-    annotation="Direct workflow execution based on input analysis"
-  />
-</Files>
-
-### Tools
-
-Tools extend the capabilities of agents. They provide additional functionality for agents by enabling you to interface with your favorite data sources and take action (e.g posting on X, sending an email)
-
-<Files>
-  <File name="Gmail Tool" icon={<GmailIcon className="h-4 w-4" />} />
-  <File name="Firecrawl Tool" icon={<FirecrawlIcon className="h-4 w-4" />} />
-  <File name="Perplexity Tool" icon={<PerplexityIcon className="h-4 w-4" />} />
-  <File name="Notion Tool" icon={<NotionIcon className="h-4 w-4" />} />
-  <File name="Exa AI Tool" icon={<ExaAIIcon className="h-4 w-4" />} />
-  <File name="Slack Tool" icon={<SlackIcon className="h-4 w-4" />} />
-</Files>
-
-## Getting Started
+## Step-by-Step Tutorial
 
 <Steps>
   <Step title="Create a new workflow">
-    Start by creating a new workflow in the Sim Studio dashboard.
+    Open Sim Studio and click "New Workflow" in the dashboard. Give it a name like "Research Assistant".
   </Step>
-  <Step title="Add your first block">Drag and drop a block from the sidebar onto the canvas.</Step>
-  <Step title="Configure the block">
-    Set up the block's parameters and inputs according to your needs.
+  
+  <Step title="Add the starting block">
+    Every workflow needs a **Starter Block** - it's the entry point that receives input from users. It's automatically added to new workflows.
+    
+    Click on the Starter Block and configure it:
+    - **Input Type**: Text
+    - **Label**: "Research Question"
+    - **Placeholder**: "What would you like to research?"
   </Step>
-  <Step title="Connect blocks">
-    Create connections between blocks to define the flow of data and execution.
+  
+  <Step title="Add a web search tool">
+    Drag a **Perplexity Tool** from the sidebar onto the canvas. This will search the web for information.
+    
+    Configure the Perplexity Tool:
+    - **Query**: Connect this to the output of your Starter Block
+    - **API Key**: Add your Perplexity API key (or use the demo key)
+    
+    Connect the Starter Block to the Perplexity Tool by dragging from the output port to the input port.
   </Step>
-  <Step title="Test your workflow">Run your workflow with test inputs to verify its behavior.</Step>
+  
+  <Step title="Add an AI agent">
+    Drag an **Agent Block** onto the canvas. This will summarize the search results.
+    
+    Configure the Agent Block:
+    - **Model**: Choose "OpenAI GPT-4" (or your preferred model)
+    - **System Prompt**: "You are a research assistant. Summarize the provided information in a clear, concise manner."
+    - **User Message**: Connect this to the output of the Perplexity Tool
+    
+    Connect the Perplexity Tool to the Agent Block.
+  </Step>
+  
+  <Step title="Add a response block">
+    Drag a **Response Block** onto the canvas. This formats the final output.
+    
+    Configure the Response Block:
+    - **Content**: Connect this to the output of the Agent Block
+    - **Content Type**: "Text"
+    
+    Connect the Agent Block to the Response Block.
+  </Step>
+  
+  <Step title="Test your workflow">
+    Click the "Test" button in the toolbar. Enter a research question like "What are the latest developments in AI?" and click "Run".
+    
+    You should see your workflow execute step by step, with the final output being a summarized research response.
+  </Step>
 </Steps>
+
+## What You Just Built
+
+Congratulations! You've created a working AI research assistant that:
+- ✅ Takes user input
+- ✅ Searches the web for information
+- ✅ Processes results with AI
+- ✅ Returns a formatted response
+
+## Understanding the Components
+
+### Blocks You Used
+
+<Files>
+  <File
+    name="Starter Block"
+    icon={<ConnectIcon className="h-4 w-4" />}
+    annotation="Entry point for user input"
+  />
+  <File
+    name="Perplexity Tool"
+    icon={<PerplexityIcon className="h-4 w-4" />}
+    annotation="Web search and information retrieval"
+  />
+  <File
+    name="Agent Block"
+    icon={<AgentIcon className="h-4 w-4" />}
+    annotation="AI model for processing and summarization"
+  />
+  <File
+    name="Response Block"
+    icon={<ApiIcon className="h-4 w-4" />}
+    annotation="Format and return final output"
+  />
+</Files>
+
+### Key Concepts
+
+**Connections**: The lines between blocks represent data flow. Output from one block becomes input to the next.
+
+**Configuration**: Each block has settings that control its behavior. Always check the right panel when you select a block.
+
+**Execution**: Workflows run from left to right, following the connections you've made.
+
+## Next Steps
+
+Now that you've built your first workflow, here are some ideas to expand it:
+
+<Cards>
+  <Card title="Add Conditions" href="/blocks/condition">
+    Branch your workflow based on the type of question asked
+  </Card>
+  <Card title="Use More Tools" href="/tools">
+    Integrate with Gmail, Slack, or Notion
+  </Card>
+  <Card title="Add Functions" href="/blocks/function">
+    Use custom JavaScript for data processing
+  </Card>
+  <Card title="Deploy Your Workflow" href="/execution">
+    Turn your workflow into a live API
+  </Card>
+</Cards>
+
+## Need Help?
+
+**Stuck on a step?** Check our [Blocks documentation](/blocks) for detailed explanations of each component.
+
+**Want to see more examples?** Browse our [Tools documentation](/tools) to see what integrations are available.
+
+**Ready to deploy?** Learn about [Execution and Deployment](/execution) to make your workflows live.

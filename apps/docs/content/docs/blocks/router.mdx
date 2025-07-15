@@ -8,24 +8,27 @@ import { Step, Steps } from 'fumadocs-ui/components/steps'
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
 import { ThemeImage } from '@/components/ui/theme-image'
 
-The Router block is a powerful component in Sim Studio that intelligently routes workflow execution based on content analysis, user input, or predefined conditions. It acts as a decision-making junction in your workflow, directing the flow to different paths based on various criteria.
+The Router block uses AI to intelligently decide which path your workflow should take next. Unlike Condition blocks that use simple rules, Router blocks can understand context and make smart routing decisions based on content analysis.
 
 <ThemeImage
   lightSrc="/static/light/router-light.png"
   darkSrc="/static/dark/router-dark.png"
-  alt="Router Block"
-  width={300}
+  alt="Router Block with Multiple Paths"
+  width={350}
   height={175}
 />
 
-## Overview
+## When to Use Router vs Condition
 
-The Router block uses LLMs to analyze input content and determine the most appropriate next step in your workflow. This allows for:
+**Use Router when**:
+- You need AI to understand intent (e.g., "route support tickets to the right department")
+- Content is unstructured or varies widely
+- You want intelligent, context-aware decision making
 
-- Creating dynamic, adaptable workflows
-- Implementing complex decision trees
-- Routing user requests to specialized components
-- Building conversational systems that can handle diverse inputs
+**Use Condition when**:
+- You have simple, rule-based decisions (e.g., "if score > 80, go to path A")
+- Working with structured data or numbers
+- You need fast, deterministic routing
 
 ## How It Works
 
@@ -56,16 +59,19 @@ The possible destination blocks that the Router can select from. The Router will
 
 ### Model Selection
 
-Choose an LLM provider to power the routing decision:
+Choose an AI model to power the routing decision:
 
-- OpenAI (GPT-4o, o1, o3, o4-mini)
-- Anthropic (Claude 3.7 Sonnet)
-- Google (Gemini 2.5 Pro, Gemini 2.0 Flash)
-- Groq, Cerebras
-- Ollama Local Models
-- And more
+**OpenAI**: GPT-4o, o1, o3, o4-mini, gpt-4.1
+**Anthropic**: Claude 3.7 Sonnet
+**Google**: Gemini 2.5 Pro, Gemini 2.0 Flash
+**Other Providers**: Groq, Cerebras, xAI, DeepSeek
+**Local Models**: Any model running on Ollama
 
-Select a model with strong reasoning capabilities for more accurate routing decisions.
+<div className="w-full max-w-2xl mx-auto overflow-hidden rounded-lg">
+  <video autoPlay loop muted playsInline className="w-full -mb-2 rounded-lg" src="/models.mp4"></video>
+</div>
+
+**Recommendation**: Use models with strong reasoning capabilities like GPT-4o or Claude 3.7 Sonnet for more accurate routing decisions.
 
 ### API Key
 
@@ -99,7 +105,7 @@ prompt: |
   Analyze the user query and route to the most appropriate department.
   Choose ONE destination based on the query content and intent.
 
-model: OpenAI/gpt-4
+model: OpenAI/gpt-4o
 ```
 
 In this example, the Router might be connected to:

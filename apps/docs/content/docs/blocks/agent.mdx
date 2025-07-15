@@ -8,47 +8,40 @@ import { Step, Steps } from 'fumadocs-ui/components/steps'
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
 import { ThemeImage } from '@/components/ui/theme-image'
 
-The Agent block is a fundamental component in Sim Studio that allows you to create powerful AI agents using various LLM providers. These agents can process inputs based on customizable system prompts and utilize integrated tools to enhance their capabilities.
+The Agent block serves as the interface between your workflow and Large Language Models (LLMs). It executes inference requests against various AI providers, processes natural language inputs according to defined instructions, and generates structured or unstructured outputs for downstream consumption.
 
 <ThemeImage
   lightSrc="/static/light/agent-light.png"
   darkSrc="/static/dark/agent-dark.png"
-  alt="Agent Block"
-  width={300}
+  alt="Agent Block Configuration"
+  width={350}
   height={175}
 />
 
-<Callout type="info">
-  Agent blocks serve as interfaces to Large Language Models, enabling your workflow to leverage
-  state-of-the-art AI capabilities.
-</Callout>
+## Capabilities
 
-## Overview
+The Agent block provides the following functionality:
 
-The Agent block serves as an interface to Large Language Models (LLMs), enabling you to create agents that can:
+### Natural Language Processing
+Processes unstructured text input through transformer-based neural networks, enabling semantic understanding and context-aware response generation.
 
-<Steps>
-  <Step>
-    <strong>Respond to user inputs</strong>: Generate natural language responses based on provided
-    inputs
-  </Step>
-  <Step>
-    <strong>Follow instructions</strong>: Adhere to specific instructions defined in the system
-    prompt
-  </Step>
-  <Step>
-    <strong>Use specialized tools</strong>: Interact with integrated tools to extend capabilities
-  </Step>
-  <Step>
-    <strong>Structure output</strong>: Generate responses in structured formats when needed
-  </Step>
-</Steps>
+### Instruction Following
+Executes tasks based on system-level prompts that define behavioral parameters, response constraints, and operational guidelines.
+
+### Tool Integration
+Invokes external APIs and services through a unified function-calling interface, enabling access to real-time data and external system operations.
+
+### Structured Output Generation
+Produces responses conforming to predefined JSON Schema specifications, ensuring consistent data formats for programmatic consumption.
+
+### Context Management
+Maintains conversational state and memory across multiple interactions within a single workflow execution cycle. 
 
 ## Configuration Options
 
 ### System Prompt
 
-The system prompt defines the agent's behavior, capabilities, and limitations. It's the primary way to instruct the agent on how to respond to inputs.
+The system prompt establishes the agent's operational parameters and behavioral constraints. This configuration defines the agent's role, response methodology, and processing boundaries for all incoming requests.
 
 ```markdown
 You are a helpful assistant that specializes in financial analysis.
@@ -58,22 +51,25 @@ When responding to questions about investments, include risk disclaimers.
 
 ### User Prompt
 
-The user prompt or context is the specific input or question that the agent should respond to. This can be:
+The user prompt represents the primary input data for inference processing. This parameter accepts natural language text or structured data that the agent will analyze and respond to. Input sources include:
 
-- Directly provided in the block configuration
-- Connected from another block's output
-- Dynamically generated during workflow execution
+- **Static Configuration**: Direct text input specified in the block configuration
+- **Dynamic Input**: Data passed from upstream blocks through connection interfaces
+- **Runtime Generation**: Programmatically generated content during workflow execution
 
 ### Model Selection
 
-Choose from a variety of LLM providers:
+The Agent block supports multiple LLM providers through a unified inference interface. Available models include:
 
-- OpenAI (GPT-4o, o1, o3, o4-mini, gpt-4.1)
-- Anthropic (Claude 3.7 Sonnet)
-- Google (Gemini 2.5 Pro, Gemini 2.0 Flash)
-- Groq, Cerebras
-- Ollama Local Models
-- And more
+**OpenAI Models**: GPT-4o, o1, o3, o4-mini, gpt-4.1 (API-based inference)
+**Anthropic Models**: Claude 3.7 Sonnet (API-based inference)
+**Google Models**: Gemini 2.5 Pro, Gemini 2.0 Flash (API-based inference)
+**Alternative Providers**: Groq, Cerebras, xAI, DeepSeek (API-based inference)
+**Local Deployment**: Ollama-compatible models (self-hosted inference)
+
+<div className="mx-auto w-3/5 overflow-hidden rounded-lg">
+  <video autoPlay loop muted playsInline className="w-full -mb-2 rounded-lg" src="/models.mp4"></video>
+</div>
 
 ### Temperature
 
@@ -110,79 +106,78 @@ Your API key for the selected LLM provider. This is securely stored and used for
 
 ### Tools
 
-Integrate specialized tools to enhance the agent's capabilities. You can add tools to your agent by:
+Tools extend the agent's capabilities through external API integrations and service connections. The tool system enables function calling, allowing the agent to execute operations beyond text generation.
 
-1. Clicking the Tools section in the Agent configuration
-2. Selecting from the tools dropdown menu
-3. Choosing an existing tool or creating a new one
+**Tool Integration Process**:
+1. Access the Tools configuration section within the Agent block
+2. Select from 60+ pre-built integrations or define custom functions
+3. Configure authentication parameters and operational constraints
 
-<ThemeImage
-  lightSrc="/static/light/tooldropdown-light.png"
-  darkSrc="/static/dark/tooldropdown-dark.png"
-  alt="Tools Dropdown"
-  width={150}
-  height={125}
-/>
+<div className="mx-auto w-3/5 overflow-hidden rounded-lg">
+  <video autoPlay loop muted playsInline className="w-full -mb-2 rounded-lg" src="/tools.mp4"></video>
+</div>
 
-Available tools include:
+**Available Tool Categories**:
+- **Communication**: Gmail, Slack, Telegram, WhatsApp, Microsoft Teams
+- **Data Sources**: Notion, Google Sheets, Airtable, Supabase, Pinecone
+- **Web Services**: Firecrawl, Google Search, Exa AI, browser automation
+- **Development**: GitHub, Jira, Linear repository and issue management
+- **AI Services**: OpenAI, Perplexity, Hugging Face, ElevenLabs
 
-- **Confluence**: Access and query Confluence knowledge bases
-- **Evaluator**: Use evaluation metrics to assess content
-- **GitHub**: Interact with GitHub repositories and issues
-- **Gmail**: Process and respond to emails
-- **Firecrawl**: Web search and content retrieval
-- And many, many more pre-built integrations
+**Tool Execution Control**:
+- **Auto**: Model determines tool invocation based on context and necessity
+- **Required**: Tool must be called during every inference request
+- **None**: Tool definition available but excluded from model context
 
-You can also create custom tools to meet specific requirements for your agent's capabilities.
-
-<Callout type="info">
-  Tools significantly expand what your agent can do, allowing it to access external systems,
-  retrieve information, and take actions beyond simple text generation.
-</Callout>
+<div className="mx-auto w-3/5 overflow-hidden rounded-lg">
+  <video autoPlay loop muted playsInline className="w-full -mb-2 rounded-lg" src="/granular-tool-control.mp4"></video>
+</div>
 
 ### Response Format
 
-Define a structured format for the agent's response when needed, using JSON or other formats.
+The Response Format parameter enforces structured output generation through JSON Schema validation. This ensures consistent, machine-readable responses that conform to predefined data structures:
+
+```json
+{
+  "name": "user_analysis",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "sentiment": {
+        "type": "string",
+        "enum": ["positive", "negative", "neutral"]
+      },
+      "confidence": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "required": ["sentiment", "confidence"]
+  }
+}
+```
+
+This configuration constrains the model's output to comply with the specified schema, preventing free-form text responses and ensuring structured data generation.
 
 ## Inputs and Outputs
 
-<Tabs items={['Inputs', 'Outputs']}>
-  <Tab>
-    <ul className="list-disc space-y-2 pl-6">
-      <li>
-        <strong>User Prompt</strong>: The user's query or context for the agent
-      </li>
-      <li>
-        <strong>System Prompt</strong>: Instructions for the agent (optional)
-      </li>
-      <li>
-        <strong>Tools</strong>: Optional tool connections that the agent can use
-      </li>
-    </ul>
-  </Tab>
-  <Tab>
-    <ul className="list-disc space-y-2 pl-6">
-      <li>
-        <strong>Content</strong>: The agent's response text
-      </li>
-      <li>
-        <strong>Model</strong>: The model used for generation
-      </li>
-      <li>
-        <strong>Tokens</strong>: Usage statistics (prompt, completion, total)
-      </li>
-      <li>
-        <strong>Tool Calls</strong>: Details of any tools used during processing
-      </li>
-      <li>
-        <strong>Cost</strong>: Cost of the response
-      </li>
-      <li>
-        <strong>Usage</strong>: Usage statistics (prompt, completion, total)
-      </li>
-    </ul>
-  </Tab>
-</Tabs>
+**Inputs**:
+- **System Prompt**: Instructions that define the agent's behavior and role
+- **User Prompt**: The actual input or question from the user
+- **Memories**: Optional memory context from previous interactions
+- **Model**: Which AI model to use (OpenAI, Anthropic, Google, etc.)
+- **Temperature**: Controls randomness vs. consistency (0-2 depending on model)
+- **API Key**: Authentication for the selected model provider
+- **Tools**: Array of tools the agent can use
+- **Response Format**: JSON Schema for structured output
+
+**Outputs**:
+- **Content**: The agent's response text or structured data
+- **Model**: Which model was actually used
+- **Tokens**: Token usage stats (prompt tokens, completion tokens, total)
+- **Tool Calls**: Details of any tools the agent used
+- **Cost**: Estimated cost of the API call (if available)
 
 ## Example Usage
 

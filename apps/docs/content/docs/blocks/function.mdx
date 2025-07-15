@@ -8,88 +8,119 @@ import { Step, Steps } from 'fumadocs-ui/components/steps'
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
 import { ThemeImage } from '@/components/ui/theme-image'
 
-The Function block allows you to write and execute custom JavaScript or TypeScript code directly within your workflow. This powerful feature enables you to implement complex logic, data transformations, and integration with external libraries.
+The Function block lets you run custom JavaScript or TypeScript code in your workflow. Use it to transform data, perform calculations, or implement custom logic that isn't available in other blocks.
 
 <ThemeImage
   lightSrc="/static/light/function-light.png"
   darkSrc="/static/dark/function-dark.png"
-  alt="Function Block"
-  width={300}
+  alt="Function Block with Code Editor"
+  width={350}
   height={175}
 />
 
-## Overview
+## What You Can Do
 
-The Function block brings the full power of JavaScript/TypeScript to your workflows, allowing for:
-
-- Custom data transformation and manipulation
-- Complex conditional logic
-- Mathematical calculations and algorithms
-- Integration with external libraries
-- Creation of reusable utility functions
+**Transform Data**: Convert formats, parse text, manipulate arrays and objects
+**Perform Calculations**: Math operations, statistics, financial calculations
+**Custom Logic**: Complex conditionals, loops, and algorithms
+**Process APIs**: Parse responses, format requests, handle authentication
+**Validate Data**: Check formats, validate business rules, sanitize input
 
 ## How It Works
 
-The Function block:
+The Function block runs your code in a secure, isolated environment:
 
-1. Takes your custom JavaScript/TypeScript code
-2. Executes it in a secure, isolated environment
-3. Processes any inputs provided from previous blocks
-4. Returns the result for use in subsequent blocks
+1. **Receive Input**: Access data from previous blocks via the `input` object
+2. **Execute Code**: Run your JavaScript/TypeScript code 
+3. **Return Results**: Use `return` to pass data to the next block
+4. **Handle Errors**: Built-in error handling and logging
 
 ## Configuration Options
 
 ### Code Editor
 
-A full-featured code editor where you can write your JavaScript/TypeScript code. The editor supports:
+Write your JavaScript/TypeScript code in a full-featured editor with:
+- Syntax highlighting and error checking
+- Autocomplete and IntelliSense
+- Line numbers and bracket matching
+- Support for modern JavaScript features
 
-- Syntax highlighting
-- Code completion
-- Error checking
-- Multiple lines of code
+<ThemeImage
+  lightSrc="/static/light/function-light.png"
+  darkSrc="/static/dark/function-dark.png"
+  alt="Code Editor Interface"
+  width={600}
+  height={350}
+/>
 
-### Inputs
+### Accessing Input Data
 
-Your function can access inputs from previous blocks through an `input` object. For example:
+Use the `input` object to access data from previous blocks:
 
 ```javascript
-// Access data from a previous block
-const customerName = input.customerData.name;
-const orderTotal = input.orderData.total;
+// Access data from connected blocks
+const userData = input.userData;
+const orderData = input.orderData;
 
-// Process the data
-const discount = orderTotal > 100 ? 0.1 : 0;
-const finalPrice = orderTotal * (1 - discount);
-
-// Return the result
-return {
-  customerName,
-  originalTotal: orderTotal,
-  discount: discount * 100 + '%',
-  finalPrice
-};
+// Access specific fields
+const customerName = input.customer.name;
+const total = input.order.total;
 ```
 
-## Safety and Limitations
+### Common Examples
 
-For security and performance reasons, function execution has certain limitations:
+**Data Transformation**:
+```javascript
+// Convert and format data
+const formatted = {
+  name: input.user.firstName + ' ' + input.user.lastName,
+  email: input.user.email.toLowerCase(),
+  joinDate: new Date(input.user.created).toLocaleDateString()
+};
+return formatted;
+```
 
-- **Execution Time**: Functions have a maximum execution time to prevent infinite loops
-- **Memory Usage**: Memory is limited to prevent excessive resource usage
-- **Network Access**: Network calls are restricted to prevent unauthorized access
-- **Available APIs**: Only a subset of browser APIs are available
+**Calculations**:
+```javascript
+// Calculate discounts and totals
+const subtotal = input.items.reduce((sum, item) => sum + item.price, 0);
+const discount = subtotal > 100 ? 0.1 : 0;
+const total = subtotal * (1 - discount);
+
+return { subtotal, discount, total };
+```
+
+**Data Validation**:
+```javascript
+// Validate email format
+const email = input.email;
+const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+if (!isValid) {
+  throw new Error('Invalid email format');
+}
+return { email, isValid };
+```
+
+## Security and Limitations
+
+Functions run in a secure environment with these restrictions:
+
+- **Execution timeout**: 30 seconds maximum to prevent infinite loops
+- **Memory limits**: Limited memory to prevent resource exhaustion  
+- **No network access**: Cannot make HTTP requests (use API blocks instead)
+- **Limited APIs**: Only safe JavaScript APIs are available
 
 ## Inputs and Outputs
 
-### Inputs
-
+**Inputs**:
 - **Code**: Your JavaScript/TypeScript code to execute
-- **Input Data**: Values from previous blocks that can be accessed in your code
+- **Input Data**: All connected block outputs available via the `input` object
+- **Timeout**: Maximum execution time (optional, defaults to 30 seconds)
 
-### Outputs
-
-- **result**: The value returned by your function
-- **stdout**: Any console output from your function
+**Outputs**:
+- **Result**: The value you return from your function
+- **Stdout**: Any console.log() output from your code (useful for debugging)
 
 ## Example Usage
 
