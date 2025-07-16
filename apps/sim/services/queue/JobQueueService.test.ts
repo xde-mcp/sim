@@ -63,21 +63,13 @@ describe('JobQueueService', () => {
       })
 
       // Set up db.select mock sequence for:
-      // 1. Concurrent executions check (should return 0, under limit of 2)
-      // 2. Queue depth check (should return < max)
-      // 3. Queue position check for response
+      // 1. Queue depth check (should return < max)
+      // 2. Queue position check for response
       let selectCallCount = 0
       vi.mocked(db.select).mockImplementation(() => {
         selectCallCount++
 
         if (selectCallCount === 1) {
-          // Concurrent executions check - return 0 processing jobs (under limit of 2)
-          return {
-            from: vi.fn().mockReturnThis(),
-            where: vi.fn().mockResolvedValue([{ count: 0 }]),
-          } as any
-        }
-        if (selectCallCount === 2) {
           // Queue depth check - return manageable queue depth
           return {
             from: vi.fn().mockReturnThis(),
@@ -135,38 +127,6 @@ describe('JobQueueService', () => {
       ).rejects.toThrow(/Rate limit exceeded/)
     })
 
-    it('should enforce concurrent execution limits', async () => {
-      // Mock getSubscriptionPlan to return 'free' tier
-      const mockGetSubscriptionPlan = vi
-        .spyOn(jobQueue as any, 'getSubscriptionPlan')
-        .mockResolvedValue('free')
-
-      // Mock rate limiter to allow request
-      const mockRateLimiter = (jobQueue as any).rateLimiter
-      mockRateLimiter.checkRateLimit.mockResolvedValue({
-        allowed: true,
-        remaining: 19,
-        resetAt: new Date(),
-      })
-
-      // Set up db.select mock to return concurrent limit reached
-      vi.mocked(db.select).mockImplementation(() => {
-        return {
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValue([{ count: 2 }]), // At limit of 2
-        } as any
-      })
-
-      await expect(
-        jobQueue.createJob({
-          workflowId: testWorkflowId,
-          userId: testUserId,
-          input: {},
-          triggerType: 'api',
-        })
-      ).rejects.toThrow(/Concurrent execution limit/)
-    })
-
     it('should reject when global queue is full', async () => {
       // Mock getSubscriptionPlan to return 'free' tier
       const mockGetSubscriptionPlan = vi
@@ -181,21 +141,8 @@ describe('JobQueueService', () => {
         resetAt: new Date(),
       })
 
-      // Set up db.select mock sequence for:
-      // 1. Concurrent executions check (should return 0, under limit)
-      // 2. Queue depth check (should return full queue)
-      let selectCallCount = 0
+      // Mock queue depth check to return full queue
       vi.mocked(db.select).mockImplementation(() => {
-        selectCallCount++
-
-        if (selectCallCount === 1) {
-          // Concurrent executions check - return 0 processing jobs (under limit)
-          return {
-            from: vi.fn().mockReturnThis(),
-            where: vi.fn().mockResolvedValue([{ count: 0 }]),
-          } as any
-        }
-        // Queue depth check - return full queue (at SYSTEM_LIMITS.maxQueueDepth)
         return {
           from: vi.fn().mockReturnThis(),
           where: vi.fn().mockResolvedValue([{ count: SYSTEM_LIMITS.maxQueueDepth }]),
