@@ -107,8 +107,7 @@ export const env = createEnv({
     SOCKET_PORT: z.number().optional(),
     PORT: z.number().optional(),
     ALLOWED_ORIGINS: z.string().optional(),
-    // Workflow Queue Configuration
-    USE_WORKFLOW_QUEUE: z.coerce.boolean().optional().default(false),
+    // Job Queue Configuration
     JOB_RETENTION_DAYS: z.string().optional().default('1'), // How long to keep completed jobs
   },
 

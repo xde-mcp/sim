@@ -1,8 +1,3 @@
-console.log(
-  '[instrumentation-node.ts] File loaded, USE_WORKFLOW_QUEUE:',
-  process.env.USE_WORKFLOW_QUEUE
-)
-
 /**
  * Sim Studio Telemetry - Server-side Instrumentation
  *
@@ -138,41 +133,23 @@ async function initializeSentry() {
 }
 
 export async function register() {
-  console.log('[Instrumentation] register() called with:', {
-    USE_WORKFLOW_QUEUE: process.env.USE_WORKFLOW_QUEUE,
-    NEXT_RUNTIME: process.env.NEXT_RUNTIME,
-    NODE_ENV: process.env.NODE_ENV,
-  })
-
   await initializeSentry()
   await initializeOpenTelemetry()
 
-  // Start job processor if enabled
-  if (process.env.USE_WORKFLOW_QUEUE === 'true') {
-    console.log('[Instrumentation] Starting job processor...', {
-      USE_WORKFLOW_QUEUE: process.env.USE_WORKFLOW_QUEUE,
-      NEXT_RUNTIME: process.env.NEXT_RUNTIME,
-    })
+  // Always start job processor - it's the main execution method for both sync and async workflows
+  try {
+    const { JobProcessor } = await import('@/services/queue/JobProcessor')
+    const processor = new JobProcessor()
+    await processor.start()
+    logger.info('Job processor started successfully')
 
-    try {
-      const { JobProcessor } = await import('@/services/queue/JobProcessor')
-      const processor = new JobProcessor()
-      await processor.start()
-      console.log('[Instrumentation] Job processor started successfully')
-
-      // Graceful shutdown
-      process.on('SIGTERM', () => {
-        console.log('[Instrumentation] Stopping job processor...')
-        processor.stop()
-      })
-    } catch (error) {
-      console.error('[Instrumentation] Failed to start job processor:', error)
-    }
-  } else {
-    console.log('[Instrumentation] Job processor not started', {
-      USE_WORKFLOW_QUEUE: process.env.USE_WORKFLOW_QUEUE,
-      NEXT_RUNTIME: process.env.NEXT_RUNTIME,
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      logger.info('Stopping job processor...')
+      processor.stop()
     })
+  } catch (error) {
+    logger.error('Failed to start job processor:', error)
   }
 }
 
