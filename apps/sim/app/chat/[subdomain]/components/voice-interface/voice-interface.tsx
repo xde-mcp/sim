@@ -1,7 +1,7 @@
 'use client'
 
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
-import { Mic, MicOff, Phone, X } from 'lucide-react'
+import { Mic, MicOff, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createLogger } from '@/lib/logs/console-logger'
 import { cn } from '@/lib/utils'
@@ -524,18 +524,6 @@ export function VoiceInterface({
 
   return (
     <div className={cn('fixed inset-0 z-[100] flex flex-col bg-white text-gray-900', className)}>
-      {/* Header */}
-      <div className='flex justify-end p-4'>
-        <Button
-          variant='ghost'
-          size='icon'
-          onClick={handleCallEnd}
-          className='h-10 w-10 rounded-full hover:bg-gray-100'
-        >
-          <X className='h-5 w-5' />
-        </Button>
-      </div>
-
       {/* Main content */}
       <div className='flex flex-1 flex-col items-center justify-center px-8'>
         {/* Voice visualization */}
