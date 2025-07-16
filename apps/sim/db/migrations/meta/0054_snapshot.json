@@ -1,5 +1,5 @@
 {
-  "id": "72f85434-1650-43a1-918b-af47751c0e6d",
+  "id": "a5b598b8-ae74-403e-acd6-6720df8d9d0b",
   "prevId": "c7bc1cbd-335c-492e-ade5-913d68f5782d",
   "version": "7",
   "dialect": "postgresql",
@@ -3327,8 +3327,15 @@
           "primaryKey": true,
           "notNull": true
         },
-        "execution_requests": {
-          "name": "execution_requests",
+        "sync_api_requests": {
+          "name": "sync_api_requests",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "async_api_requests": {
+          "name": "async_api_requests",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
