@@ -1,5 +1,5 @@
 console.log(
-  '[instrumentation-server.ts] File loaded, USE_WORKFLOW_QUEUE:',
+  '[instrumentation-node.ts] File loaded, USE_WORKFLOW_QUEUE:',
   process.env.USE_WORKFLOW_QUEUE
 )
 

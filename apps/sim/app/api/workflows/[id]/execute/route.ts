@@ -824,7 +824,7 @@ export async function POST(
     }
 
     // Check if this is a rate limit error
-    if (error.message && error.message.includes('Rate limit exceeded')) {
+    if (error.message?.includes('Rate limit exceeded')) {
       return createErrorResponse(error.message, 429, 'RATE_LIMIT_EXCEEDED')
     }
 

@@ -2,16 +2,25 @@ export async function register() {
   console.log('[Main Instrumentation] register() called, environment:', {
     NEXT_RUNTIME: process.env.NEXT_RUNTIME,
     NODE_ENV: process.env.NODE_ENV,
-    isServer: typeof window === 'undefined',
   })
 
-  // Load server instrumentation if we're on the server
-  if (typeof window === 'undefined') {
-    console.log('[Main Instrumentation] Loading server instrumentation...')
-    const serverInstrumentation = await import('./instrumentation-server')
-    if (serverInstrumentation.register) {
-      console.log('[Main Instrumentation] Calling server register()...')
-      await serverInstrumentation.register()
+  // Load Node.js-specific instrumentation
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    console.log('[Main Instrumentation] Loading Node.js instrumentation...')
+    const nodeInstrumentation = await import('./instrumentation-node')
+    if (nodeInstrumentation.register) {
+      console.log('[Main Instrumentation] Calling Node.js register()...')
+      await nodeInstrumentation.register()
+    }
+  }
+
+  // Load Edge Runtime-specific instrumentation
+  if (process.env.NEXT_RUNTIME === 'edge') {
+    console.log('[Main Instrumentation] Loading Edge Runtime instrumentation...')
+    const edgeInstrumentation = await import('./instrumentation-edge')
+    if (edgeInstrumentation.register) {
+      console.log('[Main Instrumentation] Calling Edge Runtime register()...')
+      await edgeInstrumentation.register()
     }
   }
 
