@@ -372,13 +372,6 @@
       "when": 1752093722331,
       "tag": "0053_gigantic_gabe_jones",
       "breakpoints": true
-    },
-    {
-      "idx": 54,
-      "version": "7",
-      "when": 1752632869291,
-      "tag": "0054_foamy_ego",
-      "breakpoints": true
     }
   ]
 }
