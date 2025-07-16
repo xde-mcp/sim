@@ -50,22 +50,38 @@ export async function GET(request: NextRequest) {
       | 'enterprise'
 
     const rateLimiter = new RateLimiter()
-    const rateLimitStatus = await rateLimiter.getRateLimitStatus(
+    const isApiAuth = !session?.user?.id
+    const triggerType = isApiAuth ? 'api' : 'manual'
+
+    const syncStatus = await rateLimiter.getRateLimitStatus(
       authenticatedUserId,
-      subscriptionPlan
+      subscriptionPlan,
+      triggerType,
+      false
     )
-    // const concurrentExecutions = await rateLimiter.getConcurrentExecutions(authenticatedUserId)
-    const concurrentExecutions = 0 // TODO: Implement this if needed
+    const asyncStatus = await rateLimiter.getRateLimitStatus(
+      authenticatedUserId,
+      subscriptionPlan,
+      triggerType,
+      true
+    )
 
     return NextResponse.json({
       success: true,
       rateLimit: {
-        isLimited: rateLimitStatus.remaining === 0,
-        limit: rateLimitStatus.limit,
-        remaining: rateLimitStatus.remaining,
-        resetAt: rateLimitStatus.resetAt.toISOString(),
-        currentUsage: rateLimitStatus.used,
-        concurrentExecutions,
+        sync: {
+          isLimited: syncStatus.remaining === 0,
+          limit: syncStatus.limit,
+          remaining: syncStatus.remaining,
+          resetAt: syncStatus.resetAt,
+        },
+        async: {
+          isLimited: asyncStatus.remaining === 0,
+          limit: asyncStatus.limit,
+          remaining: asyncStatus.remaining,
+          resetAt: asyncStatus.resetAt,
+        },
+        authType: triggerType,
       },
     })
   } catch (error: any) {

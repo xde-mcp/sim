@@ -138,11 +138,9 @@ export class JobProcessor {
         }
 
         // Get next job from queue
-        logger.debug(`[${this.processorId}] Fetching next job from queue...`)
         const job = await this.jobQueue.getNextJob()
         if (!job) {
           // No jobs, wait a bit
-          logger.debug(`[${this.processorId}] No jobs available, waiting...`)
           await new Promise((resolve) => setTimeout(resolve, 2000))
           continue
         }

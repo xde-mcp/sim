@@ -23,12 +23,16 @@ export class JobQueueService {
    * Create a new job in the queue
    */
   async createJob(options: CreateJobOptions): Promise<JobResult> {
-    const { workflowId, userId, input, metadata, triggerType = 'api' } = options
+    const { workflowId, userId, input, metadata } = options
 
     try {
-      // Check rate limit
       const subscriptionPlan = await this.getSubscriptionPlan(userId)
-      const rateLimitCheck = await this.rateLimiter.checkRateLimit(userId, subscriptionPlan)
+      const rateLimitCheck = await this.rateLimiter.checkRateLimit(
+        userId,
+        subscriptionPlan,
+        options.triggerType || 'api',
+        true
+      )
 
       if (!rateLimitCheck.allowed) {
         throw new Error(
@@ -36,8 +40,7 @@ export class JobQueueService {
         )
       }
 
-      // Check concurrent execution limit based on plan
-      const concurrentLimit = RATE_LIMITS[subscriptionPlan].concurrentExecutions
+      const concurrentLimit = RATE_LIMITS[subscriptionPlan].asyncApiConcurrentExecutions
       const processingJobs = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(workflowExecutionJobs)
