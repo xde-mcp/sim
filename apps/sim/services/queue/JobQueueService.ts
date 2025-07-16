@@ -1,9 +1,8 @@
-import { and, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, lt, or, sql } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
-import { getHighestPrioritySubscription } from '@/lib/billing'
 import { createLogger } from '@/lib/logs/console-logger'
 import { db } from '@/db'
-import { workflowExecutionJobs } from '@/db/schema'
+import { subscription, workflowExecutionJobs } from '@/db/schema'
 import { RateLimiter } from './RateLimiter'
 import type {
   CreateJobOptions,
@@ -434,53 +433,22 @@ export class JobQueueService {
   }
 
   /**
-   * Get user's subscription plan
+   * Get subscription plan for user
    */
   private async getSubscriptionPlan(
     userId: string
   ): Promise<'free' | 'pro' | 'team' | 'enterprise'> {
-    const subscription = await getHighestPrioritySubscription(userId)
-    const plan = subscription?.plan || 'free'
-
-    // Map subscription plans to our rate limit tiers
-    if (plan === 'pro') return 'pro'
-    if (plan === 'team') return 'team'
-    if (plan === 'enterprise') return 'enterprise'
-    return 'free'
-  }
-
-  /**
-   * Get concurrent execution limit for a plan
-   */
-  private getConcurrentLimit(plan: string): number {
-    const { RATE_LIMITS } = require('./types')
-    return RATE_LIMITS[plan]?.concurrentExecutions || 1
-  }
-
-  /**
-   * Clean up old completed jobs (maintenance task)
-   */
-  async cleanupOldJobs(daysToKeep = 30): Promise<number> {
     try {
-      const cutoffDate = new Date()
-      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep)
+      const [subscriptionRecord] = await db
+        .select({ plan: subscription.plan })
+        .from(subscription)
+        .where(eq(subscription.referenceId, userId))
+        .limit(1)
 
-      const deletedJobs = await db
-        .delete(workflowExecutionJobs)
-        .where(
-          and(
-            inArray(workflowExecutionJobs.status, ['completed', 'failed', 'cancelled']),
-            lt(workflowExecutionJobs.completedAt, cutoffDate)
-          )
-        )
-        .returning({ id: workflowExecutionJobs.id })
-
-      const deletedCount = deletedJobs.length
-      logger.info(`Cleaned up ${deletedCount} old jobs`)
-      return deletedCount
+      return (subscriptionRecord?.plan || 'free') as 'free' | 'pro' | 'team' | 'enterprise'
     } catch (error) {
-      logger.error('Error cleaning up old jobs:', error)
-      return 0
+      logger.error('Error getting subscription plan:', error)
+      return 'free'
     }
   }
 }

@@ -15,7 +15,7 @@ import {
   workflowHasResponseBlock,
 } from '@/lib/workflows/utils'
 import { db } from '@/db'
-import { apiKey, environment as environmentTable, subscription, userStats } from '@/db/schema'
+import { environment as environmentTable, subscription, userStats } from '@/db/schema'
 import { Executor } from '@/executor'
 import { Serializer } from '@/serializer'
 import { JobQueueService, RateLimiter } from '@/services/queue'
@@ -455,6 +455,13 @@ export async function POST(
   const workflowId = id
 
   try {
+    // Validate workflow access
+    const validation = await validateWorkflowAccess(request as NextRequest, id)
+    if (validation.error) {
+      logger.warn(`[${requestId}] Workflow access validation failed: ${validation.error.message}`)
+      return createErrorResponse(validation.error.message, validation.error.status)
+    }
+
     // Check execution mode from header
     const executionMode = request.headers.get('X-Execution-Mode')
     const isAsync = executionMode === 'async'
@@ -484,18 +491,11 @@ export async function POST(
       authenticatedUserId = session.user.id
       triggerType = 'manual' // UI session
     } else {
-      // Check for API key
+      // Check for API key - validateWorkflowAccess already confirmed this is valid
       const apiKeyHeader = request.headers.get('X-API-Key')
       if (apiKeyHeader) {
-        const [apiKeyRecord] = await db
-          .select({ userId: apiKey.userId })
-          .from(apiKey)
-          .where(eq(apiKey.key, apiKeyHeader))
-          .limit(1)
-        if (apiKeyRecord) {
-          authenticatedUserId = apiKeyRecord.userId
-          triggerType = 'api' // API key usage
-        }
+        authenticatedUserId = validation.workflow.userId
+        triggerType = 'api' // API key usage
       }
     }
 
@@ -755,8 +755,8 @@ export async function POST(
         {} as Record<string, Record<string, any>>
       )
 
-      // Get workflow variables (empty for now - variables are handled through environment)
-      const workflowVariables = {}
+      // Get workflow variables from the validated workflow
+      const workflowVariables = validation.workflow.variables || {}
 
       // Serialize and execute the workflow
       logger.debug(`[${requestId}] Serializing workflow: ${workflowId}`)

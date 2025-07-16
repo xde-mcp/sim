@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, inArray, lt, sql } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 import { createLogger } from '@/lib/logs/console-logger'
 import { EnhancedLoggingSession } from '@/lib/logs/enhanced-logging-session'
@@ -107,11 +107,21 @@ export class JobProcessor {
     try {
       logger.info('Running job cleanup...')
 
-      // Clean up jobs older than 24 hours by default
-      // You can make this configurable via environment variable
       const daysToKeep = Number.parseInt(process.env.JOB_RETENTION_DAYS || '1')
-      const deletedCount = await this.jobQueue.cleanupOldJobs(daysToKeep)
+      const cutoffDate = new Date()
+      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep)
 
+      const deletedJobs = await db
+        .delete(workflowExecutionJobs)
+        .where(
+          and(
+            inArray(workflowExecutionJobs.status, ['completed', 'failed', 'cancelled']),
+            lt(workflowExecutionJobs.completedAt, cutoffDate)
+          )
+        )
+        .returning({ id: workflowExecutionJobs.id })
+
+      const deletedCount = deletedJobs.length
       if (deletedCount > 0) {
         logger.info(`Cleaned up ${deletedCount} old jobs`)
       }

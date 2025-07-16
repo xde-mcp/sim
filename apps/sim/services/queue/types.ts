@@ -10,16 +10,8 @@ export type UserRateLimit = InferSelectModel<typeof userRateLimits>
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
 export type TriggerType = 'api' | 'webhook' | 'schedule' | 'manual' | 'chat'
 
-// Priority levels (kept for potential future use, but defaulting everything to NORMAL)
-export const PRIORITY_LEVELS = {
-  LOW: 0,
-  NORMAL: 50,
-  HIGH: 100,
-  CRITICAL: 200,
-} as const
-
 // Default priority for all jobs
-export const DEFAULT_PRIORITY = PRIORITY_LEVELS.NORMAL
+export const DEFAULT_PRIORITY = 50
 
 // Rate limit configuration (applies to all non-manual trigger types: api, webhook, schedule, chat)
 export interface RateLimitConfig {

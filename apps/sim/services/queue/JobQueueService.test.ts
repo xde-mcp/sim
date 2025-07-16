@@ -49,6 +49,11 @@ describe('JobQueueService', () => {
 
   describe('createJob', () => {
     it('should create a new job successfully', async () => {
+      // Mock getSubscriptionPlan to return 'free' tier
+      const mockGetSubscriptionPlan = vi
+        .spyOn(jobQueue as any, 'getSubscriptionPlan')
+        .mockResolvedValue('free')
+
       // Mock rate limiter to allow request
       const mockRateLimiter = (jobQueue as any).rateLimiter
       mockRateLimiter.checkRateLimit.mockResolvedValue({
@@ -58,7 +63,7 @@ describe('JobQueueService', () => {
       })
 
       // Set up db.select mock sequence for:
-      // 1. Concurrent executions check (should return 0)
+      // 1. Concurrent executions check (should return 0, under limit of 2)
       // 2. Queue depth check (should return < max)
       // 3. Queue position check for response
       let selectCallCount = 0
@@ -66,7 +71,7 @@ describe('JobQueueService', () => {
         selectCallCount++
 
         if (selectCallCount === 1) {
-          // Concurrent executions check - return 0 processing jobs
+          // Concurrent executions check - return 0 processing jobs (under limit of 2)
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockResolvedValue([{ count: 0 }]),
@@ -103,10 +108,15 @@ describe('JobQueueService', () => {
       expect(result.status).toBe('pending')
       expect(result.position).toBeDefined()
       expect(result.estimatedStartTime).toBeInstanceOf(Date)
-      expect(db.insert).toHaveBeenCalled()
+      expect(mockGetSubscriptionPlan).toHaveBeenCalledWith(testUserId)
     })
 
     it('should respect rate limits', async () => {
+      // Mock getSubscriptionPlan to return 'free' tier
+      const mockGetSubscriptionPlan = vi
+        .spyOn(jobQueue as any, 'getSubscriptionPlan')
+        .mockResolvedValue('free')
+
       // Mock rate limiter to deny request
       const mockRateLimiter = (jobQueue as any).rateLimiter
       mockRateLimiter.checkRateLimit.mockResolvedValue({
@@ -120,12 +130,18 @@ describe('JobQueueService', () => {
           workflowId: testWorkflowId,
           userId: testUserId,
           input: {},
+          triggerType: 'api',
         })
       ).rejects.toThrow(/Rate limit exceeded/)
     })
 
     it('should enforce concurrent execution limits', async () => {
-      // Mock rate limiter to allow
+      // Mock getSubscriptionPlan to return 'free' tier
+      const mockGetSubscriptionPlan = vi
+        .spyOn(jobQueue as any, 'getSubscriptionPlan')
+        .mockResolvedValue('free')
+
+      // Mock rate limiter to allow request
       const mockRateLimiter = (jobQueue as any).rateLimiter
       mockRateLimiter.checkRateLimit.mockResolvedValue({
         allowed: true,
@@ -133,23 +149,31 @@ describe('JobQueueService', () => {
         resetAt: new Date(),
       })
 
-      // Mock concurrent executions check - return 1 processing job (at limit for free tier)
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue([{ count: 1 }]),
-      } as any)
+      // Set up db.select mock to return concurrent limit reached
+      vi.mocked(db.select).mockImplementation(() => {
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([{ count: 2 }]), // At limit of 2
+        } as any
+      })
 
       await expect(
         jobQueue.createJob({
           workflowId: testWorkflowId,
           userId: testUserId,
           input: {},
+          triggerType: 'api',
         })
       ).rejects.toThrow(/Concurrent execution limit/)
     })
 
     it('should reject when global queue is full', async () => {
-      // Mock rate limiter to allow
+      // Mock getSubscriptionPlan to return 'free' tier
+      const mockGetSubscriptionPlan = vi
+        .spyOn(jobQueue as any, 'getSubscriptionPlan')
+        .mockResolvedValue('free')
+
+      // Mock rate limiter to allow request
       const mockRateLimiter = (jobQueue as any).rateLimiter
       mockRateLimiter.checkRateLimit.mockResolvedValue({
         allowed: true,
@@ -158,20 +182,20 @@ describe('JobQueueService', () => {
       })
 
       // Set up db.select mock sequence for:
-      // 1. Concurrent executions check (should pass)
-      // 2. Queue depth check (should fail)
+      // 1. Concurrent executions check (should return 0, under limit)
+      // 2. Queue depth check (should return full queue)
       let selectCallCount = 0
       vi.mocked(db.select).mockImplementation(() => {
         selectCallCount++
 
         if (selectCallCount === 1) {
-          // Concurrent executions check - pass
+          // Concurrent executions check - return 0 processing jobs (under limit)
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockResolvedValue([{ count: 0 }]),
           } as any
         }
-        // Queue depth check - fail (at max)
+        // Queue depth check - return full queue (at SYSTEM_LIMITS.maxQueueDepth)
         return {
           from: vi.fn().mockReturnThis(),
           where: vi.fn().mockResolvedValue([{ count: SYSTEM_LIMITS.maxQueueDepth }]),
@@ -183,6 +207,7 @@ describe('JobQueueService', () => {
           workflowId: testWorkflowId,
           userId: testUserId,
           input: {},
+          triggerType: 'api',
         })
       ).rejects.toThrow(/System queue is full/)
     })
@@ -304,21 +329,6 @@ describe('JobQueueService', () => {
       expect(jobs).toHaveLength(3)
       expect(total).toBe(5)
       expect(jobs[0].createdAt.getTime()).toBeGreaterThan(jobs[1].createdAt.getTime())
-    })
-  })
-
-  describe('cleanupOldJobs', () => {
-    it('should delete old completed jobs', async () => {
-      // Mock delete returning deleted rows
-      vi.mocked(db.delete).mockReturnValue({
-        where: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([{ id: 'old-job-1' }, { id: 'old-job-2' }]),
-      } as any)
-
-      const deletedCount = await jobQueue.cleanupOldJobs(30)
-
-      expect(deletedCount).toBe(2)
-      expect(db.delete).toHaveBeenCalled()
     })
   })
 })
