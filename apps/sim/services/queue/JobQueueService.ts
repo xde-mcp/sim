@@ -11,7 +11,7 @@ import type {
   NewWorkflowExecutionJob,
   WorkflowExecutionJob,
 } from './types'
-import { DEFAULT_PRIORITY, RATE_LIMITS, SYSTEM_LIMITS } from './types'
+import { DEFAULT_PRIORITY, SYSTEM_LIMITS } from './types'
 
 const logger = createLogger('JobQueueService')
 
@@ -39,24 +39,8 @@ export class JobQueueService {
         )
       }
 
-      const concurrentLimit = RATE_LIMITS[subscriptionPlan].asyncApiConcurrentExecutions
-      const processingJobs = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(workflowExecutionJobs)
-        .where(
-          and(
-            eq(workflowExecutionJobs.userId, userId),
-            eq(workflowExecutionJobs.status, 'processing')
-          )
-        )
-
-      const currentConcurrent = processingJobs[0]?.count || 0
-
-      if (currentConcurrent >= concurrentLimit) {
-        throw new Error(
-          `Concurrent execution limit (${concurrentLimit}) reached. Please wait for current executions to complete.`
-        )
-      }
+      // Note: Concurrent execution limits are checked in JobProcessor when starting jobs
+      // Jobs should be queued regardless of concurrent limits
 
       // Check global queue depth
       const queueDepth = await this.getQueueDepth()
@@ -435,9 +419,7 @@ export class JobQueueService {
   /**
    * Get subscription plan for user
    */
-  private async getSubscriptionPlan(
-    userId: string
-  ): Promise<'free' | 'pro' | 'team' | 'enterprise'> {
+  async getSubscriptionPlan(userId: string): Promise<'free' | 'pro' | 'team' | 'enterprise'> {
     try {
       const [subscriptionRecord] = await db
         .select({ plan: subscription.plan })

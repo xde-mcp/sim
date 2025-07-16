@@ -16,35 +16,25 @@ export const DEFAULT_PRIORITY = 50
 // Rate limit configuration (applies to all non-manual trigger types: api, webhook, schedule, chat)
 export interface RateLimitConfig {
   syncApiExecutionsPerMinute: number
-  syncApiConcurrentExecutions: number
   asyncApiExecutionsPerMinute: number
-  asyncApiConcurrentExecutions: number
 }
 
 export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   free: {
     syncApiExecutionsPerMinute: 10,
-    syncApiConcurrentExecutions: 1,
     asyncApiExecutionsPerMinute: 50,
-    asyncApiConcurrentExecutions: 2,
   },
   pro: {
     syncApiExecutionsPerMinute: 25,
-    syncApiConcurrentExecutions: 1,
     asyncApiExecutionsPerMinute: 200,
-    asyncApiConcurrentExecutions: 5,
   },
   team: {
     syncApiExecutionsPerMinute: 75,
-    syncApiConcurrentExecutions: 1,
     asyncApiExecutionsPerMinute: 500,
-    asyncApiConcurrentExecutions: 10,
   },
   enterprise: {
     syncApiExecutionsPerMinute: 150,
-    syncApiConcurrentExecutions: 1,
     asyncApiExecutionsPerMinute: 1000,
-    asyncApiConcurrentExecutions: 15,
   },
 }
 

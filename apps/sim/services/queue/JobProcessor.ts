@@ -157,6 +157,8 @@ export class JobProcessor {
 
         logger.info(`[${this.processorId}] Found job ${job.id}, attempting to process...`)
 
+        // Note: Per-user concurrency limits removed - only system-level limits apply
+
         // Try to mark job as processing (atomic operation)
         const marked = await this.jobQueue.markJobProcessing(job.id)
         if (!marked) {

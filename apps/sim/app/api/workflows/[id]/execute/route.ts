@@ -18,7 +18,7 @@ import { db } from '@/db'
 import { environment as environmentTable, subscription, userStats } from '@/db/schema'
 import { Executor } from '@/executor'
 import { Serializer } from '@/serializer'
-import { JobQueueService, RateLimiter } from '@/services/queue'
+import { JobQueueService } from '@/services/queue'
 import type { TriggerType } from '@/services/queue/types'
 import { mergeSubblockState } from '@/stores/workflows/server-utils'
 import { validateWorkflowAccess } from '../../middleware'
@@ -515,25 +515,6 @@ export async function POST(
       | 'pro'
       | 'team'
       | 'enterprise'
-
-    // Check rate limits (only applies to API executions)
-    const rateLimiter = new RateLimiter()
-    const rateLimitStatus = await rateLimiter.checkRateLimit(
-      authenticatedUserId,
-      subscriptionPlan,
-      triggerType,
-      isAsync
-    )
-
-    if (!rateLimitStatus.allowed) {
-      if (isAsync) {
-        return createErrorResponse(
-          'Rate limit exceeded for async executions. Please try again later.',
-          429
-        )
-      }
-      return createErrorResponse('Rate limit exceeded. Please try again later.', 429)
-    }
 
     if (isAsync) {
       // Async execution - use job queue

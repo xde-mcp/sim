@@ -25,7 +25,8 @@ CREATE TABLE "templates" (
 --> statement-breakpoint
 CREATE TABLE "user_rate_limits" (
 	"user_id" text PRIMARY KEY NOT NULL,
-	"execution_requests" integer DEFAULT 0 NOT NULL,
+	"sync_api_requests" integer DEFAULT 0 NOT NULL,
+	"async_api_requests" integer DEFAULT 0 NOT NULL,
 	"window_start" timestamp DEFAULT now() NOT NULL,
 	"last_request_at" timestamp DEFAULT now() NOT NULL,
 	"is_rate_limited" boolean DEFAULT false NOT NULL,

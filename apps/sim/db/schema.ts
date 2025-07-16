@@ -587,7 +587,8 @@ export const userRateLimits = pgTable('user_rate_limits', {
   userId: text('user_id')
     .primaryKey()
     .references(() => user.id, { onDelete: 'cascade' }),
-  executionRequests: integer('execution_requests').notNull().default(0), // Rolling window counter
+  syncApiRequests: integer('sync_api_requests').notNull().default(0), // Sync API requests counter
+  asyncApiRequests: integer('async_api_requests').notNull().default(0), // Async API requests counter
   windowStart: timestamp('window_start').notNull().defaultNow(),
   lastRequestAt: timestamp('last_request_at').notNull().defaultNow(),
   isRateLimited: boolean('is_rate_limited').notNull().default(false),

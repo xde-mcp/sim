@@ -1,7 +1,7 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { createLogger } from '@/lib/logs/console-logger'
 import { db } from '@/db'
-import { userRateLimits, workflowExecutionJobs } from '@/db/schema'
+import { userRateLimits } from '@/db/schema'
 import { RATE_LIMITS, type TriggerType } from './types'
 
 const logger = createLogger('RateLimiter')
@@ -30,9 +30,6 @@ export class RateLimiter {
       const execLimit = isAsync
         ? limit.asyncApiExecutionsPerMinute
         : limit.syncApiExecutionsPerMinute
-      const concurrentLimit = isAsync
-        ? limit.asyncApiConcurrentExecutions
-        : limit.syncApiConcurrentExecutions
 
       const now = new Date()
       const windowStart = new Date(now.getTime() - 60000) // 1 minute ago
@@ -50,7 +47,8 @@ export class RateLimiter {
           .insert(userRateLimits)
           .values({
             userId,
-            executionRequests: 1,
+            syncApiRequests: isAsync ? 0 : 1,
+            asyncApiRequests: isAsync ? 1 : 0,
             windowStart: now,
             lastRequestAt: now,
             isRateLimited: false,
@@ -58,7 +56,8 @@ export class RateLimiter {
           .onConflictDoUpdate({
             target: userRateLimits.userId,
             set: {
-              executionRequests: 1,
+              syncApiRequests: isAsync ? 0 : 1,
+              asyncApiRequests: isAsync ? 1 : 0,
               windowStart: now,
               lastRequestAt: now,
               isRateLimited: false,
@@ -73,9 +72,12 @@ export class RateLimiter {
         }
       }
 
-      // Check execution limit
-      const newExecutionRequests = rateLimitRecord.executionRequests + 1
-      if (newExecutionRequests > execLimit) {
+      // Check execution limit using the appropriate counter
+      const currentRequests = isAsync
+        ? rateLimitRecord.asyncApiRequests
+        : rateLimitRecord.syncApiRequests
+      const newRequests = currentRequests + 1
+      if (newRequests > execLimit) {
         // Rate limited
         const resetAt = new Date(new Date(rateLimitRecord.windowStart).getTime() + 60000)
 
@@ -96,28 +98,21 @@ export class RateLimiter {
         }
       }
 
-      // Check concurrent execution limit (only for API executions)
-      const concurrentCount = await this.getConcurrentExecutionCount(userId, triggerType)
-      if (concurrentCount >= concurrentLimit) {
-        return {
-          allowed: false,
-          remaining: execLimit - rateLimitRecord.executionRequests,
-          resetAt: new Date(new Date(rateLimitRecord.windowStart).getTime() + 60000),
-        }
-      }
+      // Note: Concurrent execution limits are checked in JobQueueService.createJob()
+      // The rate limiter only checks per-minute execution limits
 
       // Update the record
       await db
         .update(userRateLimits)
         .set({
-          executionRequests: newExecutionRequests,
+          ...(isAsync ? { asyncApiRequests: newRequests } : { syncApiRequests: newRequests }),
           lastRequestAt: now,
         })
         .where(eq(userRateLimits.userId, userId))
 
       return {
         allowed: true,
-        remaining: execLimit - newExecutionRequests,
+        remaining: execLimit - newRequests,
         resetAt: new Date(new Date(rateLimitRecord.windowStart).getTime() + 60000),
       }
     } catch (error) {
@@ -173,7 +168,7 @@ export class RateLimiter {
         }
       }
 
-      const used = rateLimitRecord.executionRequests
+      const used = isAsync ? rateLimitRecord.asyncApiRequests : rateLimitRecord.syncApiRequests
       return {
         used,
         limit: execLimit,
@@ -206,30 +201,5 @@ export class RateLimiter {
       logger.error('Error resetting rate limit:', error)
       throw error
     }
-  }
-
-  /**
-   * Get current concurrent execution count for user
-   * Only applies to API executions
-   */
-  private async getConcurrentExecutionCount(
-    userId: string,
-    triggerType: TriggerType
-  ): Promise<number> {
-    if (triggerType === 'manual') {
-      return 0
-    }
-
-    const [result] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(workflowExecutionJobs)
-      .where(
-        and(
-          eq(workflowExecutionJobs.userId, userId),
-          eq(workflowExecutionJobs.status, 'processing'),
-          sql`${workflowExecutionJobs.triggerType} != 'manual'`
-        )
-      )
-    return result?.count || 0
   }
 }
