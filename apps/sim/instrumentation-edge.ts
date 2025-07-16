@@ -10,8 +10,6 @@ import { createLogger } from './lib/logs/console-logger'
 const logger = createLogger('EdgeInstrumentation')
 
 export async function register() {
-  console.log('[Edge Instrumentation] register() called')
-
   try {
     // Only Web API compatible code here
     // No Node.js APIs like process.on, crypto, fs, etc.
