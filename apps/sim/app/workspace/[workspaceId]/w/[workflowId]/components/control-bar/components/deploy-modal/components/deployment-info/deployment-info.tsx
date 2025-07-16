@@ -103,7 +103,11 @@ export function DeploymentInfo({
         <div className='space-y-4'>
           <ApiEndpoint endpoint={deploymentInfo.endpoint} />
           <ApiKey apiKey={deploymentInfo.apiKey} />
-          <ExampleCommand command={deploymentInfo.exampleCommand} apiKey={deploymentInfo.apiKey} />
+          <ExampleCommand
+            command={deploymentInfo.exampleCommand}
+            apiKey={deploymentInfo.apiKey}
+            endpoint={deploymentInfo.endpoint}
+          />
         </div>
 
         <div className='mt-4 flex items-center justify-between pt-2'>
