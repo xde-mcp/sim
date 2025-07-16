@@ -83,19 +83,15 @@ export function VoiceInterface({
   // State tracking
   const currentStateRef = useRef<'idle' | 'listening' | 'agent_speaking'>('idle')
 
-  // Update state ref when state changes
   useEffect(() => {
-    logger.info('State changed:', { from: currentStateRef.current, to: state })
     currentStateRef.current = state
   }, [state])
 
-  // Refs
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
-  const isStartingRef = useRef(false)
   const isMutedRef = useRef(false)
   const responseTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -113,9 +109,7 @@ export function VoiceInterface({
       clearTimeout(responseTimeoutRef.current)
     }
 
-    logger.info('Setting response timeout')
     responseTimeoutRef.current = setTimeout(() => {
-      logger.info('Response timeout fired - going back to idle state')
       if (currentStateRef.current === 'listening') {
         setState('idle')
       }
@@ -124,7 +118,6 @@ export function VoiceInterface({
 
   const clearResponseTimeout = useCallback(() => {
     if (responseTimeoutRef.current) {
-      logger.info('Clearing response timeout')
       clearTimeout(responseTimeoutRef.current)
       responseTimeoutRef.current = null
     }
@@ -132,46 +125,37 @@ export function VoiceInterface({
 
   // Sync with external state
   useEffect(() => {
-    logger.info('External state check:', { isPlayingAudio, state })
-
     if (isPlayingAudio && state !== 'agent_speaking') {
-      logger.info('State transition: -> agent_speaking')
       clearResponseTimeout() // Clear timeout since agent is responding
       setState('agent_speaking')
       setCurrentTranscript('')
 
       // Mute microphone immediately
-      logger.info('Muting microphone for agent speaking')
       setIsMuted(true)
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getAudioTracks().forEach((track) => {
           track.enabled = false
         })
-        logger.info('Disabled microphone tracks')
       }
 
       // Stop speech recognition completely
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort()
-          logger.info('Aborted speech recognition for agent speaking')
         } catch (error) {
           logger.debug('Error aborting speech recognition:', error)
         }
       }
     } else if (!isPlayingAudio && state === 'agent_speaking') {
-      logger.info('State transition: agent_speaking -> idle')
       setState('idle')
       setCurrentTranscript('')
 
       // Re-enable microphone
-      logger.info('Unmuting microphone after agent speaking')
       setIsMuted(false)
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getAudioTracks().forEach((track) => {
           track.enabled = true
         })
-        logger.info('Enabled microphone tracks')
       }
     }
   }, [isPlayingAudio, state, clearResponseTimeout])
@@ -243,8 +227,6 @@ export function VoiceInterface({
   const setupSpeechRecognition = useCallback(() => {
     if (!isSupported) return
 
-    logger.info('Setting up speech recognition')
-
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) return
 
@@ -254,25 +236,12 @@ export function VoiceInterface({
     recognition.interimResults = true
     recognition.lang = 'en-US'
 
-    recognition.onstart = () => {
-      logger.info('Speech recognition started')
-    }
+    recognition.onstart = () => {}
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const currentState = currentStateRef.current
 
-      logger.info('Speech recognition result event:', {
-        state: currentState,
-        isMuted: isMutedRef.current,
-        resultIndex: event.resultIndex,
-        resultsLength: event.results.length,
-      })
-
       if (isMutedRef.current || currentState !== 'listening') {
-        logger.info('Ignoring speech result due to state/mute:', {
-          currentState,
-          isMuted: isMutedRef.current,
-        })
         return
       }
 
@@ -283,13 +252,6 @@ export function VoiceInterface({
         const result = event.results[i]
         const transcript = result[0].transcript
 
-        logger.info('Processing result:', {
-          index: i,
-          isFinal: result.isFinal,
-          transcript: transcript,
-          confidence: result[0].confidence,
-        })
-
         if (result.isFinal) {
           finalTranscript += transcript
         } else {
@@ -297,14 +259,11 @@ export function VoiceInterface({
         }
       }
 
-      logger.info('Recognition results:', { finalTranscript, interimTranscript })
-
       // Update live transcript
       setCurrentTranscript(interimTranscript || finalTranscript)
 
       // Send final transcript (but keep listening state until agent responds)
       if (finalTranscript.trim()) {
-        logger.info('Sending voice transcript:', finalTranscript)
         setCurrentTranscript('') // Clear transcript
 
         // Stop recognition to avoid interference while waiting for response
@@ -325,7 +284,6 @@ export function VoiceInterface({
 
     recognition.onend = () => {
       const currentState = currentStateRef.current
-      logger.info('Speech recognition ended:', { state: currentState, isMuted: isMutedRef.current })
 
       // Only restart recognition if we're in listening state and not muted
       if (currentState === 'listening' && !isMutedRef.current) {
@@ -339,9 +297,8 @@ export function VoiceInterface({
           ) {
             try {
               recognitionRef.current.start()
-              logger.debug('Restarted speech recognition')
             } catch (error) {
-              logger.debug('Could not restart recognition:', error)
+              logger.debug('Error restarting speech recognition:', error)
             }
           }
         }, 1000) // Longer delay to give agent time to respond
@@ -351,16 +308,9 @@ export function VoiceInterface({
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       // Filter out "aborted" errors - these are expected when we intentionally stop recognition
       if (event.error === 'aborted') {
-        logger.debug('Speech recognition aborted (expected behavior)')
+        // Ignore
         return
       }
-
-      logger.error('Speech recognition error:', {
-        error: event.error,
-        message: event.message,
-        state: currentStateRef.current,
-        isMuted: isMutedRef.current,
-      })
 
       if (event.error === 'not-allowed') {
         setPermissionStatus('denied')
@@ -368,24 +318,20 @@ export function VoiceInterface({
     }
 
     recognitionRef.current = recognition
-    logger.info('Speech recognition setup complete')
   }, [isSupported, onVoiceTranscript, setResponseTimeout])
 
   // Start/stop listening
   const startListening = useCallback(() => {
     if (!isInitialized || isMuted || state !== 'idle') {
-      logger.info('Cannot start listening:', { isInitialized, isMuted, state })
       return
     }
 
-    logger.info('State transition: idle -> listening')
     setState('listening')
     setCurrentTranscript('')
 
     if (recognitionRef.current) {
       try {
         recognitionRef.current.start()
-        logger.info('Started speech recognition')
       } catch (error) {
         logger.error('Error starting recognition:', error)
       }
@@ -393,7 +339,6 @@ export function VoiceInterface({
   }, [isInitialized, isMuted, state])
 
   const stopListening = useCallback(() => {
-    logger.info('State transition: listening -> idle')
     setState('idle')
     setCurrentTranscript('')
 
@@ -409,8 +354,6 @@ export function VoiceInterface({
   // Handle interrupt
   const handleInterrupt = useCallback(() => {
     if (state === 'agent_speaking') {
-      logger.info('User interrupted agent, switching to listening')
-
       // Clear any subtitle timeouts and text
       // (No longer needed after removing subtitle system)
 
@@ -419,22 +362,19 @@ export function VoiceInterface({
       setCurrentTranscript('')
 
       // Unmute microphone for user input
-      logger.info('Unmuting microphone for user interrupt')
       setIsMuted(false)
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getAudioTracks().forEach((track) => {
           track.enabled = true
         })
-        logger.info('Enabled microphone tracks for interrupt')
       }
 
       // Start listening immediately
       if (recognitionRef.current) {
         try {
           recognitionRef.current.start()
-          logger.info('Started speech recognition after interrupt')
         } catch (error) {
-          logger.debug('Could not start recognition after interrupt:', error)
+          logger.error('Could not start recognition after interrupt:', error)
         }
       }
     }
@@ -442,8 +382,6 @@ export function VoiceInterface({
 
   // Handle call end with proper cleanup
   const handleCallEnd = useCallback(() => {
-    logger.info('Call ended - stopping all audio processing')
-
     // Stop everything immediately
     setState('idle')
     setCurrentTranscript('')
@@ -453,9 +391,8 @@ export function VoiceInterface({
     if (recognitionRef.current) {
       try {
         recognitionRef.current.abort()
-        logger.info('Stopped speech recognition for call end')
       } catch (error) {
-        logger.debug('Error stopping speech recognition:', error)
+        logger.error('Error stopping speech recognition:', error)
       }
     }
 
@@ -516,7 +453,6 @@ export function VoiceInterface({
   // Auto-start listening when ready
   useEffect(() => {
     if (isInitialized && !isMuted && state === 'idle') {
-      logger.info('Auto-starting listening from idle state')
       startListening()
     }
   }, [isInitialized, isMuted, state, startListening])
@@ -524,8 +460,6 @@ export function VoiceInterface({
   // Cleanup when call ends or component unmounts
   useEffect(() => {
     return () => {
-      logger.info('VoiceInterface cleanup - stopping all audio processing')
-
       // Stop speech recognition
       if (recognitionRef.current) {
         try {
