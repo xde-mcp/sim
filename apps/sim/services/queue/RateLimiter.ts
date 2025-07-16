@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { createLogger } from '@/lib/logs/console-logger'
 import { db } from '@/db'
 import { userRateLimits } from '@/db/schema'
@@ -72,24 +72,39 @@ export class RateLimiter {
         }
       }
 
-      // Check execution limit using the appropriate counter
-      const currentRequests = isAsync
-        ? rateLimitRecord.asyncApiRequests
-        : rateLimitRecord.syncApiRequests
-      const newRequests = currentRequests + 1
-      if (newRequests > execLimit) {
-        // Rate limited
+      // Atomic increment using database-level operations
+      const updateResult = await db
+        .update(userRateLimits)
+        .set({
+          ...(isAsync
+            ? { asyncApiRequests: sql`${userRateLimits.asyncApiRequests} + 1` }
+            : { syncApiRequests: sql`${userRateLimits.syncApiRequests} + 1` }),
+          lastRequestAt: now,
+        })
+        .where(eq(userRateLimits.userId, userId))
+        .returning({
+          asyncApiRequests: userRateLimits.asyncApiRequests,
+          syncApiRequests: userRateLimits.syncApiRequests,
+        })
+
+      // Get the new counter value after atomic increment
+      const updatedRecord = updateResult[0]
+      const actualNewRequests = isAsync
+        ? updatedRecord.asyncApiRequests
+        : updatedRecord.syncApiRequests
+
+      // Check if we exceeded the limit after the atomic update
+      if (actualNewRequests > execLimit) {
+        // We exceeded the limit, mark as rate limited
         const resetAt = new Date(new Date(rateLimitRecord.windowStart).getTime() + 60000)
 
-        if (!rateLimitRecord.isRateLimited) {
-          await db
-            .update(userRateLimits)
-            .set({
-              isRateLimited: true,
-              rateLimitResetAt: resetAt,
-            })
-            .where(eq(userRateLimits.userId, userId))
-        }
+        await db
+          .update(userRateLimits)
+          .set({
+            isRateLimited: true,
+            rateLimitResetAt: resetAt,
+          })
+          .where(eq(userRateLimits.userId, userId))
 
         return {
           allowed: false,
@@ -98,21 +113,9 @@ export class RateLimiter {
         }
       }
 
-      // Note: Concurrent execution limits are checked in JobQueueService.createJob()
-      // The rate limiter only checks per-minute execution limits
-
-      // Update the record
-      await db
-        .update(userRateLimits)
-        .set({
-          ...(isAsync ? { asyncApiRequests: newRequests } : { syncApiRequests: newRequests }),
-          lastRequestAt: now,
-        })
-        .where(eq(userRateLimits.userId, userId))
-
       return {
         allowed: true,
-        remaining: execLimit - newRequests,
+        remaining: execLimit - actualNewRequests,
         resetAt: new Date(new Date(rateLimitRecord.windowStart).getTime() + 60000),
       }
     } catch (error) {

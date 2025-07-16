@@ -823,6 +823,11 @@ export async function POST(
       return createErrorResponse(error.message, error.statusCode, 'USAGE_LIMIT_EXCEEDED')
     }
 
+    // Check if this is a rate limit error
+    if (error.message && error.message.includes('Rate limit exceeded')) {
+      return createErrorResponse(error.message, 429, 'RATE_LIMIT_EXCEEDED')
+    }
+
     return createErrorResponse(
       error.message || 'Failed to execute workflow',
       500,
