@@ -22,15 +22,18 @@ import { ExampleCommand } from '@/app/workspace/[workspaceId]/w/[workflowId]/com
 import type { WorkflowState } from '@/stores/workflows/workflow/types'
 import { DeployedWorkflowModal } from '../../../deployment-controls/components/deployed-workflow-modal'
 
+interface WorkflowDeploymentInfo {
+  isDeployed: boolean
+  deployedAt?: string
+  apiKey: string
+  endpoint: string
+  exampleCommand: string
+  needsRedeployment: boolean
+}
+
 interface DeploymentInfoProps {
-  isLoading?: boolean
-  deploymentInfo: {
-    deployedAt?: string
-    apiKey: string
-    endpoint: string
-    exampleCommand: string
-    needsRedeployment: boolean
-  } | null
+  isLoading: boolean
+  deploymentInfo: WorkflowDeploymentInfo | null
   onRedeploy: () => void
   onUndeploy: () => void
   isSubmitting: boolean
@@ -38,6 +41,7 @@ interface DeploymentInfoProps {
   workflowId: string | null
   deployedState: WorkflowState
   isLoadingDeployedState: boolean
+  getInputFormatExample?: () => string
 }
 
 export function DeploymentInfo({
@@ -49,6 +53,8 @@ export function DeploymentInfo({
   isUndeploying,
   workflowId,
   deployedState,
+  isLoadingDeployedState,
+  getInputFormatExample,
 }: DeploymentInfoProps) {
   const [isViewingDeployed, setIsViewingDeployed] = useState(false)
 
@@ -107,6 +113,7 @@ export function DeploymentInfo({
             command={deploymentInfo.exampleCommand}
             apiKey={deploymentInfo.apiKey}
             endpoint={deploymentInfo.endpoint}
+            getInputFormatExample={getInputFormatExample}
           />
         </div>
 

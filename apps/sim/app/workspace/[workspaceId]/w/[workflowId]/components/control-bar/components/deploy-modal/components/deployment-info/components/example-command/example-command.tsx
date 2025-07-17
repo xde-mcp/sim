@@ -17,6 +17,7 @@ interface ExampleCommandProps {
   apiKey: string
   endpoint: string
   showLabel?: boolean
+  getInputFormatExample?: () => string
 }
 
 type ExampleMode = 'sync' | 'async'
@@ -27,6 +28,7 @@ export function ExampleCommand({
   apiKey,
   endpoint,
   showLabel = true,
+  getInputFormatExample,
 }: ExampleCommandProps) {
   const [mode, setMode] = useState<ExampleMode>('sync')
   const [exampleType, setExampleType] = useState<ExampleType>('execute')
@@ -45,8 +47,53 @@ export function ExampleCommand({
       .replace(' http', '\n  http')
   }
 
-  const getExampleCommand = () => {
+  // Get the actual command with real API key for copying
+  const getActualCommand = () => {
+    const baseEndpoint = endpoint
+    const inputExample = getInputFormatExample
+      ? getInputFormatExample()
+      : ' -d \'{"input": "your data here"}\''
+
+    switch (mode) {
+      case 'sync':
+        // Use the original command but ensure it has the real API key
+        return command
+
+      case 'async':
+        switch (exampleType) {
+          case 'execute':
+            return `curl -X POST \\
+  -H "X-API-Key: ${apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -H "X-Execution-Mode: async"${inputExample} \\
+  ${baseEndpoint}`
+
+          case 'status': {
+            const baseUrl = baseEndpoint.split('/api/workflows/')[0]
+            return `curl -H "X-API-Key: ${apiKey}" \\
+  ${baseUrl}/api/jobs/JOB_ID_FROM_EXECUTION`
+          }
+
+          case 'rate-limits': {
+            const baseUrlForRateLimit = baseEndpoint.split('/api/workflows/')[0]
+            return `curl -H "X-API-Key: ${apiKey}" \\
+  ${baseUrlForRateLimit}/api/users/rate-limit`
+          }
+
+          default:
+            return command
+        }
+
+      default:
+        return command
+    }
+  }
+
+  const getDisplayCommand = () => {
     const baseEndpoint = endpoint.replace(apiKey, 'SIM_API_KEY')
+    const inputExample = getInputFormatExample
+      ? getInputFormatExample()
+      : ' -d \'{"input": "your data here"}\''
 
     switch (mode) {
       case 'sync':
@@ -58,27 +105,20 @@ export function ExampleCommand({
             return `curl -X POST \\
   -H "X-API-Key: SIM_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -H "X-Execution-Mode: async" \\
-  -d '{"input": "your data here"}' \\
+  -H "X-Execution-Mode: async"${inputExample} \\
   ${baseEndpoint}`
 
-          case 'status':
-            return `# First, run async execution to get jobId
-curl -X POST \\
-  -H "X-API-Key: SIM_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -H "X-Execution-Mode: async" \\
-  -d '{"input": "your data here"}' \\
-  ${baseEndpoint}
+          case 'status': {
+            const baseUrl = baseEndpoint.split('/api/workflows/')[0]
+            return `curl -H "X-API-Key: SIM_API_KEY" \\
+  ${baseUrl}/api/jobs/JOB_ID_FROM_EXECUTION`
+          }
 
-# Then check status using the jobId from response
-curl -H "X-API-Key: SIM_API_KEY" \\
-  ${baseEndpoint.replace('/execute', '').replace('/api/workflows/', '/api/jobs/')}/JOB_ID_HERE`
-
-          case 'rate-limits':
-            return `# Check your current rate limit status
-curl -H "X-API-Key: SIM_API_KEY" \\
-  ${baseEndpoint.replace('/api/workflows/', '/api/users/').replace('/execute', '/rate-limit')}`
+          case 'rate-limits': {
+            const baseUrlForRateLimit = baseEndpoint.split('/api/workflows/')[0]
+            return `curl -H "X-API-Key: SIM_API_KEY" \\
+  ${baseUrlForRateLimit}/api/users/rate-limit`
+          }
 
           default:
             return formatCurlCommand(command, apiKey)
@@ -109,34 +149,29 @@ curl -H "X-API-Key: SIM_API_KEY" \\
   return (
     <div className='space-y-1.5'>
       {showLabel && (
-        <div className='flex items-center justify-between'>
-          <Label className='font-medium text-sm'>Example Commands</Label>
-          <div className='flex items-center gap-2'>
-            {/* Mode Toggle */}
-            <div className='flex rounded-md border bg-background p-1'>
-              <Button
-                variant={mode === 'sync' ? 'default' : 'ghost'}
-                size='sm'
-                className='h-7 px-3 text-xs'
-                onClick={() => setMode('sync')}
-              >
-                Sync
-              </Button>
-              <Button
-                variant={mode === 'async' ? 'default' : 'ghost'}
-                size='sm'
-                className='h-7 px-3 text-xs'
-                onClick={() => setMode('async')}
-              >
-                Async
-              </Button>
-            </div>
-
-            {/* Async Mode Dropdown */}
+        <div className='flex items-center gap-1.5'>
+          <Label className='font-medium text-sm'>Example</Label>
+          <div className='flex items-center gap-1'>
+            <Button
+              variant={mode === 'sync' ? 'default' : 'outline'}
+              size='sm'
+              onClick={() => setMode('sync')}
+              className='h-6 px-2 py-1 text-xs'
+            >
+              Sync
+            </Button>
+            <Button
+              variant={mode === 'async' ? 'default' : 'outline'}
+              size='sm'
+              onClick={() => setMode('async')}
+              className='h-6 px-2 py-1 text-xs'
+            >
+              Async
+            </Button>
             {mode === 'async' && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant='outline' size='sm' className='h-7 px-3 text-xs'>
+                  <Button variant='outline' size='sm' className='h-6 px-2 py-1 text-xs'>
                     {getExampleTitle()}
                     <ChevronDown className='ml-1 h-3 w-3' />
                   </Button>
@@ -158,11 +193,11 @@ curl -H "X-API-Key: SIM_API_KEY" \\
         </div>
       )}
 
-      <div className='group relative rounded-md border bg-background transition-colors hover:bg-muted/50'>
+      <div className='group relative min-h-[120px] rounded-md border bg-background transition-colors hover:bg-muted/50'>
         <pre className='overflow-x-auto whitespace-pre-wrap p-3 font-mono text-xs'>
-          {getExampleCommand()}
+          {getDisplayCommand()}
         </pre>
-        <CopyButton text={getExampleCommand()} />
+        <CopyButton text={getActualCommand()} />
       </div>
     </div>
   )
