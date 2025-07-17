@@ -49,15 +49,6 @@ describe('Workflow Execution API Route', () => {
           resetAt: new Date(),
         }),
       })),
-      JobQueueService: vi.fn().mockImplementation(() => ({
-        createJob: vi.fn().mockResolvedValue({
-          jobId: 'job-123',
-          status: 'pending',
-          createdAt: new Date(),
-          estimatedStartTime: new Date(),
-          position: 1,
-        }),
-      })),
       RateLimitError: class RateLimitError extends Error {
         constructor(
           message: string,
