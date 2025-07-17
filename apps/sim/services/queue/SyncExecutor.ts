@@ -19,6 +19,7 @@ export class SyncExecutor {
   private readonly maxConcurrent: number
   private readonly maxQueueSize: number
   private readonly maxWaitTime: number
+  private readonly maxExecutionTime: number
   private isShuttingDown = false
   private statsInterval?: NodeJS.Timeout
 
@@ -27,11 +28,13 @@ export class SyncExecutor {
       maxConcurrent?: number
       maxQueueSize?: number
       maxWaitTime?: number
+      maxExecutionTime?: number
     } = {}
   ) {
     this.maxConcurrent = options.maxConcurrent || 35
     this.maxQueueSize = options.maxQueueSize || 150000 // 150k queue depth
-    this.maxWaitTime = options.maxWaitTime || 30000 // 30s
+    this.maxWaitTime = options.maxWaitTime || 300000 // 5 minutes
+    this.maxExecutionTime = options.maxExecutionTime || 120000 // 2 minutes
 
     // Start periodic stats logging
     this.startStatsLogging()
@@ -151,7 +154,15 @@ export class SyncExecutor {
     const startTime = Date.now()
 
     try {
-      const result = await task.execute()
+      // Create a timeout promise that rejects after maxExecutionTime
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Sync execution timeout exceeded (${this.maxExecutionTime}ms)`))
+        }, this.maxExecutionTime)
+      })
+
+      // Race the task execution against the timeout
+      const result = await Promise.race([task.execute(), timeoutPromise])
       const duration = Date.now() - startTime
 
       logger.debug('Task completed', {
@@ -187,6 +198,8 @@ export class SyncExecutor {
       total: this.activeExecutions + this.queue.length,
       maxConcurrent: this.maxConcurrent,
       maxQueueSize: this.maxQueueSize,
+      maxWaitTime: this.maxWaitTime,
+      maxExecutionTime: this.maxExecutionTime,
       utilization: Math.round((this.activeExecutions / this.maxConcurrent) * 100),
     }
   }
