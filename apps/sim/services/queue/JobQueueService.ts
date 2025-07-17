@@ -42,11 +42,7 @@ export class JobQueueService {
       // Note: Concurrent execution limits are checked in JobProcessor when starting jobs
       // Jobs should be queued regardless of concurrent limits
 
-      // Check global queue depth
-      const queueDepth = await this.getQueueDepth()
-      if (queueDepth >= SYSTEM_LIMITS.maxQueueDepth) {
-        throw new Error('System queue is full. Please try again later.')
-      }
+      // Removed queue depth check - database can handle unlimited queue
 
       // Create job
       const jobId = uuidv4()
@@ -359,18 +355,6 @@ export class JobQueueService {
       logger.error('Error marking job as failed:', error)
       return false
     }
-  }
-
-  /**
-   * Get current queue depth
-   */
-  private async getQueueDepth(): Promise<number> {
-    const result = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(workflowExecutionJobs)
-      .where(eq(workflowExecutionJobs.status, 'pending'))
-
-    return result[0]?.count || 0
   }
 
   /**

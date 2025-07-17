@@ -2,7 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import { createLogger } from '@/lib/logs/console-logger'
 import { db } from '@/db'
 import { userRateLimits } from '@/db/schema'
-import { RATE_LIMITS, type TriggerType } from './types'
+import { RATE_LIMITS, type SubscriptionPlan, type TriggerType } from './types'
 
 const logger = createLogger('RateLimiter')
 
@@ -13,7 +13,7 @@ export class RateLimiter {
    */
   async checkRateLimit(
     userId: string,
-    subscriptionPlan: 'free' | 'pro' | 'team' | 'enterprise' = 'free',
+    subscriptionPlan: SubscriptionPlan = 'free',
     triggerType: TriggerType = 'manual',
     isAsync = false
   ): Promise<{ allowed: boolean; remaining: number; resetAt: Date }> {
@@ -135,7 +135,7 @@ export class RateLimiter {
    */
   async getRateLimitStatus(
     userId: string,
-    subscriptionPlan: 'free' | 'pro' | 'team' | 'enterprise' = 'free',
+    subscriptionPlan: SubscriptionPlan = 'free',
     triggerType: TriggerType = 'manual',
     isAsync = false
   ): Promise<{ used: number; limit: number; remaining: number; resetAt: Date }> {

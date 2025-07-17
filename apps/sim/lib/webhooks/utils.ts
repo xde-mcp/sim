@@ -12,6 +12,7 @@ import { db } from '@/db'
 import { environment as environmentTable, userStats, webhook } from '@/db/schema'
 import { Executor } from '@/executor'
 import { Serializer } from '@/serializer'
+import { syncExecutor } from '@/services/queue'
 import { mergeSubblockStateAsync } from '@/stores/workflows/server-utils'
 
 const logger = createLogger('WebhookUtils')
@@ -1277,7 +1278,10 @@ export async function fetchAndProcessAirtablePayloads(
 
         // Execute using the original requestId as the executionId
         // This is the exact point in the old code where execution happens - we're matching it exactly
-        await executeWorkflowFromPayload(workflowData, input, requestId, requestId)
+        // Use sync queue for webhook execution
+        await syncExecutor.execute(workflowData.id, workflowData.userId, input, () =>
+          executeWorkflowFromPayload(workflowData, input, requestId, requestId)
+        )
 
         // COMPLETION LOG - This will only appear if execution succeeds
         logger.info(`[${requestId}] CRITICAL_TRACE: Workflow execution completed successfully`, {
@@ -1373,8 +1377,22 @@ export async function processWebhook(
     logger.info(
       `[${requestId}] Executing workflow ${foundWorkflow.id} for webhook ${foundWebhook.id} (Execution: ${executionId})`
     )
-    // Call the refactored execution function
-    await executeWorkflowFromPayload(foundWorkflow, input, executionId, requestId)
+
+    // Use sync queue for webhook execution
+    try {
+      await syncExecutor.execute(foundWorkflow.id, foundWorkflow.userId, input, () =>
+        executeWorkflowFromPayload(foundWorkflow, input, executionId, requestId)
+      )
+    } catch (error: any) {
+      if (error.message?.includes('Service overloaded')) {
+        logger.warn(`[${requestId}] Service overloaded, returning 200 to prevent webhook retries`)
+        return NextResponse.json(
+          { message: 'Service temporarily overloaded, please reduce request rate' },
+          { status: 200 } // Return 200 to prevent webhook retries
+        )
+      }
+      throw error
+    }
 
     // Since executeWorkflowFromPayload handles logging and errors internally,
     // we just need to return a standard success response for synchronous webhooks.

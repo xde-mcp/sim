@@ -18,8 +18,14 @@ import { db } from '@/db'
 import { environment as environmentTable, subscription, userStats } from '@/db/schema'
 import { Executor } from '@/executor'
 import { Serializer } from '@/serializer'
-import { JobQueueService } from '@/services/queue'
-import type { TriggerType } from '@/services/queue/types'
+import {
+  JobQueueService,
+  RateLimitError,
+  RateLimiter,
+  type SubscriptionPlan,
+  syncExecutor,
+  type TriggerType,
+} from '@/services/queue'
 import { mergeSubblockState } from '@/stores/workflows/server-utils'
 import { validateWorkflowAccess } from '../../middleware'
 import { createErrorResponse, createSuccessResponse } from '../../utils'
@@ -36,18 +42,21 @@ const EnvVarsSchema = z.record(z.string())
 // Use a combination of workflow ID and request ID to allow concurrent executions with different inputs
 const runningExecutions = new Set<string>()
 
-// Custom error class for usage limit exceeded
+// Custom error for usage limits
 class UsageLimitError extends Error {
   statusCode: number
-
-  constructor(message: string) {
+  constructor(message: string, statusCode = 402) {
     super(message)
-    this.name = 'UsageLimitError'
-    this.statusCode = 402 // Payment Required status code
+    this.statusCode = statusCode
   }
 }
 
-async function executeWorkflow(workflow: any, requestId: string, input?: any) {
+async function executeWorkflow(
+  workflow: any,
+  requestId: string,
+  input?: any,
+  triggerType: TriggerType = 'api'
+): Promise<any> {
   const workflowId = workflow.id
   const executionId = uuidv4()
 
@@ -62,6 +71,36 @@ async function executeWorkflow(workflow: any, requestId: string, input?: any) {
   }
 
   const loggingSession = new EnhancedLoggingSession(workflowId, executionId, 'api', requestId)
+
+  // Check rate limits for API calls (not manual)
+  if (triggerType === 'api') {
+    // Get user subscription
+    const [subscriptionRecord] = await db
+      .select({ plan: subscription.plan })
+      .from(subscription)
+      .where(eq(subscription.referenceId, workflow.userId))
+      .limit(1)
+
+    const subscriptionPlan = (subscriptionRecord?.plan || 'free') as SubscriptionPlan
+
+    const rateLimiter = new RateLimiter()
+    const rateLimitCheck = await rateLimiter.checkRateLimit(
+      workflow.userId,
+      subscriptionPlan,
+      triggerType,
+      false // isAsync = false for sync calls
+    )
+
+    if (!rateLimitCheck.allowed) {
+      logger.warn(`[${requestId}] Rate limit exceeded for user ${workflow.userId}`, {
+        remaining: rateLimitCheck.remaining,
+        resetAt: rateLimitCheck.resetAt,
+      })
+      throw new RateLimitError(
+        `Rate limit exceeded. You have ${rateLimitCheck.remaining} requests remaining. Resets at ${rateLimitCheck.resetAt.toISOString()}`
+      )
+    }
+  }
 
   // Check if the user has exceeded their usage limits
   const usageCheck = await checkServerSideUsageLimits(workflow.userId)
@@ -409,26 +448,43 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           return createErrorResponse(error.message, 429, 'RATE_LIMIT_EXCEEDED')
         }
 
-        if (error.message?.includes('Concurrent execution limit')) {
-          return createErrorResponse(error.message, 429, 'CONCURRENT_LIMIT_EXCEEDED')
-        }
-
         throw error
       }
     } else {
-      // Legacy synchronous execution
-      const result = await executeWorkflow(validation.workflow, requestId)
+      // Synchronous execution using sync queue
+      try {
+        const result = await syncExecutor.execute(
+          id,
+          validation.workflow.userId,
+          undefined, // no input for GET
+          () => executeWorkflow(validation.workflow, requestId, undefined, triggerType)
+        )
 
-      // Check if the workflow execution contains a response block output
-      const hasResponseBlock = workflowHasResponseBlock(result)
-      if (hasResponseBlock) {
-        return createHttpResponseFromBlock(result)
+        // Check if the workflow execution contains a response block output
+        const hasResponseBlock = workflowHasResponseBlock(result)
+        if (hasResponseBlock) {
+          return createHttpResponseFromBlock(result)
+        }
+
+        return createSuccessResponse(result)
+      } catch (error: any) {
+        if (error.message?.includes('Service overloaded')) {
+          return createErrorResponse(
+            'Service temporarily overloaded. Please try again later.',
+            503,
+            'SERVICE_OVERLOADED'
+          )
+        }
+        throw error
       }
-
-      return createSuccessResponse(result)
     }
   } catch (error: any) {
     logger.error(`[${requestId}] Error executing workflow: ${id}`, error)
+
+    // Check if this is a rate limit error
+    if (error instanceof RateLimitError) {
+      return createErrorResponse(error.message, error.statusCode, 'RATE_LIMIT_EXCEEDED')
+    }
 
     // Check if this is a usage limit error
     if (error instanceof UsageLimitError) {
@@ -510,11 +566,7 @@ export async function POST(
       .where(eq(subscription.referenceId, authenticatedUserId))
       .limit(1)
 
-    const subscriptionPlan = (subscriptionRecord?.plan || 'free') as
-      | 'free'
-      | 'pro'
-      | 'team'
-      | 'enterprise'
+    const subscriptionPlan = (subscriptionRecord?.plan || 'free') as SubscriptionPlan
 
     if (isAsync) {
       // Async execution - use job queue
@@ -550,280 +602,333 @@ export async function POST(
         }
       )
     }
-    // Synchronous execution - execute immediately
-    const executionId = uuidv4()
-    const loggingSession = new EnhancedLoggingSession(workflowId, executionId, 'api', requestId)
-
-    // Check if the user has exceeded their usage limits
-    const usageCheck = await checkServerSideUsageLimits(authenticatedUserId)
-    if (usageCheck.isExceeded) {
-      logger.warn(`[${requestId}] User ${authenticatedUserId} has exceeded usage limits`, {
-        currentUsage: usageCheck.currentUsage,
-        limit: usageCheck.limit,
-      })
-      throw new UsageLimitError(
-        usageCheck.message || 'Usage limit exceeded. Please upgrade your plan to continue.'
-      )
-    }
-
-    // Log input to help debug
-    logger.info(
-      `[${requestId}] Executing workflow with input:`,
-      input ? JSON.stringify(input, null, 2) : 'No input provided'
-    )
-
-    // Use input directly for API workflows
-    const processedInput = input
-    logger.info(
-      `[${requestId}] Using input directly for workflow:`,
-      JSON.stringify(processedInput, null, 2)
-    )
-
+    // Synchronous execution - execute immediately using sync queue
     try {
-      runningExecutions.add(`${workflowId}:${requestId}`)
-      logger.info(`[${requestId}] Starting workflow execution: ${workflowId}`)
-
-      // Load workflow data from normalized tables
-      logger.debug(`[${requestId}] Loading workflow ${workflowId} from normalized tables`)
-      const normalizedData = await loadWorkflowFromNormalizedTables(workflowId)
-
-      if (!normalizedData) {
-        throw new Error(
-          `Workflow ${workflowId} has no normalized data available. Ensure the workflow is properly saved to normalized tables.`
-        )
-      }
-
-      // Use normalized data as primary source
-      const { blocks, edges, loops, parallels } = normalizedData
-      logger.info(`[${requestId}] Using normalized tables for workflow execution: ${workflowId}`)
-      logger.debug(`[${requestId}] Normalized data loaded:`, {
-        blocksCount: Object.keys(blocks || {}).length,
-        edgesCount: (edges || []).length,
-        loopsCount: Object.keys(loops || {}).length,
-        parallelsCount: Object.keys(parallels || {}).length,
-      })
-
-      // Use the same execution flow as in scheduled executions
-      const mergedStates = mergeSubblockState(blocks)
-
-      // Fetch the user's environment variables (if any)
-      const [userEnv] = await db
-        .select()
-        .from(environmentTable)
-        .where(eq(environmentTable.userId, authenticatedUserId))
-        .limit(1)
-
-      if (!userEnv) {
-        logger.debug(
-          `[${requestId}] No environment record found for user ${authenticatedUserId}. Proceeding with empty variables.`
-        )
-      }
-
-      const variables = EnvVarsSchema.parse(userEnv?.variables ?? {})
-
-      await loggingSession.safeStart({
-        userId: authenticatedUserId,
-        workspaceId: undefined, // Assuming workspaceId is not available in this context for API execution
-        variables,
-      })
-
-      // Replace environment variables in the block states
-      const currentBlockStates = await Object.entries(mergedStates).reduce(
-        async (accPromise, [id, block]) => {
-          const acc = await accPromise
-          acc[id] = await Object.entries(block.subBlocks).reduce(
-            async (subAccPromise, [key, subBlock]) => {
-              const subAcc = await subAccPromise
-              let value = subBlock.value
-
-              // If the value is a string and contains environment variable syntax
-              if (typeof value === 'string' && value.includes('{{') && value.includes('}}')) {
-                const matches = value.match(/{{([^}]+)}}/g)
-                if (matches) {
-                  // Process all matches sequentially
-                  for (const match of matches) {
-                    const varName = match.slice(2, -2) // Remove {{ and }}
-                    const encryptedValue = variables[varName]
-                    if (!encryptedValue) {
-                      throw new Error(`Environment variable "${varName}" was not found`)
-                    }
-
-                    try {
-                      const { decrypted } = await decryptSecret(encryptedValue)
-                      value = (value as string).replace(match, decrypted)
-                    } catch (error: any) {
-                      logger.error(
-                        `[${requestId}] Error decrypting environment variable "${varName}"`,
-                        error
-                      )
-                      throw new Error(
-                        `Failed to decrypt environment variable "${varName}": ${error.message}`
-                      )
-                    }
-                  }
-                }
-              }
-
-              subAcc[key] = value
-              return subAcc
-            },
-            Promise.resolve({} as Record<string, any>)
+      const result = await syncExecutor.execute(
+        workflowId,
+        authenticatedUserId,
+        input,
+        async () => {
+          const executionId = uuidv4()
+          const loggingSession = new EnhancedLoggingSession(
+            workflowId,
+            executionId,
+            'api',
+            requestId
           )
-          return acc
-        },
-        Promise.resolve({} as Record<string, Record<string, any>>)
-      )
 
-      // Create a map of decrypted environment variables
-      const decryptedEnvVars: Record<string, string> = {}
-      for (const [key, encryptedValue] of Object.entries(variables)) {
-        try {
-          const { decrypted } = await decryptSecret(encryptedValue)
-          decryptedEnvVars[key] = decrypted
-        } catch (error: any) {
-          logger.error(`[${requestId}] Failed to decrypt environment variable "${key}"`, error)
-          throw new Error(`Failed to decrypt environment variable "${key}": ${error.message}`)
-        }
-      }
+          // Check rate limits for sync API calls
+          const rateLimiter = new RateLimiter()
+          const rateLimitCheck = await rateLimiter.checkRateLimit(
+            authenticatedUserId,
+            subscriptionPlan,
+            triggerType,
+            false // isAsync = false for sync calls
+          )
 
-      // Process the block states to ensure response formats are properly parsed
-      const processedBlockStates = Object.entries(currentBlockStates).reduce(
-        (acc, [blockId, blockState]) => {
-          // Check if this block has a responseFormat that needs to be parsed
-          if (blockState.responseFormat && typeof blockState.responseFormat === 'string') {
-            const responseFormatValue = blockState.responseFormat.trim()
+          if (!rateLimitCheck.allowed) {
+            throw new RateLimitError(
+              `Rate limit exceeded. You have ${rateLimitCheck.remaining} requests remaining. Resets at ${rateLimitCheck.resetAt.toISOString()}`
+            )
+          }
 
-            // Check for variable references like <start.input>
-            if (responseFormatValue.startsWith('<') && responseFormatValue.includes('>')) {
-              logger.debug(
-                `[${requestId}] Response format contains variable reference for block ${blockId}`
+          // Check if the user has exceeded their usage limits
+          const usageCheck = await checkServerSideUsageLimits(authenticatedUserId)
+          if (usageCheck.isExceeded) {
+            logger.warn(`[${requestId}] User ${authenticatedUserId} has exceeded usage limits`, {
+              currentUsage: usageCheck.currentUsage,
+              limit: usageCheck.limit,
+            })
+            throw new UsageLimitError(
+              usageCheck.message || 'Usage limit exceeded. Please upgrade your plan to continue.'
+            )
+          }
+
+          // Log input to help debug
+          logger.info(
+            `[${requestId}] Executing workflow with input:`,
+            input ? JSON.stringify(input, null, 2) : 'No input provided'
+          )
+
+          // Use input directly for API workflows
+          const processedInput = input
+          logger.info(
+            `[${requestId}] Using input directly for workflow:`,
+            JSON.stringify(processedInput, null, 2)
+          )
+
+          try {
+            runningExecutions.add(`${workflowId}:${requestId}`)
+            logger.info(`[${requestId}] Starting workflow execution: ${workflowId}`)
+
+            // Load workflow data from normalized tables
+            logger.debug(`[${requestId}] Loading workflow ${workflowId} from normalized tables`)
+            const normalizedData = await loadWorkflowFromNormalizedTables(workflowId)
+
+            if (!normalizedData) {
+              throw new Error(
+                `Workflow ${workflowId} has no normalized data available. Ensure the workflow is properly saved to normalized tables.`
               )
-              // Keep variable references as-is - they will be resolved during execution
-              acc[blockId] = blockState
-            } else if (responseFormatValue === '') {
-              // Empty string - remove response format
-              acc[blockId] = {
-                ...blockState,
-                responseFormat: undefined,
-              }
-            } else {
-              try {
-                logger.debug(`[${requestId}] Parsing responseFormat for block ${blockId}`)
-                // Attempt to parse the responseFormat if it's a string
-                const parsedResponseFormat = JSON.parse(responseFormatValue)
+            }
 
-                acc[blockId] = {
-                  ...blockState,
-                  responseFormat: parsedResponseFormat,
-                }
-              } catch (error) {
-                logger.warn(
-                  `[${requestId}] Failed to parse responseFormat for block ${blockId}, using undefined`,
+            // Use normalized data as primary source
+            const { blocks, edges, loops, parallels } = normalizedData
+            logger.info(
+              `[${requestId}] Using normalized tables for workflow execution: ${workflowId}`
+            )
+            logger.debug(`[${requestId}] Normalized data loaded:`, {
+              blocksCount: Object.keys(blocks || {}).length,
+              edgesCount: (edges || []).length,
+              loopsCount: Object.keys(loops || {}).length,
+              parallelsCount: Object.keys(parallels || {}).length,
+            })
+
+            // Use the same execution flow as in scheduled executions
+            const mergedStates = mergeSubblockState(blocks)
+
+            // Fetch the user's environment variables (if any)
+            const [userEnv] = await db
+              .select()
+              .from(environmentTable)
+              .where(eq(environmentTable.userId, authenticatedUserId))
+              .limit(1)
+
+            if (!userEnv) {
+              logger.debug(
+                `[${requestId}] No environment record found for user ${authenticatedUserId}. Proceeding with empty variables.`
+              )
+            }
+
+            const variables = EnvVarsSchema.parse(userEnv?.variables ?? {})
+
+            await loggingSession.safeStart({
+              userId: authenticatedUserId,
+              workspaceId: undefined, // Assuming workspaceId is not available in this context for API execution
+              variables,
+            })
+
+            // Replace environment variables in the block states
+            const currentBlockStates = await Object.entries(mergedStates).reduce(
+              async (accPromise, [id, block]) => {
+                const acc = await accPromise
+                acc[id] = await Object.entries(block.subBlocks).reduce(
+                  async (subAccPromise, [key, subBlock]) => {
+                    const subAcc = await subAccPromise
+                    let value = subBlock.value
+
+                    // If the value is a string and contains environment variable syntax
+                    if (typeof value === 'string' && value.includes('{{') && value.includes('}}')) {
+                      const matches = value.match(/{{([^}]+)}}/g)
+                      if (matches) {
+                        // Process all matches sequentially
+                        for (const match of matches) {
+                          const varName = match.slice(2, -2) // Remove {{ and }}
+                          const encryptedValue = variables[varName]
+                          if (!encryptedValue) {
+                            throw new Error(`Environment variable "${varName}" was not found`)
+                          }
+
+                          try {
+                            const { decrypted } = await decryptSecret(encryptedValue)
+                            value = (value as string).replace(match, decrypted)
+                          } catch (error: any) {
+                            logger.error(
+                              `[${requestId}] Error decrypting environment variable "${varName}"`,
+                              error
+                            )
+                            throw new Error(
+                              `Failed to decrypt environment variable "${varName}": ${error.message}`
+                            )
+                          }
+                        }
+                      }
+                    }
+
+                    subAcc[key] = value
+                    return subAcc
+                  },
+                  Promise.resolve({} as Record<string, any>)
+                )
+                return acc
+              },
+              Promise.resolve({} as Record<string, Record<string, any>>)
+            )
+
+            // Create a map of decrypted environment variables
+            const decryptedEnvVars: Record<string, string> = {}
+            for (const [key, encryptedValue] of Object.entries(variables)) {
+              try {
+                const { decrypted } = await decryptSecret(encryptedValue)
+                decryptedEnvVars[key] = decrypted
+              } catch (error: any) {
+                logger.error(
+                  `[${requestId}] Failed to decrypt environment variable "${key}"`,
                   error
                 )
-                // Set to undefined instead of keeping malformed JSON - this allows execution to continue
-                acc[blockId] = {
-                  ...blockState,
-                  responseFormat: undefined,
-                }
+                throw new Error(`Failed to decrypt environment variable "${key}": ${error.message}`)
               }
             }
-          } else {
-            acc[blockId] = blockState
+
+            // Process the block states to ensure response formats are properly parsed
+            const processedBlockStates = Object.entries(currentBlockStates).reduce(
+              (acc, [blockId, blockState]) => {
+                // Check if this block has a responseFormat that needs to be parsed
+                if (blockState.responseFormat && typeof blockState.responseFormat === 'string') {
+                  const responseFormatValue = blockState.responseFormat.trim()
+
+                  // Check for variable references like <start.input>
+                  if (responseFormatValue.startsWith('<') && responseFormatValue.includes('>')) {
+                    logger.debug(
+                      `[${requestId}] Response format contains variable reference for block ${blockId}`
+                    )
+                    // Keep variable references as-is - they will be resolved during execution
+                    acc[blockId] = blockState
+                  } else if (responseFormatValue === '') {
+                    // Empty string - remove response format
+                    acc[blockId] = {
+                      ...blockState,
+                      responseFormat: undefined,
+                    }
+                  } else {
+                    try {
+                      logger.debug(`[${requestId}] Parsing responseFormat for block ${blockId}`)
+                      // Attempt to parse the responseFormat if it's a string
+                      const parsedResponseFormat = JSON.parse(responseFormatValue)
+
+                      acc[blockId] = {
+                        ...blockState,
+                        responseFormat: parsedResponseFormat,
+                      }
+                    } catch (error) {
+                      logger.warn(
+                        `[${requestId}] Failed to parse responseFormat for block ${blockId}, using undefined`,
+                        error
+                      )
+                      // Set to undefined instead of keeping malformed JSON - this allows execution to continue
+                      acc[blockId] = {
+                        ...blockState,
+                        responseFormat: undefined,
+                      }
+                    }
+                  }
+                } else {
+                  acc[blockId] = blockState
+                }
+                return acc
+              },
+              {} as Record<string, Record<string, any>>
+            )
+
+            // Get workflow variables from the validated workflow
+            const workflowVariables = validation.workflow.variables || {}
+
+            // Serialize and execute the workflow
+            logger.debug(`[${requestId}] Serializing workflow: ${workflowId}`)
+            const serializedWorkflow = new Serializer().serializeWorkflow(
+              mergedStates,
+              edges,
+              loops,
+              parallels
+            )
+
+            const executor = new Executor(
+              serializedWorkflow,
+              processedBlockStates,
+              decryptedEnvVars,
+              processedInput,
+              workflowVariables
+            )
+
+            // Set up enhanced logging on the executor
+            loggingSession.setupExecutor(executor)
+
+            const result = await executor.execute(workflowId)
+
+            // Check if we got a StreamingExecution result (with stream + execution properties)
+            // For API routes, we only care about the ExecutionResult part, not the stream
+            const executionResult =
+              'stream' in result && 'execution' in result ? result.execution : result
+
+            logger.info(`[${requestId}] Workflow execution completed: ${workflowId}`, {
+              success: executionResult.success,
+              executionTime: executionResult.metadata?.duration,
+            })
+
+            // Build trace spans from execution result (works for both success and failure)
+            const { traceSpans, totalDuration } = buildTraceSpans(executionResult)
+
+            // Update workflow run counts if execution was successful
+            if (executionResult.success) {
+              await updateWorkflowRunCounts(workflowId)
+
+              // Track API call in user stats
+              await db
+                .update(userStats)
+                .set({
+                  totalApiCalls: sql`total_api_calls + 1`,
+                  lastActive: sql`now()`,
+                })
+                .where(eq(userStats.userId, authenticatedUserId))
+            }
+
+            await loggingSession.safeComplete({
+              endedAt: new Date().toISOString(),
+              totalDurationMs: totalDuration || 0,
+              finalOutput: executionResult.output || {},
+              traceSpans: (traceSpans || []) as any,
+            })
+
+            return executionResult
+          } catch (error: any) {
+            logger.error(`[${requestId}] Workflow execution failed: ${workflowId}`, error)
+
+            await loggingSession.safeCompleteWithError({
+              endedAt: new Date().toISOString(),
+              totalDurationMs: 0,
+              error: {
+                message: error.message || 'Workflow execution failed',
+                stackTrace: error.stack,
+              },
+            })
+
+            throw error
+          } finally {
+            runningExecutions.delete(`${workflowId}:${requestId}`)
           }
-          return acc
-        },
-        {} as Record<string, Record<string, any>>
+        }
       )
 
-      // Get workflow variables from the validated workflow
-      const workflowVariables = validation.workflow.variables || {}
-
-      // Serialize and execute the workflow
-      logger.debug(`[${requestId}] Serializing workflow: ${workflowId}`)
-      const serializedWorkflow = new Serializer().serializeWorkflow(
-        mergedStates,
-        edges,
-        loops,
-        parallels
-      )
-
-      const executor = new Executor(
-        serializedWorkflow,
-        processedBlockStates,
-        decryptedEnvVars,
-        processedInput,
-        workflowVariables
-      )
-
-      // Set up enhanced logging on the executor
-      loggingSession.setupExecutor(executor)
-
-      const result = await executor.execute(workflowId)
-
-      // Check if we got a StreamingExecution result (with stream + execution properties)
-      // For API routes, we only care about the ExecutionResult part, not the stream
-      const executionResult =
-        'stream' in result && 'execution' in result ? result.execution : result
-
-      logger.info(`[${requestId}] Workflow execution completed: ${workflowId}`, {
-        success: executionResult.success,
-        executionTime: executionResult.metadata?.duration,
-      })
-
-      // Build trace spans from execution result (works for both success and failure)
-      const { traceSpans, totalDuration } = buildTraceSpans(executionResult)
-
-      // Update workflow run counts if execution was successful
-      if (executionResult.success) {
-        await updateWorkflowRunCounts(workflowId)
-
-        // Track API call in user stats
-        await db
-          .update(userStats)
-          .set({
-            totalApiCalls: sql`total_api_calls + 1`,
-            lastActive: sql`now()`,
-          })
-          .where(eq(userStats.userId, authenticatedUserId))
+      // Check if the workflow execution contains a response block output
+      const hasResponseBlock = workflowHasResponseBlock(result)
+      if (hasResponseBlock) {
+        return createHttpResponseFromBlock(result)
       }
 
-      await loggingSession.safeComplete({
-        endedAt: new Date().toISOString(),
-        totalDurationMs: totalDuration || 0,
-        finalOutput: executionResult.output || {},
-        traceSpans: (traceSpans || []) as any,
-      })
-
-      return new Response(JSON.stringify(executionResult), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return createSuccessResponse(result)
     } catch (error: any) {
-      logger.error(`[${requestId}] Workflow execution failed: ${workflowId}`, error)
-
-      await loggingSession.safeCompleteWithError({
-        endedAt: new Date().toISOString(),
-        totalDurationMs: 0,
-        error: {
-          message: error.message || 'Workflow execution failed',
-          stackTrace: error.stack,
-        },
-      })
-
+      if (error.message?.includes('Service overloaded')) {
+        return createErrorResponse(
+          'Service temporarily overloaded. Please try again later.',
+          503,
+          'SERVICE_OVERLOADED'
+        )
+      }
       throw error
-    } finally {
-      runningExecutions.delete(`${workflowId}:${requestId}`)
     }
   } catch (error: any) {
     logger.error(`[${requestId}] Error executing workflow: ${workflowId}`, error)
+
+    // Check if this is a rate limit error
+    if (error instanceof RateLimitError) {
+      return createErrorResponse(error.message, error.statusCode, 'RATE_LIMIT_EXCEEDED')
+    }
 
     // Check if this is a usage limit error
     if (error instanceof UsageLimitError) {
       return createErrorResponse(error.message, error.statusCode, 'USAGE_LIMIT_EXCEEDED')
     }
 
-    // Check if this is a rate limit error
+    // Check if this is a rate limit error (string match for backward compatibility)
     if (error.message?.includes('Rate limit exceeded')) {
       return createErrorResponse(error.message, 429, 'RATE_LIMIT_EXCEEDED')
     }

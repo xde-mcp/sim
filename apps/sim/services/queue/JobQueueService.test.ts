@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { JobQueueService } from './JobQueueService'
-import { SYSTEM_LIMITS } from './types'
 
 // Mock all dependencies
 vi.mock('@/db', () => ({
@@ -125,38 +124,6 @@ describe('JobQueueService', () => {
           triggerType: 'api',
         })
       ).rejects.toThrow(/Rate limit exceeded/)
-    })
-
-    it('should reject when global queue is full', async () => {
-      // Mock getSubscriptionPlan to return 'free' tier
-      const mockGetSubscriptionPlan = vi
-        .spyOn(jobQueue as any, 'getSubscriptionPlan')
-        .mockResolvedValue('free')
-
-      // Mock rate limiter to allow request
-      const mockRateLimiter = (jobQueue as any).rateLimiter
-      mockRateLimiter.checkRateLimit.mockResolvedValue({
-        allowed: true,
-        remaining: 19,
-        resetAt: new Date(),
-      })
-
-      // Mock queue depth check to return full queue
-      vi.mocked(db.select).mockImplementation(() => {
-        return {
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValue([{ count: SYSTEM_LIMITS.maxQueueDepth }]),
-        } as any
-      })
-
-      await expect(
-        jobQueue.createJob({
-          workflowId: testWorkflowId,
-          userId: testUserId,
-          input: {},
-          triggerType: 'api',
-        })
-      ).rejects.toThrow(/System queue is full/)
     })
   })
 

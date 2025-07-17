@@ -10,6 +10,9 @@ export type UserRateLimit = InferSelectModel<typeof userRateLimits>
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
 export type TriggerType = 'api' | 'webhook' | 'schedule' | 'manual' | 'chat'
 
+// Subscription plan types
+export type SubscriptionPlan = 'free' | 'pro' | 'team' | 'enterprise'
+
 // Default priority for all jobs
 export const DEFAULT_PRIORITY = 50
 
@@ -19,7 +22,7 @@ export interface RateLimitConfig {
   asyncApiExecutionsPerMinute: number
 }
 
-export const RATE_LIMITS: Record<string, RateLimitConfig> = {
+export const RATE_LIMITS: Record<SubscriptionPlan, RateLimitConfig> = {
   free: {
     syncApiExecutionsPerMinute: 10,
     asyncApiExecutionsPerMinute: 50,
@@ -40,11 +43,11 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
 
 // System limits
 export const SYSTEM_LIMITS = {
-  maxSyncConcurrentExecutions: 30, // Conservative for DB connections
-  maxAsyncConcurrentExecutions: 50, // Higher for async
-  maxQueueDepth: 1000,
+  // maxSyncConcurrentExecutions: 30, // REMOVED - Never enforced
+  // maxAsyncConcurrentExecutions: 50, // REMOVED - Never enforced
+  // maxQueueDepth: 1000, // Removed - database can handle unlimited queue depth
   maxExecutionTime: 300_000, // 5 minutes
-  maxJobProcessors: 10,
+  maxJobProcessors: 10, // Max concurrent async jobs
   targetQueueTime: 5000, // Target 5s queue wait
   retryDelayMs: [1000, 5000, 30000], // Retry delays: 1s, 5s, 30s
 }
@@ -79,4 +82,14 @@ export interface RateLimitStatus {
   remaining: number
   resetAt: Date
   currentUsage: number
+}
+
+// Custom error for rate limits
+export class RateLimitError extends Error {
+  statusCode: number
+  constructor(message: string, statusCode = 429) {
+    super(message)
+    this.name = 'RateLimitError'
+    this.statusCode = statusCode
+  }
 }
