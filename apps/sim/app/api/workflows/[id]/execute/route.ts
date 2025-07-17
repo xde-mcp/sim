@@ -1,3 +1,4 @@
+import { tasks } from '@trigger.dev/sdk/v3'
 import { eq, sql } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
@@ -19,7 +20,6 @@ import { environment as environmentTable, subscription, userStats } from '@/db/s
 import { Executor } from '@/executor'
 import { Serializer } from '@/serializer'
 import {
-  JobQueueService,
   RateLimitError,
   RateLimiter,
   type SubscriptionPlan,
@@ -50,12 +50,7 @@ class UsageLimitError extends Error {
   }
 }
 
-async function executeWorkflow(
-  workflow: any,
-  requestId: string,
-  input?: any,
-  triggerType: TriggerType = 'api'
-): Promise<any> {
+async function executeWorkflow(workflow: any, requestId: string, input?: any): Promise<any> {
   const workflowId = workflow.id
   const executionId = uuidv4()
 
@@ -374,101 +369,54 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
-    // Check execution mode from header - default to sync
-    const executionMode = request.headers.get('X-Execution-Mode')
-    const useQueue = executionMode === 'async'
+    // Note: Async execution is now handled in the POST handler below
 
-    if (useQueue) {
-      // Create job in queue
-      const jobQueue = new JobQueueService()
+    // Synchronous execution
+    try {
+      // Check rate limits BEFORE entering queue for GET requests
+      if (triggerType === 'api') {
+        // Get user subscription
+        const [subscriptionRecord] = await db
+          .select({ plan: subscription.plan })
+          .from(subscription)
+          .where(eq(subscription.referenceId, validation.workflow.userId))
+          .limit(1)
 
-      try {
-        const jobResult = await jobQueue.createJob({
-          workflowId: id,
-          userId: validation.workflow.userId,
-          input: {},
+        const subscriptionPlan = (subscriptionRecord?.plan || 'free') as SubscriptionPlan
+
+        const rateLimiter = new RateLimiter()
+        const rateLimitCheck = await rateLimiter.checkRateLimit(
+          validation.workflow.userId,
+          subscriptionPlan,
           triggerType,
-          metadata: {
-            requestId,
-          },
-        })
-
-        logger.info(`[${requestId}] Created job ${jobResult.jobId} for workflow ${id}`)
-
-        // Return job information
-        return NextResponse.json(
-          {
-            success: true,
-            jobId: jobResult.jobId,
-            status: jobResult.status,
-            createdAt: jobResult.createdAt.toISOString(),
-            estimatedStartTime: jobResult.estimatedStartTime?.toISOString(),
-            position: jobResult.position,
-            links: {
-              status: `/api/jobs/${jobResult.jobId}`,
-              logs: `/api/jobs/${jobResult.jobId}/logs`,
-              cancel: `/api/jobs/${jobResult.jobId}`,
-            },
-          },
-          { status: 202 }
+          false // isAsync = false for sync calls
         )
-      } catch (error: any) {
-        logger.error(`[${requestId}] Error creating job:`, error)
 
-        if (error.message?.includes('Rate limit exceeded')) {
-          return createErrorResponse(error.message, 429, 'RATE_LIMIT_EXCEEDED')
-        }
-
-        throw error
-      }
-    } else {
-      // Synchronous execution using sync queue
-      try {
-        // Check rate limits BEFORE entering queue for GET requests
-        if (triggerType === 'api') {
-          // Get user subscription
-          const [subscriptionRecord] = await db
-            .select({ plan: subscription.plan })
-            .from(subscription)
-            .where(eq(subscription.referenceId, validation.workflow.userId))
-            .limit(1)
-
-          const subscriptionPlan = (subscriptionRecord?.plan || 'free') as SubscriptionPlan
-
-          const rateLimiter = new RateLimiter()
-          const rateLimitCheck = await rateLimiter.checkRateLimit(
-            validation.workflow.userId,
-            subscriptionPlan,
-            triggerType,
-            false // isAsync = false for sync calls
-          )
-
-          if (!rateLimitCheck.allowed) {
-            throw new RateLimitError(
-              `Rate limit exceeded. You have ${rateLimitCheck.remaining} requests remaining. Resets at ${rateLimitCheck.resetAt.toISOString()}`
-            )
-          }
-        }
-
-        const result = await executeWorkflow(validation.workflow, requestId, undefined, triggerType)
-
-        // Check if the workflow execution contains a response block output
-        const hasResponseBlock = workflowHasResponseBlock(result)
-        if (hasResponseBlock) {
-          return createHttpResponseFromBlock(result)
-        }
-
-        return createSuccessResponse(result)
-      } catch (error: any) {
-        if (error.message?.includes('Service overloaded')) {
-          return createErrorResponse(
-            'Service temporarily overloaded. Please try again later.',
-            503,
-            'SERVICE_OVERLOADED'
+        if (!rateLimitCheck.allowed) {
+          throw new RateLimitError(
+            `Rate limit exceeded. You have ${rateLimitCheck.remaining} requests remaining. Resets at ${rateLimitCheck.resetAt.toISOString()}`
           )
         }
-        throw error
       }
+
+      const result = await executeWorkflow(validation.workflow, requestId, undefined)
+
+      // Check if the workflow execution contains a response block output
+      const hasResponseBlock = workflowHasResponseBlock(result)
+      if (hasResponseBlock) {
+        return createHttpResponseFromBlock(result)
+      }
+
+      return createSuccessResponse(result)
+    } catch (error: any) {
+      if (error.message?.includes('Service overloaded')) {
+        return createErrorResponse(
+          'Service temporarily overloaded. Please try again later.',
+          503,
+          'SERVICE_OVERLOADED'
+        )
+      }
+      throw error
     }
   } catch (error: any) {
     logger.error(`[${requestId}] Error executing workflow: ${id}`, error)
@@ -539,11 +487,10 @@ export async function POST(
       authenticatedUserId = session.user.id
       triggerType = 'manual' // UI session (not rate limited)
     } else {
-      // Check for API key - validateWorkflowAccess already confirmed this is valid
       const apiKeyHeader = request.headers.get('X-API-Key')
       if (apiKeyHeader) {
         authenticatedUserId = validation.workflow.userId
-        triggerType = 'api' // API key usage (rate limited)
+        triggerType = 'api'
       }
     }
 
@@ -551,7 +498,6 @@ export async function POST(
       return createErrorResponse('Authentication required', 401)
     }
 
-    // Get user subscription
     const [subscriptionRecord] = await db
       .select({ plan: subscription.plan })
       .from(subscription)
@@ -561,42 +507,71 @@ export async function POST(
     const subscriptionPlan = (subscriptionRecord?.plan || 'free') as SubscriptionPlan
 
     if (isAsync) {
-      // Async execution - use job queue
-      const jobQueue = new JobQueueService()
-      const result = await jobQueue.createJob({
-        workflowId,
-        userId: authenticatedUserId,
-        input,
-        triggerType: 'api',
-        priority: 50,
-        metadata: { triggerType: 'api' },
-      })
+      try {
+        const rateLimiter = new RateLimiter()
+        const rateLimitCheck = await rateLimiter.checkRateLimit(
+          authenticatedUserId,
+          subscriptionPlan,
+          'api',
+          true // isAsync = true
+        )
 
-      logger.info(`[${requestId}] Created job ${result.jobId} for workflow ${workflowId}`)
+        if (!rateLimitCheck.allowed) {
+          logger.warn(`[${requestId}] Rate limit exceeded for async execution`, {
+            userId: authenticatedUserId,
+            remaining: rateLimitCheck.remaining,
+            resetAt: rateLimitCheck.resetAt,
+          })
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          jobId: result.jobId,
-          status: result.status,
-          createdAt: result.createdAt.toISOString(),
-          estimatedStartTime: result.estimatedStartTime?.toISOString(),
-          position: result.position,
-          links: {
-            status: `/api/jobs/${result.jobId}`,
-            logs: `/api/jobs/${result.jobId}/logs`,
-            cancel: `/api/jobs/${result.jobId}`,
-          },
-        }),
-        {
-          status: 202,
-          headers: { 'Content-Type': 'application/json' },
+          return new Response(
+            JSON.stringify({
+              error: 'Rate limit exceeded',
+              message: `You have exceeded your async execution limit. ${rateLimitCheck.remaining} requests remaining. Limit resets at ${rateLimitCheck.resetAt}.`,
+              remaining: rateLimitCheck.remaining,
+              resetAt: rateLimitCheck.resetAt,
+            }),
+            {
+              status: 429,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          )
         }
-      )
+
+        // Rate limit passed - trigger the task
+        const handle = await tasks.trigger('workflow-execution', {
+          workflowId,
+          userId: authenticatedUserId,
+          input,
+          triggerType: 'api',
+          metadata: { triggerType: 'api' },
+        })
+
+        logger.info(
+          `[${requestId}] Created Trigger.dev task ${handle.id} for workflow ${workflowId}`
+        )
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            taskId: handle.id,
+            status: 'queued',
+            createdAt: new Date().toISOString(),
+            links: {
+              status: `/api/jobs/${handle.id}`,
+            },
+          }),
+          {
+            status: 202,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      } catch (error: any) {
+        logger.error(`[${requestId}] Failed to create Trigger.dev task:`, error)
+        return createErrorResponse('Failed to queue workflow execution', 500)
+      }
     }
-    // Synchronous execution - check rate limits BEFORE queuing
+
     try {
-      // Check rate limits for sync API calls BEFORE entering queue
       const rateLimiter = new RateLimiter()
       const rateLimitCheck = await rateLimiter.checkRateLimit(
         authenticatedUserId,
@@ -611,10 +586,8 @@ export async function POST(
         )
       }
 
-      // Now execute using sync queue
-      // Execute workflow immediately (no queuing)
-      const result = await executeWorkflow(validation.workflow, requestId, input, triggerType)
-      // Check if the workflow execution contains a response block output
+      const result = await executeWorkflow(validation.workflow, requestId, input)
+
       const hasResponseBlock = workflowHasResponseBlock(result)
       if (hasResponseBlock) {
         return createHttpResponseFromBlock(result)

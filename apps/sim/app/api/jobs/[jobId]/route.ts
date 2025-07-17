@@ -1,3 +1,4 @@
+import { runs } from '@trigger.dev/sdk/v3'
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
@@ -7,15 +8,18 @@ import { apiKey as apiKeyTable } from '@/db/schema'
 import { JobQueueService } from '@/services/queue'
 import { createErrorResponse } from '../../workflows/utils'
 
-const logger = createLogger('JobsAPI')
+const logger = createLogger('TaskStatusAPI')
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
-  const { jobId } = await params
+  const { jobId: taskId } = await params
+  const requestId = crypto.randomUUID().slice(0, 8)
 
   try {
+    logger.debug(`[${requestId}] Getting status for task: ${taskId}`)
+
     // Try session auth first (for web UI)
     const session = await getSession()
     let authenticatedUserId: string | null = session?.user?.id || null
@@ -39,30 +43,68 @@ export async function GET(
       return createErrorResponse('Authentication required', 401)
     }
 
-    const jobQueue = new JobQueueService()
-    const job = await jobQueue.getJob(jobId, authenticatedUserId)
+    // Fetch task status from Trigger.dev
+    const run = await runs.retrieve(taskId)
 
-    if (!job) {
-      return createErrorResponse('Job not found', 404)
+    logger.debug(`[${requestId}] Task ${taskId} status: ${run.status}`)
+
+    // Map Trigger.dev status to our format
+    const statusMap = {
+      QUEUED: 'queued',
+      WAITING_FOR_DEPLOY: 'queued',
+      EXECUTING: 'processing',
+      RESCHEDULED: 'processing',
+      FROZEN: 'processing',
+      COMPLETED: 'completed',
+      CANCELED: 'cancelled',
+      FAILED: 'failed',
+      CRASHED: 'failed',
+      INTERRUPTED: 'failed',
+      SYSTEM_FAILURE: 'failed',
+      EXPIRED: 'failed',
+    } as const
+
+    const mappedStatus = statusMap[run.status as keyof typeof statusMap] || 'unknown'
+
+    // Build response based on status
+    const response: any = {
+      success: true,
+      taskId,
+      status: mappedStatus,
+      createdAt: run.createdAt,
+      startedAt: run.startedAt,
+      updatedAt: run.updatedAt,
     }
 
-    return NextResponse.json({
-      success: true,
-      job: {
-        jobId: job.jobId,
-        status: job.status,
-        createdAt: job.createdAt.toISOString(),
-        estimatedStartTime: job.estimatedStartTime?.toISOString(),
-        position: job.position,
-        output: job.output,
-        error: job.error,
-        completedAt: job.completedAt?.toISOString(),
-        executionId: job.executionId,
-      },
-    })
+    // Add completion details if finished
+    if (mappedStatus === 'completed') {
+      response.completedAt = run.finishedAt || run.updatedAt
+      response.output = run.output // This contains the workflow execution results
+      response.duration = run.durationMs
+      response.cost = run.costInCents ? run.costInCents / 100 : 0
+    }
+
+    // Add error details if failed
+    if (mappedStatus === 'failed') {
+      response.completedAt = run.finishedAt || run.updatedAt
+      response.error = run.error
+      response.duration = run.durationMs
+    }
+
+    // Add progress info if still processing
+    if (mappedStatus === 'processing' || mappedStatus === 'queued') {
+      response.estimatedDuration = 180000 // 3 minutes max from our config
+    }
+
+    return NextResponse.json(response)
   } catch (error: any) {
-    logger.error('Error getting job status:', error)
-    return createErrorResponse(error.message || 'Failed to get job status', 500)
+    logger.error(`[${requestId}] Error fetching task status:`, error)
+
+    if (error.message?.includes('not found') || error.status === 404) {
+      return createErrorResponse('Task not found', 404)
+    }
+
+    return createErrorResponse('Failed to fetch task status', 500)
   }
 }
 

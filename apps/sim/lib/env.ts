@@ -48,6 +48,9 @@ export const env = createEnv({
     NEXT_RUNTIME: z.string().optional(),
     VERCEL_ENV: z.string().optional(),
 
+    // Trigger.dev
+    TRIGGER_SECRET_KEY: z.string().min(1).optional(),
+
     // Storage
     AWS_REGION: z.string().optional(),
     AWS_ACCESS_KEY_ID: z.string().optional(),
