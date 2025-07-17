@@ -72,35 +72,7 @@ async function executeWorkflow(
 
   const loggingSession = new EnhancedLoggingSession(workflowId, executionId, 'api', requestId)
 
-  // Check rate limits for API calls (not manual)
-  if (triggerType === 'api') {
-    // Get user subscription
-    const [subscriptionRecord] = await db
-      .select({ plan: subscription.plan })
-      .from(subscription)
-      .where(eq(subscription.referenceId, workflow.userId))
-      .limit(1)
-
-    const subscriptionPlan = (subscriptionRecord?.plan || 'free') as SubscriptionPlan
-
-    const rateLimiter = new RateLimiter()
-    const rateLimitCheck = await rateLimiter.checkRateLimit(
-      workflow.userId,
-      subscriptionPlan,
-      triggerType,
-      false // isAsync = false for sync calls
-    )
-
-    if (!rateLimitCheck.allowed) {
-      logger.warn(`[${requestId}] Rate limit exceeded for user ${workflow.userId}`, {
-        remaining: rateLimitCheck.remaining,
-        resetAt: rateLimitCheck.resetAt,
-      })
-      throw new RateLimitError(
-        `Rate limit exceeded. You have ${rateLimitCheck.remaining} requests remaining. Resets at ${rateLimitCheck.resetAt.toISOString()}`
-      )
-    }
-  }
+  // Rate limiting is now handled before entering the sync queue
 
   // Check if the user has exceeded their usage limits
   const usageCheck = await checkServerSideUsageLimits(workflow.userId)
@@ -453,6 +425,32 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     } else {
       // Synchronous execution using sync queue
       try {
+        // Check rate limits BEFORE entering queue for GET requests
+        if (triggerType === 'api') {
+          // Get user subscription
+          const [subscriptionRecord] = await db
+            .select({ plan: subscription.plan })
+            .from(subscription)
+            .where(eq(subscription.referenceId, validation.workflow.userId))
+            .limit(1)
+
+          const subscriptionPlan = (subscriptionRecord?.plan || 'free') as SubscriptionPlan
+
+          const rateLimiter = new RateLimiter()
+          const rateLimitCheck = await rateLimiter.checkRateLimit(
+            validation.workflow.userId,
+            subscriptionPlan,
+            triggerType,
+            false // isAsync = false for sync calls
+          )
+
+          if (!rateLimitCheck.allowed) {
+            throw new RateLimitError(
+              `Rate limit exceeded. You have ${rateLimitCheck.remaining} requests remaining. Resets at ${rateLimitCheck.resetAt.toISOString()}`
+            )
+          }
+        }
+
         const result = await syncExecutor.execute(
           id,
           validation.workflow.userId,
@@ -545,13 +543,13 @@ export async function POST(
     const session = await getSession()
     if (session?.user?.id) {
       authenticatedUserId = session.user.id
-      triggerType = 'manual' // UI session
+      triggerType = 'manual' // UI session (not rate limited)
     } else {
       // Check for API key - validateWorkflowAccess already confirmed this is valid
       const apiKeyHeader = request.headers.get('X-API-Key')
       if (apiKeyHeader) {
         authenticatedUserId = validation.workflow.userId
-        triggerType = 'api' // API key usage
+        triggerType = 'api' // API key usage (rate limited)
       }
     }
 
@@ -602,8 +600,24 @@ export async function POST(
         }
       )
     }
-    // Synchronous execution - execute immediately using sync queue
+    // Synchronous execution - check rate limits BEFORE queuing
     try {
+      // Check rate limits for sync API calls BEFORE entering queue
+      const rateLimiter = new RateLimiter()
+      const rateLimitCheck = await rateLimiter.checkRateLimit(
+        authenticatedUserId,
+        subscriptionPlan,
+        triggerType,
+        false // isAsync = false for sync calls
+      )
+
+      if (!rateLimitCheck.allowed) {
+        throw new RateLimitError(
+          `Rate limit exceeded. You have ${rateLimitCheck.remaining} requests remaining. Resets at ${rateLimitCheck.resetAt.toISOString()}`
+        )
+      }
+
+      // Now execute using sync queue
       const result = await syncExecutor.execute(
         workflowId,
         authenticatedUserId,
@@ -616,21 +630,6 @@ export async function POST(
             'api',
             requestId
           )
-
-          // Check rate limits for sync API calls
-          const rateLimiter = new RateLimiter()
-          const rateLimitCheck = await rateLimiter.checkRateLimit(
-            authenticatedUserId,
-            subscriptionPlan,
-            triggerType,
-            false // isAsync = false for sync calls
-          )
-
-          if (!rateLimitCheck.allowed) {
-            throw new RateLimitError(
-              `Rate limit exceeded. You have ${rateLimitCheck.remaining} requests remaining. Resets at ${rateLimitCheck.resetAt.toISOString()}`
-            )
-          }
 
           // Check if the user has exceeded their usage limits
           const usageCheck = await checkServerSideUsageLimits(authenticatedUserId)

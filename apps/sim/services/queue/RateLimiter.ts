@@ -42,8 +42,8 @@ export class RateLimiter {
         .limit(1)
 
       if (!rateLimitRecord || new Date(rateLimitRecord.windowStart) < windowStart) {
-        // First request or expired window - create/reset record
-        await db
+        // Window expired - reset window with this request as the first one
+        const result = await db
           .insert(userRateLimits)
           .values({
             userId,
@@ -56,23 +56,53 @@ export class RateLimiter {
           .onConflictDoUpdate({
             target: userRateLimits.userId,
             set: {
-              syncApiRequests: isAsync ? 0 : 1,
-              asyncApiRequests: isAsync ? 1 : 0,
-              windowStart: now,
+              // Only reset if window is still expired (avoid race condition)
+              syncApiRequests: sql`CASE WHEN ${userRateLimits.windowStart} < ${windowStart.toISOString()} THEN ${isAsync ? 0 : 1} ELSE ${userRateLimits.syncApiRequests} + ${isAsync ? 0 : 1} END`,
+              asyncApiRequests: sql`CASE WHEN ${userRateLimits.windowStart} < ${windowStart.toISOString()} THEN ${isAsync ? 1 : 0} ELSE ${userRateLimits.asyncApiRequests} + ${isAsync ? 1 : 0} END`,
+              windowStart: sql`CASE WHEN ${userRateLimits.windowStart} < ${windowStart.toISOString()} THEN ${now.toISOString()} ELSE ${userRateLimits.windowStart} END`,
               lastRequestAt: now,
               isRateLimited: false,
               rateLimitResetAt: null,
             },
           })
+          .returning({
+            syncApiRequests: userRateLimits.syncApiRequests,
+            asyncApiRequests: userRateLimits.asyncApiRequests,
+            windowStart: userRateLimits.windowStart,
+          })
+
+        const insertedRecord = result[0]
+        const actualCount = isAsync
+          ? insertedRecord.asyncApiRequests
+          : insertedRecord.syncApiRequests
+
+        // Check if we exceeded the limit
+        if (actualCount > execLimit) {
+          const resetAt = new Date(new Date(insertedRecord.windowStart).getTime() + 60000)
+
+          await db
+            .update(userRateLimits)
+            .set({
+              isRateLimited: true,
+              rateLimitResetAt: resetAt,
+            })
+            .where(eq(userRateLimits.userId, userId))
+
+          return {
+            allowed: false,
+            remaining: 0,
+            resetAt,
+          }
+        }
 
         return {
           allowed: true,
-          remaining: execLimit - 1,
-          resetAt: new Date(now.getTime() + 60000), // 1 minute from now
+          remaining: execLimit - actualCount,
+          resetAt: new Date(new Date(insertedRecord.windowStart).getTime() + 60000),
         }
       }
 
-      // Atomic increment using database-level operations
+      // Simple atomic increment - increment first, then check if over limit
       const updateResult = await db
         .update(userRateLimits)
         .set({
@@ -87,17 +117,25 @@ export class RateLimiter {
           syncApiRequests: userRateLimits.syncApiRequests,
         })
 
-      // Get the new counter value after atomic increment
       const updatedRecord = updateResult[0]
       const actualNewRequests = isAsync
         ? updatedRecord.asyncApiRequests
         : updatedRecord.syncApiRequests
 
-      // Check if we exceeded the limit after the atomic update
+      // Check if we exceeded the limit AFTER the atomic increment
       if (actualNewRequests > execLimit) {
-        // We exceeded the limit, mark as rate limited
         const resetAt = new Date(new Date(rateLimitRecord.windowStart).getTime() + 60000)
 
+        logger.info(
+          `Rate limit exceeded - request ${actualNewRequests} > limit ${execLimit} for user ${userId}`,
+          {
+            execLimit,
+            isAsync,
+            actualNewRequests,
+          }
+        )
+
+        // Update rate limited status
         await db
           .update(userRateLimits)
           .set({
