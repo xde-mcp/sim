@@ -40,20 +40,27 @@ describe('RateLimiter', () => {
     })
 
     it('should allow first API request for sync execution', async () => {
-      const mockSelect = vi.fn().mockReturnThis()
-      const mockFrom = vi.fn().mockReturnThis()
-      const mockWhere = vi.fn().mockReturnThis()
-      const mockLimit = vi.fn().mockResolvedValue([])
-
+      // Mock select to return empty array (no existing record)
       vi.mocked(db.select).mockReturnValue({
-        from: mockFrom,
-        where: mockWhere,
-        limit: mockLimit,
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]), // No existing record
+          }),
+        }),
       } as any)
 
+      // Mock insert to return the expected structure
       vi.mocked(db.insert).mockReturnValue({
         values: vi.fn().mockReturnValue({
-          onConflictDoUpdate: vi.fn().mockResolvedValue({}),
+          onConflictDoUpdate: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([
+              {
+                syncApiRequests: 1,
+                asyncApiRequests: 0,
+                windowStart: new Date(),
+              },
+            ]),
+          }),
         }),
       } as any)
 
@@ -65,20 +72,27 @@ describe('RateLimiter', () => {
     })
 
     it('should allow first API request for async execution', async () => {
-      const mockSelect = vi.fn().mockReturnThis()
-      const mockFrom = vi.fn().mockReturnThis()
-      const mockWhere = vi.fn().mockReturnThis()
-      const mockLimit = vi.fn().mockResolvedValue([])
-
+      // Mock select to return empty array (no existing record)
       vi.mocked(db.select).mockReturnValue({
-        from: mockFrom,
-        where: mockWhere,
-        limit: mockLimit,
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]), // No existing record
+          }),
+        }),
       } as any)
 
+      // Mock insert to return the expected structure
       vi.mocked(db.insert).mockReturnValue({
         values: vi.fn().mockReturnValue({
-          onConflictDoUpdate: vi.fn().mockResolvedValue({}),
+          onConflictDoUpdate: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([
+              {
+                syncApiRequests: 0,
+                asyncApiRequests: 1,
+                windowStart: new Date(),
+              },
+            ]),
+          }),
         }),
       } as any)
 
@@ -93,20 +107,27 @@ describe('RateLimiter', () => {
       const triggerTypes = ['api', 'webhook', 'schedule', 'chat'] as const
 
       for (const triggerType of triggerTypes) {
-        const mockSelect = vi.fn().mockReturnThis()
-        const mockFrom = vi.fn().mockReturnThis()
-        const mockWhere = vi.fn().mockReturnThis()
-        const mockLimit = vi.fn().mockResolvedValue([])
-
+        // Mock select to return empty array (no existing record)
         vi.mocked(db.select).mockReturnValue({
-          from: mockFrom,
-          where: mockWhere,
-          limit: mockLimit,
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]), // No existing record
+            }),
+          }),
         } as any)
 
+        // Mock insert to return the expected structure
         vi.mocked(db.insert).mockReturnValue({
           values: vi.fn().mockReturnValue({
-            onConflictDoUpdate: vi.fn().mockResolvedValue({}),
+            onConflictDoUpdate: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([
+                {
+                  syncApiRequests: 1,
+                  asyncApiRequests: 0,
+                  windowStart: new Date(),
+                },
+              ]),
+            }),
           }),
         } as any)
 

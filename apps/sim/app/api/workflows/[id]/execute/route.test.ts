@@ -58,6 +58,20 @@ describe('Workflow Execution API Route', () => {
           position: 1,
         }),
       })),
+      RateLimitError: class RateLimitError extends Error {
+        constructor(
+          message: string,
+          public statusCode = 429
+        ) {
+          super(message)
+          this.name = 'RateLimitError'
+        }
+      },
+      syncExecutor: {
+        execute: vi.fn().mockImplementation(async (workflowId, userId, input, executeFn) => {
+          return await executeFn()
+        }),
+      },
     }))
 
     // Mock billing usage check

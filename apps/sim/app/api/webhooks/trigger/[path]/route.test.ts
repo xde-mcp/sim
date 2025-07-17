@@ -96,38 +96,31 @@ vi.mock('timers', () => {
 
 // Mock the database and schema
 vi.mock('@/db', () => {
-  const selectMock = vi.fn().mockReturnThis()
-  const fromMock = vi.fn().mockReturnThis()
-  const whereMock = vi.fn().mockReturnThis()
-  const innerJoinMock = vi.fn().mockReturnThis()
-  const limitMock = vi.fn().mockReturnValue([])
-
-  // Create a flexible mock DB that can be configured in each test
   const dbMock = {
-    select: selectMock,
-    from: fromMock,
-    where: whereMock,
-    innerJoin: innerJoinMock,
-    limit: limitMock,
-    update: vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
+    select: vi.fn().mockImplementation((columns) => ({
+      from: vi.fn().mockImplementation((table) => ({
+        innerJoin: vi.fn().mockImplementation(() => ({
+          where: vi.fn().mockImplementation(() => ({
+            limit: vi.fn().mockImplementation(() => {
+              // Return empty array by default (no webhook found)
+              return []
+            }),
+          })),
+        })),
+        where: vi.fn().mockImplementation(() => ({
+          limit: vi.fn().mockImplementation(() => {
+            // For non-webhook queries
+            return []
+          }),
+        })),
+      })),
+    })),
+    update: vi.fn().mockImplementation(() => ({
+      set: vi.fn().mockImplementation(() => ({
         where: vi.fn().mockResolvedValue([]),
-      }),
-    }),
+      })),
+    })),
   }
-
-  // Configure default behavior for the query chain
-  selectMock.mockReturnValue({ from: fromMock })
-  fromMock.mockReturnValue({
-    where: whereMock,
-    innerJoin: innerJoinMock,
-  })
-  whereMock.mockReturnValue({
-    limit: limitMock,
-  })
-  innerJoinMock.mockReturnValue({
-    where: whereMock,
-  })
 
   return {
     db: dbMock,
@@ -143,6 +136,31 @@ describe('Webhook Trigger API Route', () => {
     vi.clearAllTimers()
 
     mockExecutionDependencies()
+
+    // Mock services/queue for rate limiting
+    vi.doMock('@/services/queue', () => ({
+      RateLimiter: vi.fn().mockImplementation(() => ({
+        checkRateLimit: vi.fn().mockResolvedValue({
+          allowed: true,
+          remaining: 10,
+          resetAt: new Date(),
+        }),
+      })),
+      syncExecutor: {
+        execute: vi.fn().mockImplementation(async (workflowId, userId, input, executeFn) => {
+          return await executeFn()
+        }),
+      },
+      RateLimitError: class RateLimitError extends Error {
+        constructor(
+          message: string,
+          public statusCode = 429
+        ) {
+          super(message)
+          this.name = 'RateLimitError'
+        }
+      },
+    }))
 
     vi.doMock('@/lib/workflows/db-helpers', () => ({
       loadWorkflowFromNormalizedTables: vi.fn().mockResolvedValue({
@@ -250,29 +268,35 @@ describe('Webhook Trigger API Route', () => {
 
     // Configure DB mock to return a webhook and workflow
     const { db } = await import('@/db')
-    const limitMock = vi.fn().mockReturnValue([
-      {
-        webhook: {
-          id: 'webhook-id',
-          path: 'test-path',
-          isActive: true,
-          provider: 'generic', // Not Airtable to use standard path
-          workflowId: 'workflow-id',
-          providerConfig: {},
-        },
-        workflow: {
-          id: 'workflow-id',
-          userId: 'user-id',
-        },
-      },
-    ])
 
-    const whereMock = vi.fn().mockReturnValue({ limit: limitMock })
-    const innerJoinMock = vi.fn().mockReturnValue({ where: whereMock })
-    const fromMock = vi.fn().mockReturnValue({ innerJoin: innerJoinMock })
-
-    // @ts-ignore - mocking the query chain
-    db.select.mockReturnValue({ from: fromMock })
+    // Override the database mock for this test
+    vi.mocked(db.select).mockImplementation(
+      () =>
+        ({
+          from: vi.fn().mockImplementation(() => ({
+            innerJoin: vi.fn().mockImplementation(() => ({
+              where: vi.fn().mockImplementation(() => ({
+                limit: vi.fn().mockImplementation(() => [
+                  {
+                    webhook: {
+                      id: 'webhook-id',
+                      path: 'test-path',
+                      isActive: true,
+                      provider: 'generic', // Not Airtable to use standard path
+                      workflowId: 'workflow-id',
+                      providerConfig: {},
+                    },
+                    workflow: {
+                      id: 'workflow-id',
+                      userId: 'user-id',
+                    },
+                  },
+                ]),
+              })),
+            })),
+          })),
+        }) as any
+    )
 
     // Create a mock request with JSON body
     const req = createMockRequest('POST', webhookPayload)
@@ -285,6 +309,13 @@ describe('Webhook Trigger API Route', () => {
 
     // Call the handler
     const response = await POST(req, { params })
+
+    // Debug the response if it's not 200
+    if (response.status !== 200) {
+      const errorText = await response.text()
+      console.log('Response status:', response.status)
+      console.log('Response body:', errorText)
+    }
 
     // For the standard path with timeout, we expect 200
     expect(response.status).toBe(200)
@@ -392,31 +423,37 @@ describe('Webhook Trigger API Route', () => {
   it('should handle Slack webhooks with signature verification', async () => {
     // Configure DB mock to return a Slack webhook
     const { db } = await import('@/db')
-    const limitMock = vi.fn().mockReturnValue([
-      {
-        webhook: {
-          id: 'webhook-id',
-          path: 'slack-path',
-          isActive: true,
-          provider: 'slack',
-          workflowId: 'workflow-id',
-          providerConfig: {
-            signingSecret: 'slack-signing-secret',
-          },
-        },
-        workflow: {
-          id: 'workflow-id',
-          userId: 'user-id',
-        },
-      },
-    ])
 
-    const whereMock = vi.fn().mockReturnValue({ limit: limitMock })
-    const innerJoinMock = vi.fn().mockReturnValue({ where: whereMock })
-    const fromMock = vi.fn().mockReturnValue({ innerJoin: innerJoinMock })
-
-    // @ts-ignore - mocking the query chain
-    db.select.mockReturnValue({ from: fromMock })
+    // Override the database mock for this test
+    vi.mocked(db.select).mockImplementation(
+      () =>
+        ({
+          from: vi.fn().mockImplementation(() => ({
+            innerJoin: vi.fn().mockImplementation(() => ({
+              where: vi.fn().mockImplementation(() => ({
+                limit: vi.fn().mockImplementation(() => [
+                  {
+                    webhook: {
+                      id: 'webhook-id',
+                      path: 'slack-path',
+                      isActive: true,
+                      provider: 'slack',
+                      workflowId: 'workflow-id',
+                      providerConfig: {
+                        signingSecret: 'slack-signing-secret',
+                      },
+                    },
+                    workflow: {
+                      id: 'workflow-id',
+                      userId: 'user-id',
+                    },
+                  },
+                ]),
+              })),
+            })),
+          })),
+        }) as any
+    )
 
     // Create Slack headers
     const slackHeaders = {
