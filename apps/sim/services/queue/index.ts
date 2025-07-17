@@ -1,7 +1,6 @@
 export { JobProcessor } from './JobProcessor'
 export { JobQueueService } from './JobQueueService'
 export { RateLimiter } from './RateLimiter'
-export { SyncExecutor, syncExecutor } from './SyncExecutor'
 export type {
   CreateJobOptions,
   JobResult,

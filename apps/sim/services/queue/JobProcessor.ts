@@ -17,76 +17,92 @@ import { Executor } from '@/executor'
 import { Serializer } from '@/serializer'
 import { mergeSubblockState } from '@/stores/workflows/server-utils'
 import { JobQueueService } from './JobQueueService'
-import { RateLimiter } from './RateLimiter'
 import type { WorkflowExecutionJob } from './types'
 import { SYSTEM_LIMITS } from './types'
 
 const logger = createLogger('JobProcessor')
 
 export class JobProcessor {
-  private isRunning = false
   private activeJobs = new Map<string, NodeJS.Timeout>()
   private jobQueue: JobQueueService
-  private rateLimiter: RateLimiter
   private cleanupInterval?: NodeJS.Timeout
   private processorId: string
 
   constructor() {
     this.jobQueue = new JobQueueService()
-    this.rateLimiter = new RateLimiter()
     this.processorId = uuidv4().slice(0, 8)
     logger.info(`JobProcessor created with ID: ${this.processorId}`)
   }
 
   /**
-   * Start processing jobs
+   * Process available jobs in batch mode (for cron execution)
+   * Fire & forget - starts jobs in background and returns immediately
    */
-  async start(): Promise<void> {
-    if (this.isRunning) {
-      logger.warn(`[${this.processorId}] Job processor is already running`)
-      return
-    }
+  async processBatch(maxJobs = 10): Promise<{ started: number; skipped: number }> {
+    logger.info(`[${this.processorId}] Starting batch processing (max ${maxJobs} jobs)`)
 
-    logger.info(`[${this.processorId}] Starting job processor...`)
-    this.isRunning = true
-
-    // Clean up stuck jobs on startup
-    logger.info(`[${this.processorId}] Cleaning up stuck processing jobs...`)
+    // Clean up stuck jobs
     const stuckJobs = await db
       .update(workflowExecutionJobs)
       .set({
         status: 'failed',
-        error: 'Job processor restarted, marking stuck job as failed',
+        error: 'Job processor batch run, marking stuck job as failed',
         completedAt: new Date(),
       })
       .where(eq(workflowExecutionJobs.status, 'processing'))
       .returning({ id: workflowExecutionJobs.id })
 
     if (stuckJobs.length > 0) {
-      logger.info(`Cleaned up ${stuckJobs.length} stuck processing jobs`)
+      logger.info(`[${this.processorId}] Cleaned up ${stuckJobs.length} stuck processing jobs`)
     }
 
-    // Run cleanup task
-    logger.info('Running job cleanup...')
-    await this.performCleanup()
+    let started = 0
+    let skipped = 0
 
-    // Start cleanup task - runs every hour
-    this.cleanupInterval = setInterval(() => {
-      this.performCleanup()
-    }, 3600000) // 1 hour
+    // Start jobs up to maxJobs limit (fire & forget)
+    for (let i = 0; i < maxJobs; i++) {
+      try {
+        const job = await this.jobQueue.getNextJob()
+        if (!job) {
+          logger.info(`[${this.processorId}] No more jobs to process`)
+          break
+        }
 
-    // Start the processing loop
-    this.processLoop()
+        // Try to mark job as processing (atomic operation)
+        const marked = await this.jobQueue.markJobProcessing(job.id)
+        if (!marked) {
+          logger.info(`[${this.processorId}] Job ${job.id} already taken by another processor`)
+          skipped++
+          continue
+        }
+
+        logger.info(`[${this.processorId}] Starting job ${job.id} in background`)
+
+        // Fire & forget - start job processing without awaiting
+        this.processJob(job).catch((error) => {
+          logger.error(`[${this.processorId}] Background job ${job.id} failed:`, error)
+        })
+
+        started++
+      } catch (error) {
+        logger.error(`[${this.processorId}] Error in batch processing:`, error)
+        skipped++
+      }
+    }
+
+    logger.info(
+      `[${this.processorId}] Batch processing completed: ${started} started, ${skipped} skipped`
+    )
+    return { started, skipped }
   }
 
   /**
-   * Stop processing jobs
+   * Clean up resources (for compatibility)
    */
   async stop(): Promise<void> {
-    logger.info('Stopping job processor...')
-    this.isRunning = false
+    logger.info(`[${this.processorId}] Stopping job processor...`)
 
-    // Clear cleanup interval
+    // Clear cleanup interval if it exists
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval)
       this.cleanupInterval = undefined
@@ -101,13 +117,13 @@ export class JobProcessor {
   }
 
   /**
-   * Perform cleanup of old jobs
+   * Clean up old completed/failed jobs from the database
    */
-  private async performCleanup(): Promise<void> {
+  async cleanupOldJobs(): Promise<{ deletedCount: number }> {
     try {
-      logger.info('Running job cleanup...')
+      logger.info(`[${this.processorId}] Running job cleanup...`)
 
-      const daysToKeep = Number.parseInt(process.env.JOB_RETENTION_DAYS || '1')
+      const daysToKeep = Number.parseInt(process.env.JOB_RETENTION_DAYS || '7')
       const cutoffDate = new Date()
       cutoffDate.setDate(cutoffDate.getDate() - daysToKeep)
 
@@ -123,64 +139,18 @@ export class JobProcessor {
 
       const deletedCount = deletedJobs.length
       if (deletedCount > 0) {
-        logger.info(`Cleaned up ${deletedCount} old jobs`)
-      }
-    } catch (error) {
-      logger.error('Error during job cleanup:', error)
-    }
-  }
-
-  /**
-   * Main processing loop
-   */
-  private async processLoop(): Promise<void> {
-    logger.info(`[${this.processorId}] Job processor loop started`)
-
-    while (this.isRunning) {
-      try {
-        // Check if we're at capacity
-        if (this.activeJobs.size >= SYSTEM_LIMITS.maxJobProcessors) {
-          logger.debug(
-            `[${this.processorId}] At capacity: ${this.activeJobs.size}/${SYSTEM_LIMITS.maxJobProcessors} jobs`
-          )
-          await new Promise((resolve) => setTimeout(resolve, 1000))
-          continue
-        }
-
-        // Get next job from queue
-        const job = await this.jobQueue.getNextJob()
-        if (!job) {
-          // No jobs, wait a bit
-          await new Promise((resolve) => setTimeout(resolve, 2000))
-          continue
-        }
-
-        logger.info(`[${this.processorId}] Found job ${job.id}, attempting to process...`)
-
-        // Note: Per-user concurrency limits removed - only system-level limits apply
-
-        // Try to mark job as processing (atomic operation)
-        const marked = await this.jobQueue.markJobProcessing(job.id)
-        if (!marked) {
-          // Another processor got it first
-          logger.info(`[${this.processorId}] Job ${job.id} already taken by another processor`)
-          continue
-        }
-
         logger.info(
-          `[${this.processorId}] Successfully claimed job ${job.id}, starting processing...`
+          `[${this.processorId}] Cleaned up ${deletedCount} old jobs older than ${daysToKeep} days`
         )
-
-        // Process the job
-        this.processJob(job)
-      } catch (error) {
-        logger.error('Error in process loop:', error)
-        // Wait before retrying
-        await new Promise((resolve) => setTimeout(resolve, 5000))
+      } else {
+        logger.debug(`[${this.processorId}] No old jobs to clean up`)
       }
-    }
 
-    logger.info('Job processor loop stopped')
+      return { deletedCount }
+    } catch (error) {
+      logger.error(`[${this.processorId}] Error during job cleanup:`, error)
+      throw error
+    }
   }
 
   /**

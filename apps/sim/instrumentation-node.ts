@@ -135,22 +135,6 @@ async function initializeSentry() {
 export async function register() {
   await initializeSentry()
   await initializeOpenTelemetry()
-
-  // Always start job processor - it's the main execution method for both sync and async workflows
-  try {
-    const { JobProcessor } = await import('@/services/queue/JobProcessor')
-    const processor = new JobProcessor()
-    await processor.start()
-    logger.info('Job processor started successfully')
-
-    // Graceful shutdown
-    process.on('SIGTERM', () => {
-      logger.info('Stopping job processor...')
-      processor.stop()
-    })
-  } catch (error) {
-    logger.error('Failed to start job processor:', error)
-  }
 }
 
 export const onRequestError = Sentry.captureRequestError

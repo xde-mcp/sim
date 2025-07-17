@@ -146,11 +146,6 @@ describe('Webhook Trigger API Route', () => {
           resetAt: new Date(),
         }),
       })),
-      syncExecutor: {
-        execute: vi.fn().mockImplementation(async (workflowId, userId, input, executeFn) => {
-          return await executeFn()
-        }),
-      },
       RateLimitError: class RateLimitError extends Error {
         constructor(
           message: string,

@@ -67,11 +67,6 @@ describe('Workflow Execution API Route', () => {
           this.name = 'RateLimitError'
         }
       },
-      syncExecutor: {
-        execute: vi.fn().mockImplementation(async (workflowId, userId, input, executeFn) => {
-          return await executeFn()
-        }),
-      },
     }))
 
     // Mock billing usage check

@@ -39,11 +39,6 @@ export class JobQueueService {
         )
       }
 
-      // Note: Concurrent execution limits are checked in JobProcessor when starting jobs
-      // Jobs should be queued regardless of concurrent limits
-
-      // Removed queue depth check - database can handle unlimited queue
-
       // Create job
       const jobId = uuidv4()
       const triggerType = options.triggerType || 'api'

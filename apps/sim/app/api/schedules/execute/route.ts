@@ -26,7 +26,7 @@ import {
 } from '@/db/schema'
 import { Executor } from '@/executor'
 import { Serializer } from '@/serializer'
-import { RateLimiter, syncExecutor } from '@/services/queue'
+import { RateLimiter } from '@/services/queue'
 import type { SubscriptionPlan } from '@/services/queue/types'
 import { mergeSubblockState } from '@/stores/workflows/server-utils'
 
@@ -74,26 +74,20 @@ export async function GET() {
   let dueSchedules: (typeof workflowSchedule.$inferSelect)[] = []
 
   try {
-    try {
-      dueSchedules = await db
-        .select()
-        .from(workflowSchedule)
-        .where(
-          and(lte(workflowSchedule.nextRunAt, now), not(eq(workflowSchedule.status, 'disabled')))
-        )
-        .limit(10)
+    dueSchedules = await db
+      .select()
+      .from(workflowSchedule)
+      .where(
+        and(lte(workflowSchedule.nextRunAt, now), not(eq(workflowSchedule.status, 'disabled')))
+      )
+      .limit(10)
 
-      logger.debug(`[${requestId}] Successfully queried schedules: ${dueSchedules.length} found`)
-    } catch (queryError) {
-      logger.error(`[${requestId}] Error in schedule query:`, queryError)
-      throw queryError
-    }
+    logger.debug(`[${requestId}] Successfully queried schedules: ${dueSchedules.length} found`)
 
     logger.info(`[${requestId}] Processing ${dueSchedules.length} due scheduled workflows`)
 
     for (const schedule of dueSchedules) {
       const executionId = uuidv4()
-      const loggingSession: EnhancedLoggingSession | null = null
 
       try {
         if (runningExecutions.has(schedule.workflowId)) {
@@ -199,265 +193,254 @@ export async function GET() {
           continue
         }
 
-        // Execute scheduled workflow using sync queue
+        // Execute scheduled workflow immediately (no queuing)
         logger.info(`[${requestId}] Executing scheduled workflow ${schedule.workflowId}`)
 
         try {
-          const executionSuccess = await syncExecutor.execute(
-            schedule.workflowId,
-            workflowRecord.userId,
-            null, // No input for scheduled workflows
-            async () => {
-              // Create logging session inside the execution callback
-              const loggingSession = new EnhancedLoggingSession(
-                schedule.workflowId,
-                executionId,
-                'schedule',
-                requestId
-              )
+          const executionSuccess = await (async () => {
+            // Create logging session inside the execution callback
+            const loggingSession = new EnhancedLoggingSession(
+              schedule.workflowId,
+              executionId,
+              'schedule',
+              requestId
+            )
 
-              // Load workflow data from normalized tables (no fallback to deprecated state column)
+            // Load workflow data from normalized tables (no fallback to deprecated state column)
+            logger.debug(
+              `[${requestId}] Loading workflow ${schedule.workflowId} from normalized tables`
+            )
+            const normalizedData = await loadWorkflowFromNormalizedTables(schedule.workflowId)
+
+            if (!normalizedData) {
+              logger.error(
+                `[${requestId}] No normalized data found for scheduled workflow ${schedule.workflowId}`
+              )
+              throw new Error(
+                `Workflow data not found in normalized tables for ${schedule.workflowId}`
+              )
+            }
+
+            // Use normalized data only
+            const blocks = normalizedData.blocks
+            const edges = normalizedData.edges
+            const loops = normalizedData.loops
+            const parallels = normalizedData.parallels
+            logger.info(
+              `[${requestId}] Loaded scheduled workflow ${schedule.workflowId} from normalized tables`
+            )
+
+            const mergedStates = mergeSubblockState(blocks)
+
+            // Retrieve environment variables for this user (if any).
+            const [userEnv] = await db
+              .select()
+              .from(environmentTable)
+              .where(eq(environmentTable.userId, workflowRecord.userId))
+              .limit(1)
+
+            if (!userEnv) {
               logger.debug(
-                `[${requestId}] Loading workflow ${schedule.workflowId} from normalized tables`
+                `[${requestId}] No environment record found for user ${workflowRecord.userId}. Proceeding with empty variables.`
               )
-              const normalizedData = await loadWorkflowFromNormalizedTables(schedule.workflowId)
+            }
 
-              if (!normalizedData) {
-                logger.error(
-                  `[${requestId}] No normalized data found for scheduled workflow ${schedule.workflowId}`
-                )
-                throw new Error(
-                  `Workflow data not found in normalized tables for ${schedule.workflowId}`
-                )
-              }
+            const variables = EnvVarsSchema.parse(userEnv?.variables ?? {})
 
-              // Use normalized data only
-              const blocks = normalizedData.blocks
-              const edges = normalizedData.edges
-              const loops = normalizedData.loops
-              const parallels = normalizedData.parallels
-              logger.info(
-                `[${requestId}] Loaded scheduled workflow ${schedule.workflowId} from normalized tables`
-              )
+            const currentBlockStates = await Object.entries(mergedStates).reduce(
+              async (accPromise, [id, block]) => {
+                const acc = await accPromise
+                acc[id] = await Object.entries(block.subBlocks).reduce(
+                  async (subAccPromise, [key, subBlock]) => {
+                    const subAcc = await subAccPromise
+                    let value = subBlock.value
 
-              const mergedStates = mergeSubblockState(blocks)
+                    if (typeof value === 'string' && value.includes('{{') && value.includes('}}')) {
+                      const matches = value.match(/{{([^}]+)}}/g)
+                      if (matches) {
+                        for (const match of matches) {
+                          const varName = match.slice(2, -2)
+                          const encryptedValue = variables[varName]
+                          if (!encryptedValue) {
+                            throw new Error(`Environment variable "${varName}" was not found`)
+                          }
 
-              // Retrieve environment variables for this user (if any).
-              const [userEnv] = await db
-                .select()
-                .from(environmentTable)
-                .where(eq(environmentTable.userId, workflowRecord.userId))
-                .limit(1)
-
-              if (!userEnv) {
-                logger.debug(
-                  `[${requestId}] No environment record found for user ${workflowRecord.userId}. Proceeding with empty variables.`
-                )
-              }
-
-              const variables = EnvVarsSchema.parse(userEnv?.variables ?? {})
-
-              const currentBlockStates = await Object.entries(mergedStates).reduce(
-                async (accPromise, [id, block]) => {
-                  const acc = await accPromise
-                  acc[id] = await Object.entries(block.subBlocks).reduce(
-                    async (subAccPromise, [key, subBlock]) => {
-                      const subAcc = await subAccPromise
-                      let value = subBlock.value
-
-                      if (
-                        typeof value === 'string' &&
-                        value.includes('{{') &&
-                        value.includes('}}')
-                      ) {
-                        const matches = value.match(/{{([^}]+)}}/g)
-                        if (matches) {
-                          for (const match of matches) {
-                            const varName = match.slice(2, -2)
-                            const encryptedValue = variables[varName]
-                            if (!encryptedValue) {
-                              throw new Error(`Environment variable "${varName}" was not found`)
-                            }
-
-                            try {
-                              const { decrypted } = await decryptSecret(encryptedValue)
-                              value = (value as string).replace(match, decrypted)
-                            } catch (error: any) {
-                              logger.error(
-                                `[${requestId}] Error decrypting value for variable "${varName}"`,
-                                error
-                              )
-                              throw new Error(
-                                `Failed to decrypt environment variable "${varName}": ${error.message}`
-                              )
-                            }
+                          try {
+                            const { decrypted } = await decryptSecret(encryptedValue)
+                            value = (value as string).replace(match, decrypted)
+                          } catch (error: any) {
+                            logger.error(
+                              `[${requestId}] Error decrypting value for variable "${varName}"`,
+                              error
+                            )
+                            throw new Error(
+                              `Failed to decrypt environment variable "${varName}": ${error.message}`
+                            )
                           }
                         }
                       }
+                    }
 
-                      subAcc[key] = value
-                      return subAcc
-                    },
-                    Promise.resolve({} as Record<string, any>)
-                  )
-                  return acc
-                },
-                Promise.resolve({} as Record<string, Record<string, any>>)
-              )
+                    subAcc[key] = value
+                    return subAcc
+                  },
+                  Promise.resolve({} as Record<string, any>)
+                )
+                return acc
+              },
+              Promise.resolve({} as Record<string, Record<string, any>>)
+            )
 
-              const decryptedEnvVars: Record<string, string> = {}
-              for (const [key, encryptedValue] of Object.entries(variables)) {
-                try {
-                  const { decrypted } = await decryptSecret(encryptedValue)
-                  decryptedEnvVars[key] = decrypted
-                } catch (error: any) {
-                  logger.error(
-                    `[${requestId}] Failed to decrypt environment variable "${key}"`,
-                    error
-                  )
-                  throw new Error(
-                    `Failed to decrypt environment variable "${key}": ${error.message}`
-                  )
-                }
+            const decryptedEnvVars: Record<string, string> = {}
+            for (const [key, encryptedValue] of Object.entries(variables)) {
+              try {
+                const { decrypted } = await decryptSecret(encryptedValue)
+                decryptedEnvVars[key] = decrypted
+              } catch (error: any) {
+                logger.error(
+                  `[${requestId}] Failed to decrypt environment variable "${key}"`,
+                  error
+                )
+                throw new Error(`Failed to decrypt environment variable "${key}": ${error.message}`)
               }
+            }
 
-              // Process the block states to ensure response formats are properly parsed
-              const processedBlockStates = Object.entries(currentBlockStates).reduce(
-                (acc, [blockId, blockState]) => {
-                  // Check if this block has a responseFormat that needs to be parsed
-                  if (blockState.responseFormat && typeof blockState.responseFormat === 'string') {
-                    const responseFormatValue = blockState.responseFormat.trim()
+            // Process the block states to ensure response formats are properly parsed
+            const processedBlockStates = Object.entries(currentBlockStates).reduce(
+              (acc, [blockId, blockState]) => {
+                // Check if this block has a responseFormat that needs to be parsed
+                if (blockState.responseFormat && typeof blockState.responseFormat === 'string') {
+                  const responseFormatValue = blockState.responseFormat.trim()
 
-                    // Check for variable references like <start.input>
-                    if (responseFormatValue.startsWith('<') && responseFormatValue.includes('>')) {
-                      logger.debug(
-                        `[${requestId}] Response format contains variable reference for block ${blockId}`
+                  // Check for variable references like <start.input>
+                  if (responseFormatValue.startsWith('<') && responseFormatValue.includes('>')) {
+                    logger.debug(
+                      `[${requestId}] Response format contains variable reference for block ${blockId}`
+                    )
+                    // Keep variable references as-is - they will be resolved during execution
+                    acc[blockId] = blockState
+                  } else if (responseFormatValue === '') {
+                    // Empty string - remove response format
+                    acc[blockId] = {
+                      ...blockState,
+                      responseFormat: undefined,
+                    }
+                  } else {
+                    try {
+                      logger.debug(`[${requestId}] Parsing responseFormat for block ${blockId}`)
+                      // Attempt to parse the responseFormat if it's a string
+                      const parsedResponseFormat = JSON.parse(responseFormatValue)
+
+                      acc[blockId] = {
+                        ...blockState,
+                        responseFormat: parsedResponseFormat,
+                      }
+                    } catch (error) {
+                      logger.warn(
+                        `[${requestId}] Failed to parse responseFormat for block ${blockId}, using undefined`,
+                        error
                       )
-                      // Keep variable references as-is - they will be resolved during execution
-                      acc[blockId] = blockState
-                    } else if (responseFormatValue === '') {
-                      // Empty string - remove response format
+                      // Set to undefined instead of keeping malformed JSON - this allows execution to continue
                       acc[blockId] = {
                         ...blockState,
                         responseFormat: undefined,
                       }
-                    } else {
-                      try {
-                        logger.debug(`[${requestId}] Parsing responseFormat for block ${blockId}`)
-                        // Attempt to parse the responseFormat if it's a string
-                        const parsedResponseFormat = JSON.parse(responseFormatValue)
-
-                        acc[blockId] = {
-                          ...blockState,
-                          responseFormat: parsedResponseFormat,
-                        }
-                      } catch (error) {
-                        logger.warn(
-                          `[${requestId}] Failed to parse responseFormat for block ${blockId}, using undefined`,
-                          error
-                        )
-                        // Set to undefined instead of keeping malformed JSON - this allows execution to continue
-                        acc[blockId] = {
-                          ...blockState,
-                          responseFormat: undefined,
-                        }
-                      }
                     }
-                  } else {
-                    acc[blockId] = blockState
                   }
-                  return acc
-                },
-                {} as Record<string, Record<string, any>>
-              )
-
-              // Get workflow variables
-              let workflowVariables = {}
-              if (workflowRecord.variables) {
-                try {
-                  if (typeof workflowRecord.variables === 'string') {
-                    workflowVariables = JSON.parse(workflowRecord.variables)
-                  } else {
-                    workflowVariables = workflowRecord.variables
-                  }
-                } catch (error) {
-                  logger.error(`Failed to parse workflow variables: ${schedule.workflowId}`, error)
+                } else {
+                  acc[blockId] = blockState
                 }
-              }
+                return acc
+              },
+              {} as Record<string, Record<string, any>>
+            )
 
-              const serializedWorkflow = new Serializer().serializeWorkflow(
-                mergedStates,
-                edges,
-                loops,
-                parallels
-              )
-
-              const input = {
-                workflowId: schedule.workflowId,
-                _context: {
-                  workflowId: schedule.workflowId,
-                },
-              }
-
-              // Start enhanced logging with environment variables
-              await loggingSession.safeStart({
-                userId: workflowRecord.userId,
-                workspaceId: workflowRecord.workspaceId || '',
-                variables: variables || {},
-              })
-
-              const executor = new Executor(
-                serializedWorkflow,
-                processedBlockStates,
-                decryptedEnvVars,
-                input,
-                workflowVariables
-              )
-
-              // Set up enhanced logging on the executor
-              loggingSession.setupExecutor(executor)
-
-              const result = await executor.execute(schedule.workflowId)
-
-              const executionResult =
-                'stream' in result && 'execution' in result ? result.execution : result
-
-              logger.info(`[${requestId}] Workflow execution completed: ${schedule.workflowId}`, {
-                success: executionResult.success,
-                executionTime: executionResult.metadata?.duration,
-              })
-
-              if (executionResult.success) {
-                await updateWorkflowRunCounts(schedule.workflowId)
-
-                try {
-                  await db
-                    .update(userStats)
-                    .set({
-                      totalScheduledExecutions: sql`total_scheduled_executions + 1`,
-                      lastActive: now,
-                    })
-                    .where(eq(userStats.userId, workflowRecord.userId))
-
-                  logger.debug(`[${requestId}] Updated user stats for scheduled execution`)
-                } catch (statsError) {
-                  logger.error(`[${requestId}] Error updating user stats:`, statsError)
+            // Get workflow variables
+            let workflowVariables = {}
+            if (workflowRecord.variables) {
+              try {
+                if (typeof workflowRecord.variables === 'string') {
+                  workflowVariables = JSON.parse(workflowRecord.variables)
+                } else {
+                  workflowVariables = workflowRecord.variables
                 }
+              } catch (error) {
+                logger.error(`Failed to parse workflow variables: ${schedule.workflowId}`, error)
               }
-
-              const { traceSpans, totalDuration } = buildTraceSpans(executionResult)
-
-              // Complete enhanced logging
-              await loggingSession.safeComplete({
-                endedAt: new Date().toISOString(),
-                totalDurationMs: totalDuration || 0,
-                finalOutput: executionResult.output || {},
-                traceSpans: (traceSpans || []) as any,
-              })
-
-              return { success: executionResult.success, blocks, executionResult }
             }
-          )
+
+            const serializedWorkflow = new Serializer().serializeWorkflow(
+              mergedStates,
+              edges,
+              loops,
+              parallels
+            )
+
+            const input = {
+              workflowId: schedule.workflowId,
+              _context: {
+                workflowId: schedule.workflowId,
+              },
+            }
+
+            // Start enhanced logging with environment variables
+            await loggingSession.safeStart({
+              userId: workflowRecord.userId,
+              workspaceId: workflowRecord.workspaceId || '',
+              variables: variables || {},
+            })
+
+            const executor = new Executor(
+              serializedWorkflow,
+              processedBlockStates,
+              decryptedEnvVars,
+              input,
+              workflowVariables
+            )
+
+            // Set up enhanced logging on the executor
+            loggingSession.setupExecutor(executor)
+
+            const result = await executor.execute(schedule.workflowId)
+
+            const executionResult =
+              'stream' in result && 'execution' in result ? result.execution : result
+
+            logger.info(`[${requestId}] Workflow execution completed: ${schedule.workflowId}`, {
+              success: executionResult.success,
+              executionTime: executionResult.metadata?.duration,
+            })
+
+            if (executionResult.success) {
+              await updateWorkflowRunCounts(schedule.workflowId)
+
+              try {
+                await db
+                  .update(userStats)
+                  .set({
+                    totalScheduledExecutions: sql`total_scheduled_executions + 1`,
+                    lastActive: now,
+                  })
+                  .where(eq(userStats.userId, workflowRecord.userId))
+
+                logger.debug(`[${requestId}] Updated user stats for scheduled execution`)
+              } catch (statsError) {
+                logger.error(`[${requestId}] Error updating user stats:`, statsError)
+              }
+            }
+
+            const { traceSpans, totalDuration } = buildTraceSpans(executionResult)
+
+            // Complete enhanced logging
+            await loggingSession.safeComplete({
+              endedAt: new Date().toISOString(),
+              totalDurationMs: totalDuration || 0,
+              finalOutput: executionResult.output || {},
+              traceSpans: (traceSpans || []) as any,
+            })
+
+            return { success: executionResult.success, blocks, executionResult }
+          })()
 
           if (executionSuccess.success) {
             logger.info(`[${requestId}] Workflow ${schedule.workflowId} executed successfully`)
