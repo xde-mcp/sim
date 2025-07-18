@@ -86,6 +86,8 @@ export function Sidebar() {
 
   // Add state to prevent multiple simultaneous workflow creations
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false)
+  // Add state to prevent multiple simultaneous workspace creations
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false)
   // Add sidebar collapsed state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const params = useParams()
@@ -276,7 +278,13 @@ export function Sidebar() {
    * Handle create workspace
    */
   const handleCreateWorkspace = useCallback(async () => {
+    if (isCreatingWorkspace) {
+      logger.info('Workspace creation already in progress, ignoring request')
+      return
+    }
+
     try {
+      setIsCreatingWorkspace(true)
       logger.info('Creating new workspace')
 
       const response = await fetch('/api/workspaces', {
@@ -306,8 +314,10 @@ export function Sidebar() {
       await switchWorkspace(newWorkspace)
     } catch (error) {
       logger.error('Error creating workspace:', error)
+    } finally {
+      setIsCreatingWorkspace(false)
     }
-  }, [refreshWorkspaceList, switchWorkspace])
+  }, [refreshWorkspaceList, switchWorkspace, isCreatingWorkspace])
 
   /**
    * Confirm delete workspace
@@ -775,6 +785,7 @@ export function Sidebar() {
               onLeaveWorkspace={handleLeaveWorkspace}
               isDeleting={isDeleting}
               isLeaving={isLeaving}
+              isCreating={isCreatingWorkspace}
             />
           </div>
 
