@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
-import { BookOpen, LibraryBig, ScrollText, Search, Shapes } from 'lucide-react'
+import { BookOpen, Building2, LibraryBig, ScrollText, Search, Shapes, Workflow } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,8 @@ interface SearchModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   templates?: TemplateData[]
+  workflows?: WorkflowItem[]
+  workspaces?: WorkspaceItem[]
   loading?: boolean
 }
 
@@ -31,6 +33,20 @@ interface TemplateData {
     blocks?: Record<string, { type: string; name?: string }>
   }
   isStarred?: boolean
+}
+
+interface WorkflowItem {
+  id: string
+  name: string
+  href: string
+  isCurrent?: boolean
+}
+
+interface WorkspaceItem {
+  id: string
+  name: string
+  href: string
+  isCurrent?: boolean
 }
 
 interface BlockItem {
@@ -69,6 +85,8 @@ export function SearchModal({
   open,
   onOpenChange,
   templates = [],
+  workflows = [],
+  workspaces = [],
   loading = false,
 }: SearchModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -230,6 +248,18 @@ export function SearchModal({
       .slice(0, 8)
   }, [localTemplates, searchQuery])
 
+  const filteredWorkflows = useMemo(() => {
+    if (!searchQuery.trim()) return workflows
+    const query = searchQuery.toLowerCase()
+    return workflows.filter((workflow) => workflow.name.toLowerCase().includes(query))
+  }, [workflows, searchQuery])
+
+  const filteredWorkspaces = useMemo(() => {
+    if (!searchQuery.trim()) return workspaces
+    const query = searchQuery.toLowerCase()
+    return workspaces.filter((workspace) => workspace.name.toLowerCase().includes(query))
+  }, [workspaces, searchQuery])
+
   const filteredPages = useMemo(() => {
     if (!searchQuery.trim()) return pages
     const query = searchQuery.toLowerCase()
@@ -287,6 +317,15 @@ export function SearchModal({
       } else {
         router.push(href)
       }
+      onOpenChange(false)
+    },
+    [router, onOpenChange]
+  )
+
+  // Handle workflow/workspace navigation (same as page navigation)
+  const handleNavigationClick = useCallback(
+    (href: string) => {
+      router.push(href)
       onOpenChange(false)
     },
     [router, onOpenChange]
@@ -560,6 +599,66 @@ export function SearchModal({
                 </div>
               )}
 
+              {/* Workspaces Section */}
+              {filteredWorkspaces.length > 0 && (
+                <div>
+                  <h3 className='mb-3 ml-6 font-normal font-sans text-muted-foreground text-sm leading-none tracking-normal'>
+                    Workspaces
+                  </h3>
+                  <div className='space-y-1 px-6'>
+                    {filteredWorkspaces.map((workspace) => (
+                      <button
+                        key={workspace.id}
+                        onClick={() =>
+                          workspace.isCurrent
+                            ? onOpenChange(false)
+                            : handleNavigationClick(workspace.href)
+                        }
+                        className='flex h-10 w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-accent/60 focus:bg-accent/60 focus:outline-none'
+                      >
+                        <div className='flex h-5 w-5 items-center justify-center'>
+                          <Building2 className='h-4 w-4 text-muted-foreground' />
+                        </div>
+                        <span className='flex-1 text-left font-normal font-sans text-muted-foreground text-sm leading-none tracking-normal'>
+                          {workspace.name}
+                          {workspace.isCurrent && ' (current)'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Workflows Section */}
+              {filteredWorkflows.length > 0 && (
+                <div>
+                  <h3 className='mb-3 ml-6 font-normal font-sans text-muted-foreground text-sm leading-none tracking-normal'>
+                    Workflows
+                  </h3>
+                  <div className='space-y-1 px-6'>
+                    {filteredWorkflows.map((workflow) => (
+                      <button
+                        key={workflow.id}
+                        onClick={() =>
+                          workflow.isCurrent
+                            ? onOpenChange(false)
+                            : handleNavigationClick(workflow.href)
+                        }
+                        className='flex h-10 w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-accent/60 focus:bg-accent/60 focus:outline-none'
+                      >
+                        <div className='flex h-5 w-5 items-center justify-center'>
+                          <Workflow className='h-4 w-4 text-muted-foreground' />
+                        </div>
+                        <span className='flex-1 text-left font-normal font-sans text-muted-foreground text-sm leading-none tracking-normal'>
+                          {workflow.name}
+                          {workflow.isCurrent && ' (current)'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Pages Section */}
               {filteredPages.length > 0 && (
                 <div>
@@ -625,6 +724,8 @@ export function SearchModal({
                 filteredBlocks.length === 0 &&
                 filteredTools.length === 0 &&
                 filteredTemplates.length === 0 &&
+                filteredWorkflows.length === 0 &&
+                filteredWorkspaces.length === 0 &&
                 filteredPages.length === 0 &&
                 filteredDocs.length === 0 && (
                   <div className='ml-6 py-12 text-center'>

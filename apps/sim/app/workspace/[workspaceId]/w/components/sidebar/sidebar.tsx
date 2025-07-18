@@ -570,6 +570,29 @@ export function Sidebar() {
     return { regularWorkflows: regular, tempWorkflows: temp }
   }, [workflows, isLoading, workspaceId])
 
+  // Prepare workflows for search modal
+  const searchWorkflows = useMemo(() => {
+    if (isLoading) return []
+
+    const allWorkflows = [...regularWorkflows, ...tempWorkflows]
+    return allWorkflows.map((workflow) => ({
+      id: workflow.id,
+      name: workflow.name,
+      href: `/workspace/${workspaceId}/w/${workflow.id}`,
+      isCurrent: workflow.id === workflowId,
+    }))
+  }, [regularWorkflows, tempWorkflows, workspaceId, workflowId, isLoading])
+
+  // Prepare workspaces for search modal (include all workspaces)
+  const searchWorkspaces = useMemo(() => {
+    return workspaces.map((workspace) => ({
+      id: workspace.id,
+      name: workspace.name,
+      href: `/workspace/${workspace.id}/w`,
+      isCurrent: workspace.id === workspaceId,
+    }))
+  }, [workspaces, workspaceId])
+
   // Create workflow handler
   const handleCreateWorkflow = async (folderId?: string): Promise<string> => {
     if (isCreatingWorkflow) {
@@ -783,7 +806,7 @@ export function Sidebar() {
             }`}
           >
             <div className='px-2'>
-              <ScrollArea ref={workflowScrollAreaRef} className='h-[212px]' hideScrollbar={true}>
+              <ScrollArea ref={workflowScrollAreaRef} className='h-[210px]' hideScrollbar={true}>
                 <FolderTree
                   regularWorkflows={regularWorkflows}
                   marketplaceWorkflows={tempWorkflows}
@@ -838,7 +861,13 @@ export function Sidebar() {
       <SettingsModal open={showSettings} onOpenChange={setShowSettings} />
       <HelpModal open={showHelp} onOpenChange={setShowHelp} />
       <InviteModal open={showInviteMembers} onOpenChange={setShowInviteMembers} />
-      <SearchModal open={showSearchModal} onOpenChange={setShowSearchModal} templates={templates} />
+      <SearchModal
+        open={showSearchModal}
+        onOpenChange={setShowSearchModal}
+        templates={templates}
+        workflows={searchWorkflows}
+        workspaces={searchWorkspaces}
+      />
     </>
   )
 }
