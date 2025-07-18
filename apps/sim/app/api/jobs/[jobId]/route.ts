@@ -70,24 +70,23 @@ export async function GET(
       success: true,
       taskId,
       status: mappedStatus,
-      createdAt: run.createdAt,
-      startedAt: run.startedAt,
-      updatedAt: run.updatedAt,
+      metadata: {
+        startedAt: run.startedAt,
+      },
     }
 
     // Add completion details if finished
     if (mappedStatus === 'completed') {
-      response.completedAt = run.finishedAt || run.updatedAt
       response.output = run.output // This contains the workflow execution results
-      response.duration = run.durationMs
-      response.cost = run.costInCents ? run.costInCents / 100 : 0
+      response.metadata.completedAt = run.finishedAt
+      response.metadata.duration = run.durationMs
     }
 
     // Add error details if failed
     if (mappedStatus === 'failed') {
-      response.completedAt = run.finishedAt || run.updatedAt
       response.error = run.error
-      response.duration = run.durationMs
+      response.metadata.completedAt = run.finishedAt
+      response.metadata.duration = run.durationMs
     }
 
     // Add progress info if still processing
