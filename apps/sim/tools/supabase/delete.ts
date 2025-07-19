@@ -48,7 +48,7 @@ export const deleteTool: ToolConfig<SupabaseDeleteParams, SupabaseDeleteResponse
       let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
 
       // Add filters (required for delete) - using PostgREST syntax
-      if (params.filter && params.filter.trim()) {
+      if (params.filter?.trim()) {
         url += `&${params.filter.trim()}`
       } else {
         throw new Error(

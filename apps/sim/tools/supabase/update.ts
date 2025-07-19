@@ -55,7 +55,7 @@ export const updateTool: ToolConfig<SupabaseUpdateParams, SupabaseUpdateResponse
       let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
 
       // Add filters (required for update) - using PostgREST syntax
-      if (params.filter && params.filter.trim()) {
+      if (params.filter?.trim()) {
         url += `&${params.filter.trim()}`
       }
 

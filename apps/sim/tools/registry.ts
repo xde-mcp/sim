@@ -97,7 +97,7 @@ import {
 import { redditGetCommentsTool, redditGetPostsTool, redditHotPostsTool } from '@/tools/reddit'
 import { s3GetObjectTool } from '@/tools/s3'
 import { searchTool as serperSearch } from '@/tools/serper'
-import { slackMessageTool } from '@/tools/slack'
+import { slackCanvasTool, slackMessageReaderTool, slackMessageTool } from '@/tools/slack'
 import { stagehandAgentTool, stagehandExtractTool } from '@/tools/stagehand'
 import {
   supabaseDeleteTool,
@@ -148,6 +148,8 @@ export const tools: Record<string, ToolConfig> = {
   jira_write: jiraWriteTool,
   jira_bulk_read: jiraBulkRetrieveTool,
   slack_message: slackMessageTool,
+  slack_message_reader: slackMessageReaderTool,
+  slack_canvas: slackCanvasTool,
   github_repo_info: githubRepoInfoTool,
   github_latest_commit: githubLatestCommitTool,
   serper_search: serperSearch,

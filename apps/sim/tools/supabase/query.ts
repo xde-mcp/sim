@@ -59,7 +59,7 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
 
       // Add filters if provided - using PostgREST syntax
-      if (params.filter && params.filter.trim()) {
+      if (params.filter?.trim()) {
         url += `&${params.filter.trim()}`
       }
 
