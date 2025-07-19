@@ -1080,6 +1080,30 @@ const WorkflowContent = React.memo(() => {
 
         if (!sourceNode || !targetNode) return
 
+        // Prevent incoming connections to webhook trigger blocks
+        if (targetNode.data?.type === 'webhook_trigger') {
+          logger.warn(
+            'Prevented connection to webhook trigger block - webhook triggers cannot have incoming connections',
+            {
+              sourceId: connection.source,
+              targetId: connection.target,
+            }
+          )
+          return
+        }
+
+        // Prevent incoming connections to starter blocks (existing logic)
+        if (targetNode.data?.type === 'starter') {
+          logger.warn(
+            'Prevented connection to starter block - starter blocks cannot have incoming connections',
+            {
+              sourceId: connection.source,
+              targetId: connection.target,
+            }
+          )
+          return
+        }
+
         // Get parent information (handle container start node case)
         const sourceParentId =
           sourceNode.parentId ||

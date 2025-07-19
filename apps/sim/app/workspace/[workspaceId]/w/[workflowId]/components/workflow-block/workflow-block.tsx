@@ -469,8 +469,8 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
           horizontalHandles={horizontalHandles}
         />
 
-        {/* Input Handle - Don't show for starter blocks */}
-        {type !== 'starter' && (
+        {/* Input Handle - Don't show for starter blocks or webhook trigger blocks */}
+        {type !== 'starter' && type !== 'webhook_trigger' && (
           <Handle
             type='target'
             position={horizontalHandles ? Position.Left : Position.Top}
@@ -840,8 +840,8 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
               isValidConnection={(connection) => connection.target !== id}
             />
 
-            {/* Error Handle - Don't show for starter blocks */}
-            {type !== 'starter' && (
+            {/* Error Handle - Don't show for starter blocks or webhook trigger blocks */}
+            {type !== 'starter' && type !== 'webhook_trigger' && (
               <Handle
                 type='source'
                 position={horizontalHandles ? Position.Right : Position.Bottom}
