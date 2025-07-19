@@ -13,6 +13,7 @@ import type { BlockConfig, SubBlockConfig } from '@/blocks/types'
 import { useCollaborativeWorkflow } from '@/hooks/use-collaborative-workflow'
 import { useExecutionStore } from '@/stores/execution/store'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
+import { useSubBlockStore } from '@/stores/workflows/subblock/store'
 import { mergeSubblockState } from '@/stores/workflows/utils'
 import { useWorkflowStore } from '@/stores/workflows/workflow/store'
 import { ActionBar } from './components/action-bar/action-bar'
@@ -67,8 +68,40 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
   )
   const isWide = useWorkflowStore((state) => state.blocks[id]?.isWide ?? false)
   const blockHeight = useWorkflowStore((state) => state.blocks[id]?.height ?? 0)
-  // Get per-block webhook status instead of global status
-  const blockWebhookStatus = data.subBlocks?.webhookStatus?.value || false
+  // Get per-block webhook status by checking if webhook is configured
+  // Use reactive Zustand subscriptions instead of static snapshots
+  const activeWorkflowId = useWorkflowRegistry((state) => state.activeWorkflowId)
+
+  const hasWebhookProvider = useSubBlockStore(
+    (state) => state.workflowValues[activeWorkflowId || '']?.[id]?.webhookProvider
+  )
+  const hasWebhookPath = useSubBlockStore(
+    (state) => state.workflowValues[activeWorkflowId || '']?.[id]?.webhookPath
+  )
+  const blockWebhookStatus = !!(hasWebhookProvider && hasWebhookPath)
+
+  // Debug logging for webhook status
+  useEffect(() => {
+    if (type === 'starter' || type === 'webhook_trigger') {
+      console.log(`Block webhook status for ${id}:`, {
+        hasWebhookProvider,
+        hasWebhookPath,
+        blockWebhookStatus,
+        activeWorkflowId,
+      })
+    }
+  }, [hasWebhookProvider, hasWebhookPath, blockWebhookStatus, id, type, activeWorkflowId])
+
+  // Debug: Log the webhook status for webhook-capable blocks
+  if (type === 'starter' || type === 'webhook_trigger') {
+    console.log('Block webhook status for', id, ':', {
+      type,
+      hasWebhookProvider,
+      hasWebhookPath,
+      blockWebhookStatus,
+      activeWorkflowId,
+    })
+  }
   const blockAdvancedMode = useWorkflowStore((state) => state.blocks[id]?.advancedMode ?? false)
 
   // Collaborative workflow actions
