@@ -202,10 +202,12 @@ describe('validateToolRequest', () => {
       params: {
         required1: {
           type: 'string',
+          required: true,
           visibility: 'user-or-llm',
         },
         required2: {
           type: 'number',
+          required: true,
           visibility: 'user-or-llm',
         },
         optional: {
