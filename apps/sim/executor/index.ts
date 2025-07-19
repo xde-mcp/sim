@@ -780,7 +780,7 @@ export class Executor {
                 conversationId: this.workflowInput.conversationId,
               }
 
-              context.blockStates.set(starterBlock.id, {
+              context.blockStates.set(initBlock.id, {
                 output: starterOutput,
                 executed: true,
                 executionTime: 0,
@@ -789,7 +789,7 @@ export class Executor {
               // API workflow: spread the raw data directly (no wrapping)
               const starterOutput = { ...this.workflowInput }
 
-              context.blockStates.set(starterBlock.id, {
+              context.blockStates.set(initBlock.id, {
                 output: starterOutput,
                 executed: true,
                 executionTime: 0,
@@ -801,7 +801,7 @@ export class Executor {
               input: this.workflowInput,
             }
 
-            context.blockStates.set(starterBlock.id, {
+            context.blockStates.set(initBlock.id, {
               output: starterOutput,
               executed: true,
               executionTime: 0,
