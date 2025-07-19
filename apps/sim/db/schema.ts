@@ -435,6 +435,7 @@ export const webhook = pgTable(
     workflowId: text('workflow_id')
       .notNull()
       .references(() => workflow.id, { onDelete: 'cascade' }),
+    blockId: text('block_id'), // ID of the webhook trigger block (null for legacy starter block webhooks)
     path: text('path').notNull(),
     provider: text('provider'), // e.g., "whatsapp", "github", etc.
     providerConfig: json('provider_config'), // Store provider-specific configuration

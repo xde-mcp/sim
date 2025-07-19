@@ -67,7 +67,8 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
   )
   const isWide = useWorkflowStore((state) => state.blocks[id]?.isWide ?? false)
   const blockHeight = useWorkflowStore((state) => state.blocks[id]?.height ?? 0)
-  const hasActiveWebhook = useWorkflowStore((state) => state.hasActiveWebhook ?? false)
+  // Get per-block webhook status instead of global status
+  const blockWebhookStatus = data.subBlocks?.webhookStatus?.value || false
   const blockAdvancedMode = useWorkflowStore((state) => state.blocks[id]?.advancedMode ?? false)
 
   // Collaborative workflow actions
@@ -200,33 +201,13 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
 
   // Get webhook information for the tooltip
   useEffect(() => {
-    if (type === 'starter' && hasActiveWebhook) {
-      const fetchWebhookInfo = async () => {
-        try {
-          const workflowId = useWorkflowRegistry.getState().activeWorkflowId
-          if (!workflowId) return
-
-          const response = await fetch(`/api/webhooks?workflowId=${workflowId}`)
-          if (response.ok) {
-            const data = await response.json()
-            if (data.webhooks?.[0]?.webhook) {
-              const webhook = data.webhooks[0].webhook
-              setWebhookInfo({
-                webhookPath: webhook.path || '',
-                provider: webhook.provider || 'generic',
-              })
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching webhook info:', error)
-        }
-      }
-
-      fetchWebhookInfo()
-    } else if (!hasActiveWebhook) {
+    // Don't make any webhook API calls from workflow-block component
+    // This was causing the calls without blockId
+    // Webhook info should be managed by the webhook components themselves
+    if (!blockWebhookStatus) {
       setWebhookInfo(null)
     }
-  }, [type, hasActiveWebhook])
+  }, [blockWebhookStatus])
 
   // Update node internals when handles change
   useEffect(() => {
@@ -404,9 +385,10 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
     }
   }
 
-  // Check if this is a starter block and has active schedule or webhook
+  // Check if this is a starter block or webhook trigger block and has active webhook
   const isStarterBlock = type === 'starter'
-  const showWebhookIndicator = isStarterBlock && hasActiveWebhook
+  const isWebhookTriggerBlock = type === 'webhook_trigger'
+  const showWebhookIndicator = (isStarterBlock || isWebhookTriggerBlock) && blockWebhookStatus
 
   const getProviderName = (providerId: string): string => {
     const providers: Record<string, string> = {

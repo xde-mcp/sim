@@ -26,15 +26,37 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(request.url)
     const workflowId = searchParams.get('workflowId')
+    const blockId = searchParams.get('blockId')
+
+    // Log calls without blockId to help identify the source
+    if (workflowId && !blockId) {
+      logger.warn(`[${requestId}] Webhook query missing blockId parameter - this should be fixed`, {
+        workflowId,
+        url: request.url,
+        userAgent: request.headers.get('user-agent'),
+        referer: request.headers.get('referer'),
+      })
+      // For now, allow the call but return empty results to avoid breaking the UI
+      return NextResponse.json({ webhooks: [] }, { status: 200 })
+    }
 
     logger.debug(`[${requestId}] Fetching webhooks for user ${session.user.id}`, {
       filteredByWorkflow: !!workflowId,
+      filteredByBlock: !!blockId,
     })
 
     // Create where condition
-    const whereCondition = workflowId
-      ? and(eq(workflow.userId, session.user.id), eq(webhook.workflowId, workflowId))
-      : eq(workflow.userId, session.user.id)
+    const conditions = [eq(workflow.userId, session.user.id)]
+
+    if (workflowId) {
+      conditions.push(eq(webhook.workflowId, workflowId))
+    }
+
+    if (blockId) {
+      conditions.push(eq(webhook.blockId, blockId))
+    }
+
+    const whereCondition = conditions.length > 1 ? and(...conditions) : conditions[0]
 
     const webhooks = await db
       .select({
@@ -68,7 +90,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { workflowId, path, provider, providerConfig } = body
+    const { workflowId, path, provider, providerConfig, blockId } = body
 
     // Validate input
     if (!workflowId || !path) {
@@ -115,6 +137,7 @@ export async function POST(request: NextRequest) {
       const updatedResult = await db
         .update(webhook)
         .set({
+          blockId,
           provider,
           providerConfig,
           isActive: true,
@@ -132,6 +155,7 @@ export async function POST(request: NextRequest) {
         .values({
           id: webhookId,
           workflowId,
+          blockId,
           path,
           provider,
           providerConfig,

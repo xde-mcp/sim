@@ -14,7 +14,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { createLogger } from '@/lib/logs/console-logger'
 import { useSubBlockStore } from '@/stores/workflows/subblock/store'
-import { useWorkflowStore } from '@/stores/workflows/workflow/store'
 import { useSubBlockValue } from '../../hooks/use-sub-block-value'
 import { ToolCredentialSelector } from '../tool-input/components/tool-credential-selector'
 import { WebhookModal } from './components/webhook-modal'
@@ -314,14 +313,24 @@ export function WebhookConfig({
   const [isLoading, setIsLoading] = useState(false)
   const [gmailCredentialId, setGmailCredentialId] = useState<string>('')
 
-  // Get workflow store function to update webhook status
-  const setWebhookStatus = useWorkflowStore((state) => state.setWebhookStatus)
+  // Store webhook status per block instead of globally
+  const [storeWebhookStatus, setWebhookStatus] = useSubBlockValue(blockId, 'webhookStatus')
 
   // Get the webhook provider from the block state
   const [storeWebhookProvider, setWebhookProvider] = useSubBlockValue(blockId, 'webhookProvider')
 
   // Store the webhook path
   const [storeWebhookPath, setWebhookPath] = useSubBlockValue(blockId, 'webhookPath')
+
+  // Ensure each block has its own unique webhook path
+  useEffect(() => {
+    if (!storeWebhookPath && !isPreview) {
+      // Generate a unique path for this block if none exists
+      // Include blockId in the path to ensure uniqueness across blocks
+      const uniquePath = `${blockId}-${crypto.randomUUID()}`
+      setWebhookPath(uniquePath)
+    }
+  }, [storeWebhookPath, isPreview, blockId])
 
   // Store provider-specific configuration
   const [storeProviderConfig, setProviderConfig] = useSubBlockValue(blockId, 'providerConfig')
@@ -331,16 +340,21 @@ export function WebhookConfig({
   const webhookPath = propValue?.webhookPath ?? storeWebhookPath
   const providerConfig = propValue?.providerConfig ?? storeProviderConfig
 
+  // Store the actual provider from the database
+  const [actualProvider, setActualProvider] = useState<string | null>(null)
+
   // Reset provider config when provider changes
   useEffect(() => {
     if (webhookProvider) {
       // Reset the provider config when the provider changes
       setProviderConfig({})
-    }
-  }, [webhookProvider, setProviderConfig])
 
-  // Store the actual provider from the database
-  const [actualProvider, setActualProvider] = useState<string | null>(null)
+      // If we have a webhook but the provider doesn't match, update webhook status to disconnected
+      if (webhookId && actualProvider && webhookProvider !== actualProvider) {
+        setWebhookStatus(false)
+      }
+    }
+  }, [webhookProvider, webhookId, actualProvider])
 
   // Check if webhook exists in the database
   useEffect(() => {
@@ -353,18 +367,17 @@ export function WebhookConfig({
     const checkWebhook = async () => {
       setIsLoading(true)
       try {
-        // Check if there's a webhook for this workflow
-        const response = await fetch(`/api/webhooks?workflowId=${workflowId}`)
+        // Check if there's a webhook for this specific block
+        // Always include blockId - every webhook should be associated with a specific block
+        const response = await fetch(`/api/webhooks?workflowId=${workflowId}&blockId=${blockId}`)
         if (response.ok) {
           const data = await response.json()
           if (data.webhooks && data.webhooks.length > 0) {
             const webhook = data.webhooks[0].webhook
             setWebhookId(webhook.id)
 
-            // Update the provider in the block state if it's different
-            if (webhook.provider && webhook.provider !== webhookProvider) {
-              setWebhookProvider(webhook.provider)
-            }
+            // Don't automatically update the provider - let user control it
+            // The user should be able to change providers even when a webhook exists
 
             // Store the actual provider from the database
             setActualProvider(webhook.provider)
@@ -392,15 +405,7 @@ export function WebhookConfig({
     }
 
     checkWebhook()
-  }, [
-    webhookPath,
-    webhookProvider,
-    workflowId,
-    setWebhookPath,
-    setWebhookProvider,
-    setWebhookStatus,
-    isPreview,
-  ])
+  }, [webhookPath, workflowId, blockId, isPreview])
 
   const handleOpenModal = () => {
     if (isPreview || disabled) return
@@ -443,6 +448,7 @@ export function WebhookConfig({
         },
         body: JSON.stringify({
           workflowId,
+          blockId,
           path,
           provider: webhookProvider || 'generic',
           providerConfig: finalConfig,
