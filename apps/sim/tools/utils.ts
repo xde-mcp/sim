@@ -2,10 +2,10 @@ import { createLogger } from '@/lib/logs/console-logger'
 import { getBaseUrl } from '@/lib/urls/utils'
 import { useCustomToolsStore } from '@/stores/custom-tools/store'
 import { useEnvironmentStore } from '@/stores/settings/environment/store'
-import { docsSearchTool } from './docs/search'
-import { tools } from './registry'
-import type { TableRow, ToolConfig, ToolResponse } from './types'
-import { getUserWorkflowTool } from './workflow/get-yaml'
+import { docsSearchTool } from '@/tools/docs/search'
+import { tools } from '@/tools/registry'
+import type { TableRow, ToolConfig, ToolResponse } from '@/tools/types'
+import { getUserWorkflowTool } from '@/tools/workflow/get-yaml'
 
 const logger = createLogger('ToolsUtils')
 
