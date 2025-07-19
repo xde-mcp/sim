@@ -1082,25 +1082,11 @@ const WorkflowContent = React.memo(() => {
 
         // Prevent incoming connections to webhook trigger blocks
         if (targetNode.data?.type === 'webhook_trigger') {
-          logger.warn(
-            'Prevented connection to webhook trigger block - webhook triggers cannot have incoming connections',
-            {
-              sourceId: connection.source,
-              targetId: connection.target,
-            }
-          )
           return
         }
 
-        // Prevent incoming connections to starter blocks (existing logic)
+        // Prevent incoming connections to starter blocks
         if (targetNode.data?.type === 'starter') {
-          logger.warn(
-            'Prevented connection to starter block - starter blocks cannot have incoming connections',
-            {
-              sourceId: connection.source,
-              targetId: connection.target,
-            }
-          )
           return
         }
 

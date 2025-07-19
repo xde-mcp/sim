@@ -69,7 +69,6 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
   const isWide = useWorkflowStore((state) => state.blocks[id]?.isWide ?? false)
   const blockHeight = useWorkflowStore((state) => state.blocks[id]?.height ?? 0)
   // Get per-block webhook status by checking if webhook is configured
-  // Use reactive Zustand subscriptions instead of static snapshots
   const activeWorkflowId = useWorkflowRegistry((state) => state.activeWorkflowId)
 
   const hasWebhookProvider = useSubBlockStore(
@@ -80,28 +79,6 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
   )
   const blockWebhookStatus = !!(hasWebhookProvider && hasWebhookPath)
 
-  // Debug logging for webhook status
-  useEffect(() => {
-    if (type === 'starter' || type === 'webhook_trigger') {
-      console.log(`Block webhook status for ${id}:`, {
-        hasWebhookProvider,
-        hasWebhookPath,
-        blockWebhookStatus,
-        activeWorkflowId,
-      })
-    }
-  }, [hasWebhookProvider, hasWebhookPath, blockWebhookStatus, id, type, activeWorkflowId])
-
-  // Debug: Log the webhook status for webhook-capable blocks
-  if (type === 'starter' || type === 'webhook_trigger') {
-    console.log('Block webhook status for', id, ':', {
-      type,
-      hasWebhookProvider,
-      hasWebhookPath,
-      blockWebhookStatus,
-      activeWorkflowId,
-    })
-  }
   const blockAdvancedMode = useWorkflowStore((state) => state.blocks[id]?.advancedMode ?? false)
 
   // Collaborative workflow actions
@@ -234,9 +211,6 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
 
   // Get webhook information for the tooltip
   useEffect(() => {
-    // Don't make any webhook API calls from workflow-block component
-    // This was causing the calls without blockId
-    // Webhook info should be managed by the webhook components themselves
     if (!blockWebhookStatus) {
       setWebhookInfo(null)
     }

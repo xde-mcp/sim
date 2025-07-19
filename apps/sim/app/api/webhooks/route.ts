@@ -28,14 +28,7 @@ export async function GET(request: NextRequest) {
     const workflowId = searchParams.get('workflowId')
     const blockId = searchParams.get('blockId')
 
-    // Log calls without blockId to help identify the source
     if (workflowId && !blockId) {
-      logger.warn(`[${requestId}] Webhook query missing blockId parameter - this should be fixed`, {
-        workflowId,
-        url: request.url,
-        userAgent: request.headers.get('user-agent'),
-        referer: request.headers.get('referer'),
-      })
       // For now, allow the call but return empty results to avoid breaking the UI
       return NextResponse.json({ webhooks: [] }, { status: 200 })
     }
