@@ -553,12 +553,15 @@ export class Executor {
    * @throws Error if workflow validation fails
    */
   private validateWorkflow(startBlockId?: string): void {
+    let validationBlock: SerializedBlock | undefined
+
     if (startBlockId) {
       // If starting from a specific block (webhook trigger), validate that block exists
       const startBlock = this.actualWorkflow.blocks.find((block) => block.id === startBlockId)
       if (!startBlock || !startBlock.enabled) {
         throw new Error(`Start block ${startBlockId} not found or disabled`)
       }
+      validationBlock = startBlock
       // Webhook trigger blocks can have incoming connections, so no need to check that
     } else {
       // Default validation for starter block
@@ -568,6 +571,7 @@ export class Executor {
       if (!starterBlock || !starterBlock.enabled) {
         throw new Error('Workflow must have an enabled starter block')
       }
+      validationBlock = starterBlock
 
       const incomingToStarter = this.actualWorkflow.connections.filter(
         (conn) => conn.target === starterBlock.id
@@ -575,13 +579,14 @@ export class Executor {
       if (incomingToStarter.length > 0) {
         throw new Error('Starter block cannot have incoming connections')
       }
-    }
 
-    const outgoingFromStarter = this.actualWorkflow.connections.filter(
-      (conn) => conn.source === starterBlock.id
-    )
-    if (outgoingFromStarter.length === 0) {
-      throw new Error('Starter block must have at least one outgoing connection')
+      // Only check outgoing connections for starter blocks, not webhook triggers
+      const outgoingFromStarter = this.actualWorkflow.connections.filter(
+        (conn) => conn.source === starterBlock.id
+      )
+      if (outgoingFromStarter.length === 0) {
+        throw new Error('Starter block must have at least one outgoing connection')
+      }
     }
 
     const blockIds = new Set(this.actualWorkflow.blocks.map((block) => block.id))
