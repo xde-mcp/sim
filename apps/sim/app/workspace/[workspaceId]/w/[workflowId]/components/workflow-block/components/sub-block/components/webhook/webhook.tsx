@@ -381,8 +381,6 @@ export function WebhookConfig({
             } else {
               logger.info('Successfully deleted existing webhook', { webhookId: currentWebhookId })
 
-              // IMPORTANT: Clear store ONLY after successful database deletion
-              // This ensures store and database stay in sync
               const store = useSubBlockStore.getState()
               const workflowValues = store.workflowValues[workflowId] || {}
               const blockValues = { ...workflowValues[blockId] }

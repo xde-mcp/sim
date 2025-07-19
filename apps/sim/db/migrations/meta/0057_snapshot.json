@@ -1,5 +1,5 @@
 {
-  "id": "3dc4f0cc-29c5-46e3-b245-0cca84ab4a77",
+  "id": "b2786ff7-1d28-41b7-9400-cfe77d7f28be",
   "prevId": "3bb59215-ddd2-4c4a-82e7-4fc9e998ca08",
   "version": "7",
   "dialect": "postgresql",
@@ -3717,6 +3717,15 @@
           "tableFrom": "webhook",
           "tableTo": "workflow",
           "columnsFrom": ["workflow_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "webhook_block_id_workflow_blocks_id_fk": {
+          "name": "webhook_block_id_workflow_blocks_id_fk",
+          "tableFrom": "webhook",
+          "tableTo": "workflow_blocks",
+          "columnsFrom": ["block_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
