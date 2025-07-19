@@ -1,10 +1,10 @@
-import type { SupabaseQueryParams, SupabaseQueryResponse } from '@/tools/supabase/types'
+import type { SupabaseUpdateParams, SupabaseUpdateResponse } from '@/tools/supabase/types'
 import type { ToolConfig } from '@/tools/types'
 
-export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> = {
-  id: 'supabase_query',
-  name: 'Supabase Query',
-  description: 'Query data from a Supabase table',
+export const updateTool: ToolConfig<SupabaseUpdateParams, SupabaseUpdateResponse> = {
+  id: 'supabase_update',
+  name: 'Supabase Update Row',
+  description: 'Update rows in a Supabase table based on filter criteria',
   version: '1.0',
   params: {
     projectId: {
@@ -17,25 +17,19 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       type: 'string',
       required: true,
       visibility: 'user-only',
-      description: 'The name of the Supabase table to query',
+      description: 'The name of the Supabase table to update',
     },
     filter: {
       type: 'object',
-      required: false,
+      required: true,
       visibility: 'user-or-llm',
-      description: 'Filter to apply to the query',
+      description: 'Filter criteria to identify rows to update (e.g., {"id": 123})',
     },
-    orderBy: {
-      type: 'string',
-      required: false,
+    data: {
+      type: 'object',
+      required: true,
       visibility: 'user-or-llm',
-      description: 'Column to order by (add DESC for descending)',
-    },
-    limit: {
-      type: 'number',
-      required: false,
-      visibility: 'user-or-llm',
-      description: 'Maximum number of rows to return',
+      description: 'Data to update in the matching rows',
     },
     apiKey: {
       type: 'string',
@@ -46,50 +40,36 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
   },
   request: {
     url: (params) => `https://${params.projectId}.supabase.co/rest/v1/${params.table}`,
-    method: 'GET',
+    method: 'PATCH',
     headers: (params) => ({
       apikey: params.apiKey,
       Authorization: `Bearer ${params.apiKey}`,
+      'Content-Type': 'application/json',
     }),
   },
-  directExecution: async (params: SupabaseQueryParams) => {
+  directExecution: async (params: SupabaseUpdateParams) => {
     try {
       // Construct the URL for the Supabase REST API
-      let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
+      let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}`
 
-      // Add filters if provided
-      if (
-        params.filter &&
-        typeof params.filter === 'object' &&
-        Object.keys(params.filter).length > 0
-      ) {
+      // Add filters (required for update)
+      if (params.filter && Object.keys(params.filter).length > 0) {
         const filterParams = new URLSearchParams()
         Object.entries(params.filter).forEach(([key, value]) => {
           filterParams.append(key, `eq.${value}`)
         })
-        url += `&${filterParams.toString()}`
-      }
-
-      // Add order by if provided
-      if (params.orderBy) {
-        const orderParam = params.orderBy.includes('DESC')
-          ? `${params.orderBy.replace(' DESC', '').replace('DESC', '')}.desc`
-          : `${params.orderBy}.asc`
-        url += `&order=${orderParam}`
-      }
-
-      // Add limit if provided
-      if (params.limit) {
-        url += `&limit=${params.limit}`
+        url += `?${filterParams.toString()}`
       }
 
       // Fetch the data
       const response = await fetch(url, {
-        method: 'GET',
+        method: 'PATCH',
         headers: {
           apikey: params.apiKey,
           Authorization: `Bearer ${params.apiKey}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(params.data),
       })
 
       if (!response.ok) {
@@ -102,7 +82,7 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       return {
         success: true,
         output: {
-          message: `Successfully queried ${data.length} row(s) from ${params.table}`,
+          message: `Successfully updated ${Array.isArray(data) ? data.length : 1} row(s) in ${params.table}`,
           results: data,
         },
         error: undefined,
@@ -111,8 +91,8 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       return {
         success: false,
         output: {
-          message: `Error querying Supabase: ${error instanceof Error ? error.message : String(error)}`,
-          results: [],
+          message: `Error updating rows in Supabase: ${error instanceof Error ? error.message : String(error)}`,
+          results: null,
         },
         error: error instanceof Error ? error.message : String(error),
       }
@@ -121,7 +101,7 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
   transformResponse: async (response: Response) => {
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.message || 'Failed to query data from Supabase')
+      throw new Error(error.message || 'Failed to update rows in Supabase')
     }
 
     const data = await response.json()
@@ -129,13 +109,13 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
     return {
       success: true,
       output: {
-        message: 'Successfully queried data from Supabase',
+        message: `Successfully updated ${Array.isArray(data) ? data.length : 1} row(s)`,
         results: data,
       },
       error: undefined,
     }
   },
   transformError: (error: any) => {
-    return error.message || 'An error occurred while querying Supabase'
+    return error.message || 'An error occurred while updating rows in Supabase'
   },
 }

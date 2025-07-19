@@ -1,10 +1,10 @@
-import type { SupabaseQueryParams, SupabaseQueryResponse } from '@/tools/supabase/types'
+import type { SupabaseDeleteParams, SupabaseDeleteResponse } from '@/tools/supabase/types'
 import type { ToolConfig } from '@/tools/types'
 
-export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> = {
-  id: 'supabase_query',
-  name: 'Supabase Query',
-  description: 'Query data from a Supabase table',
+export const deleteTool: ToolConfig<SupabaseDeleteParams, SupabaseDeleteResponse> = {
+  id: 'supabase_delete',
+  name: 'Supabase Delete Row',
+  description: 'Delete rows from a Supabase table based on filter criteria',
   version: '1.0',
   params: {
     projectId: {
@@ -17,25 +17,13 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       type: 'string',
       required: true,
       visibility: 'user-only',
-      description: 'The name of the Supabase table to query',
+      description: 'The name of the Supabase table to delete from',
     },
     filter: {
       type: 'object',
-      required: false,
+      required: true,
       visibility: 'user-or-llm',
-      description: 'Filter to apply to the query',
-    },
-    orderBy: {
-      type: 'string',
-      required: false,
-      visibility: 'user-or-llm',
-      description: 'Column to order by (add DESC for descending)',
-    },
-    limit: {
-      type: 'number',
-      required: false,
-      visibility: 'user-or-llm',
-      description: 'Maximum number of rows to return',
+      description: 'Filter criteria to identify rows to delete (e.g., {"id": 123})',
     },
     apiKey: {
       type: 'string',
@@ -46,46 +34,33 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
   },
   request: {
     url: (params) => `https://${params.projectId}.supabase.co/rest/v1/${params.table}`,
-    method: 'GET',
+    method: 'DELETE',
     headers: (params) => ({
       apikey: params.apiKey,
       Authorization: `Bearer ${params.apiKey}`,
     }),
   },
-  directExecution: async (params: SupabaseQueryParams) => {
+  directExecution: async (params: SupabaseDeleteParams) => {
     try {
       // Construct the URL for the Supabase REST API
-      let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
+      let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}`
 
-      // Add filters if provided
-      if (
-        params.filter &&
-        typeof params.filter === 'object' &&
-        Object.keys(params.filter).length > 0
-      ) {
+      // Add filters (required for delete)
+      if (params.filter && Object.keys(params.filter).length > 0) {
         const filterParams = new URLSearchParams()
         Object.entries(params.filter).forEach(([key, value]) => {
           filterParams.append(key, `eq.${value}`)
         })
-        url += `&${filterParams.toString()}`
-      }
-
-      // Add order by if provided
-      if (params.orderBy) {
-        const orderParam = params.orderBy.includes('DESC')
-          ? `${params.orderBy.replace(' DESC', '').replace('DESC', '')}.desc`
-          : `${params.orderBy}.asc`
-        url += `&order=${orderParam}`
-      }
-
-      // Add limit if provided
-      if (params.limit) {
-        url += `&limit=${params.limit}`
+        url += `?${filterParams.toString()}`
+      } else {
+        throw new Error(
+          'Filter is required for delete operations to prevent accidental deletion of all rows'
+        )
       }
 
       // Fetch the data
       const response = await fetch(url, {
-        method: 'GET',
+        method: 'DELETE',
         headers: {
           apikey: params.apiKey,
           Authorization: `Bearer ${params.apiKey}`,
@@ -102,7 +77,7 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       return {
         success: true,
         output: {
-          message: `Successfully queried ${data.length} row(s) from ${params.table}`,
+          message: `Successfully deleted ${Array.isArray(data) ? data.length : 1} row(s) from ${params.table}`,
           results: data,
         },
         error: undefined,
@@ -111,8 +86,8 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       return {
         success: false,
         output: {
-          message: `Error querying Supabase: ${error instanceof Error ? error.message : String(error)}`,
-          results: [],
+          message: `Error deleting rows from Supabase: ${error instanceof Error ? error.message : String(error)}`,
+          results: null,
         },
         error: error instanceof Error ? error.message : String(error),
       }
@@ -121,7 +96,7 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
   transformResponse: async (response: Response) => {
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.message || 'Failed to query data from Supabase')
+      throw new Error(error.message || 'Failed to delete rows from Supabase')
     }
 
     const data = await response.json()
@@ -129,13 +104,13 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
     return {
       success: true,
       output: {
-        message: 'Successfully queried data from Supabase',
+        message: `Successfully deleted ${Array.isArray(data) ? data.length : 1} row(s)`,
         results: data,
       },
       error: undefined,
     }
   },
   transformError: (error: any) => {
-    return error.message || 'An error occurred while querying Supabase'
+    return error.message || 'An error occurred while deleting rows from Supabase'
   },
 }

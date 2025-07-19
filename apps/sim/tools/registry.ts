@@ -99,7 +99,13 @@ import { s3GetObjectTool } from '@/tools/s3'
 import { searchTool as serperSearch } from '@/tools/serper'
 import { slackMessageTool } from '@/tools/slack'
 import { stagehandAgentTool, stagehandExtractTool } from '@/tools/stagehand'
-import { supabaseInsertTool, supabaseQueryTool } from '@/tools/supabase'
+import {
+  supabaseDeleteTool,
+  supabaseGetRowTool,
+  supabaseInsertTool,
+  supabaseQueryTool,
+  supabaseUpdateTool,
+} from '@/tools/supabase'
 import { tavilyExtractTool, tavilySearchTool } from '@/tools/tavily'
 import { telegramMessageTool } from '@/tools/telegram'
 import { thinkingTool } from '@/tools/thinking'
@@ -149,6 +155,9 @@ export const tools: Record<string, ToolConfig> = {
   tavily_extract: tavilyExtractTool,
   supabase_query: supabaseQueryTool,
   supabase_insert: supabaseInsertTool,
+  supabase_get_row: supabaseGetRowTool,
+  supabase_update: supabaseUpdateTool,
+  supabase_delete: supabaseDeleteTool,
   typeform_responses: typeformResponsesTool,
   typeform_files: typeformFilesTool,
   typeform_insights: typeformInsightsTool,

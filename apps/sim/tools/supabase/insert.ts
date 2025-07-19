@@ -6,11 +6,6 @@ export const insertTool: ToolConfig<SupabaseInsertParams, SupabaseInsertResponse
   name: 'Supabase Insert',
   description: 'Insert data into a Supabase table',
   version: '1.0',
-  oauth: {
-    required: false,
-    provider: 'supabase',
-    additionalScopes: ['database.write', 'projects.read'],
-  },
   params: {
     projectId: {
       type: 'string',
@@ -33,8 +28,8 @@ export const insertTool: ToolConfig<SupabaseInsertParams, SupabaseInsertResponse
     apiKey: {
       type: 'string',
       required: true,
-      visibility: 'user-only',
-      description: 'Your Supabase client anon key',
+      visibility: 'hidden',
+      description: 'Your Supabase service role secret key',
     },
   },
   request: {

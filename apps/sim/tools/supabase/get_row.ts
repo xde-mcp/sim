@@ -1,10 +1,10 @@
-import type { SupabaseQueryParams, SupabaseQueryResponse } from '@/tools/supabase/types'
+import type { SupabaseGetRowParams, SupabaseGetRowResponse } from '@/tools/supabase/types'
 import type { ToolConfig } from '@/tools/types'
 
-export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> = {
-  id: 'supabase_query',
-  name: 'Supabase Query',
-  description: 'Query data from a Supabase table',
+export const getRowTool: ToolConfig<SupabaseGetRowParams, SupabaseGetRowResponse> = {
+  id: 'supabase_get_row',
+  name: 'Supabase Get Row',
+  description: 'Get a single row from a Supabase table based on filter criteria',
   version: '1.0',
   params: {
     projectId: {
@@ -21,21 +21,9 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
     },
     filter: {
       type: 'object',
-      required: false,
+      required: true,
       visibility: 'user-or-llm',
-      description: 'Filter to apply to the query',
-    },
-    orderBy: {
-      type: 'string',
-      required: false,
-      visibility: 'user-or-llm',
-      description: 'Column to order by (add DESC for descending)',
-    },
-    limit: {
-      type: 'number',
-      required: false,
-      visibility: 'user-or-llm',
-      description: 'Maximum number of rows to return',
+      description: 'Filter criteria to find the specific row (e.g., {"id": 123})',
     },
     apiKey: {
       type: 'string',
@@ -52,17 +40,13 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       Authorization: `Bearer ${params.apiKey}`,
     }),
   },
-  directExecution: async (params: SupabaseQueryParams) => {
+  directExecution: async (params: SupabaseGetRowParams) => {
     try {
       // Construct the URL for the Supabase REST API
       let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
 
-      // Add filters if provided
-      if (
-        params.filter &&
-        typeof params.filter === 'object' &&
-        Object.keys(params.filter).length > 0
-      ) {
+      // Add filters (required for get_row)
+      if (params.filter && Object.keys(params.filter).length > 0) {
         const filterParams = new URLSearchParams()
         Object.entries(params.filter).forEach(([key, value]) => {
           filterParams.append(key, `eq.${value}`)
@@ -70,18 +54,8 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
         url += `&${filterParams.toString()}`
       }
 
-      // Add order by if provided
-      if (params.orderBy) {
-        const orderParam = params.orderBy.includes('DESC')
-          ? `${params.orderBy.replace(' DESC', '').replace('DESC', '')}.desc`
-          : `${params.orderBy}.asc`
-        url += `&order=${orderParam}`
-      }
-
-      // Add limit if provided
-      if (params.limit) {
-        url += `&limit=${params.limit}`
-      }
+      // Limit to 1 row since we want a single row
+      url += `&limit=1`
 
       // Fetch the data
       const response = await fetch(url, {
@@ -98,12 +72,15 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       }
 
       const data = await response.json()
+      const row = data.length > 0 ? data[0] : null
 
       return {
         success: true,
         output: {
-          message: `Successfully queried ${data.length} row(s) from ${params.table}`,
-          results: data,
+          message: row
+            ? `Successfully found row in ${params.table}`
+            : `No row found in ${params.table} matching the criteria`,
+          results: row,
         },
         error: undefined,
       }
@@ -111,8 +88,8 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       return {
         success: false,
         output: {
-          message: `Error querying Supabase: ${error instanceof Error ? error.message : String(error)}`,
-          results: [],
+          message: `Error getting row from Supabase: ${error instanceof Error ? error.message : String(error)}`,
+          results: null,
         },
         error: error instanceof Error ? error.message : String(error),
       }
@@ -121,21 +98,22 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
   transformResponse: async (response: Response) => {
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.message || 'Failed to query data from Supabase')
+      throw new Error(error.message || 'Failed to get row from Supabase')
     }
 
     const data = await response.json()
+    const row = data.length > 0 ? data[0] : null
 
     return {
       success: true,
       output: {
-        message: 'Successfully queried data from Supabase',
-        results: data,
+        message: row ? 'Successfully found row' : 'No row found matching the criteria',
+        results: row,
       },
       error: undefined,
     }
   },
   transformError: (error: any) => {
-    return error.message || 'An error occurred while querying Supabase'
+    return error.message || 'An error occurred while getting row from Supabase'
   },
 }
