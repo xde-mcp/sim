@@ -15,7 +15,3 @@ export const extractEnvVarName = (value: string): string | null => {
   if (!isEnvVarReference(value)) return null
   return value.slice(2, -2)
 }
-
-// DEPRECATED: Autofill functions removed
-// These functions were used for the autofill feature which has been removed
-// Keeping the utility functions for environment variable references as they're still used
