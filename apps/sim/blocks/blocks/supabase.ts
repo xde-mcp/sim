@@ -93,7 +93,7 @@ export const SupabaseBlock: BlockConfig<SupabaseResponse> = {
     // Optional filters for query operation
     {
       id: 'filter',
-      title: 'Filter (optional)',
+      title: 'Filter',
       type: 'code',
       layout: 'full',
       placeholder: '{\n  "status": "active"\n}',
@@ -102,7 +102,7 @@ export const SupabaseBlock: BlockConfig<SupabaseResponse> = {
     // Optional order by for query operation
     {
       id: 'orderBy',
-      title: 'Order By (optional)',
+      title: 'Order By',
       type: 'short-input',
       layout: 'full',
       placeholder: 'column_name (add DESC for descending)',
@@ -111,7 +111,7 @@ export const SupabaseBlock: BlockConfig<SupabaseResponse> = {
     // Optional limit for query operation
     {
       id: 'limit',
-      title: 'Limit (optional)',
+      title: 'Limit',
       type: 'short-input',
       layout: 'full',
       placeholder: '100',

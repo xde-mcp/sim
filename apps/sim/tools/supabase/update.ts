@@ -39,18 +39,19 @@ export const updateTool: ToolConfig<SupabaseUpdateParams, SupabaseUpdateResponse
     },
   },
   request: {
-    url: (params) => `https://${params.projectId}.supabase.co/rest/v1/${params.table}`,
+    url: (params) => `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`,
     method: 'PATCH',
     headers: (params) => ({
       apikey: params.apiKey,
       Authorization: `Bearer ${params.apiKey}`,
       'Content-Type': 'application/json',
+      Prefer: 'return=representation',
     }),
   },
   directExecution: async (params: SupabaseUpdateParams) => {
     try {
-      // Construct the URL for the Supabase REST API
-      let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}`
+      // Construct the URL for the Supabase REST API with select to return updated data
+      let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
 
       // Add filters (required for update)
       if (params.filter && Object.keys(params.filter).length > 0) {
@@ -58,7 +59,7 @@ export const updateTool: ToolConfig<SupabaseUpdateParams, SupabaseUpdateResponse
         Object.entries(params.filter).forEach(([key, value]) => {
           filterParams.append(key, `eq.${value}`)
         })
-        url += `?${filterParams.toString()}`
+        url += `&${filterParams.toString()}`
       }
 
       // Fetch the data
@@ -68,6 +69,7 @@ export const updateTool: ToolConfig<SupabaseUpdateParams, SupabaseUpdateResponse
           apikey: params.apiKey,
           Authorization: `Bearer ${params.apiKey}`,
           'Content-Type': 'application/json',
+          Prefer: 'return=representation',
         },
         body: JSON.stringify(params.data),
       })
@@ -77,12 +79,28 @@ export const updateTool: ToolConfig<SupabaseUpdateParams, SupabaseUpdateResponse
         throw new Error(`Error from Supabase: ${response.status} ${errorText}`)
       }
 
-      const data = await response.json()
+      // Handle potentially empty response from update operations
+      const text = await response.text()
+      let data
+
+      if (text?.trim()) {
+        try {
+          data = JSON.parse(text)
+        } catch (e) {
+          // If we can't parse it, just use the text
+          data = text
+        }
+      } else {
+        // Empty response means successful update
+        data = []
+      }
+
+      const updatedCount = Array.isArray(data) ? data.length : text ? 1 : 0
 
       return {
         success: true,
         output: {
-          message: `Successfully updated ${Array.isArray(data) ? data.length : 1} row(s) in ${params.table}`,
+          message: `Successfully updated ${updatedCount === 0 ? 'row(s)' : `${updatedCount} row(s)`} in ${params.table}`,
           results: data,
         },
         error: undefined,
@@ -104,12 +122,28 @@ export const updateTool: ToolConfig<SupabaseUpdateParams, SupabaseUpdateResponse
       throw new Error(error.message || 'Failed to update rows in Supabase')
     }
 
-    const data = await response.json()
+    // Handle potentially empty response from update operations
+    const text = await response.text()
+    let data
+
+    if (text?.trim()) {
+      try {
+        data = JSON.parse(text)
+      } catch (e) {
+        // If we can't parse it, just use the text
+        data = text
+      }
+    } else {
+      // Empty response means successful update
+      data = []
+    }
+
+    const updatedCount = Array.isArray(data) ? data.length : text ? 1 : 0
 
     return {
       success: true,
       output: {
-        message: `Successfully updated ${Array.isArray(data) ? data.length : 1} row(s)`,
+        message: `Successfully updated ${updatedCount === 0 ? 'row(s)' : `${updatedCount} row(s)`}`,
         results: data,
       },
       error: undefined,

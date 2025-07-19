@@ -33,17 +33,18 @@ export const deleteTool: ToolConfig<SupabaseDeleteParams, SupabaseDeleteResponse
     },
   },
   request: {
-    url: (params) => `https://${params.projectId}.supabase.co/rest/v1/${params.table}`,
+    url: (params) => `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`,
     method: 'DELETE',
     headers: (params) => ({
       apikey: params.apiKey,
       Authorization: `Bearer ${params.apiKey}`,
+      Prefer: 'return=representation',
     }),
   },
   directExecution: async (params: SupabaseDeleteParams) => {
     try {
-      // Construct the URL for the Supabase REST API
-      let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}`
+      // Construct the URL for the Supabase REST API with select to return deleted data
+      let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
 
       // Add filters (required for delete)
       if (params.filter && Object.keys(params.filter).length > 0) {
@@ -51,7 +52,7 @@ export const deleteTool: ToolConfig<SupabaseDeleteParams, SupabaseDeleteResponse
         Object.entries(params.filter).forEach(([key, value]) => {
           filterParams.append(key, `eq.${value}`)
         })
-        url += `?${filterParams.toString()}`
+        url += `&${filterParams.toString()}`
       } else {
         throw new Error(
           'Filter is required for delete operations to prevent accidental deletion of all rows'
@@ -64,6 +65,7 @@ export const deleteTool: ToolConfig<SupabaseDeleteParams, SupabaseDeleteResponse
         headers: {
           apikey: params.apiKey,
           Authorization: `Bearer ${params.apiKey}`,
+          Prefer: 'return=representation',
         },
       })
 
@@ -72,12 +74,28 @@ export const deleteTool: ToolConfig<SupabaseDeleteParams, SupabaseDeleteResponse
         throw new Error(`Error from Supabase: ${response.status} ${errorText}`)
       }
 
-      const data = await response.json()
+      // Handle empty response from delete operations
+      const text = await response.text()
+      let data
+
+      if (text?.trim()) {
+        try {
+          data = JSON.parse(text)
+        } catch (e) {
+          // If we can't parse it, just use the text
+          data = text
+        }
+      } else {
+        // Empty response means successful deletion
+        data = []
+      }
+
+      const deletedCount = Array.isArray(data) ? data.length : text ? 1 : 0
 
       return {
         success: true,
         output: {
-          message: `Successfully deleted ${Array.isArray(data) ? data.length : 1} row(s) from ${params.table}`,
+          message: `Successfully deleted ${deletedCount === 0 ? 'row(s)' : `${deletedCount} row(s)`} from ${params.table}`,
           results: data,
         },
         error: undefined,
@@ -99,12 +117,28 @@ export const deleteTool: ToolConfig<SupabaseDeleteParams, SupabaseDeleteResponse
       throw new Error(error.message || 'Failed to delete rows from Supabase')
     }
 
-    const data = await response.json()
+    // Handle empty response from delete operations
+    const text = await response.text()
+    let data
+
+    if (text?.trim()) {
+      try {
+        data = JSON.parse(text)
+      } catch (e) {
+        // If we can't parse it, just use the text
+        data = text
+      }
+    } else {
+      // Empty response means successful deletion
+      data = []
+    }
+
+    const deletedCount = Array.isArray(data) ? data.length : text ? 1 : 0
 
     return {
       success: true,
       output: {
-        message: `Successfully deleted ${Array.isArray(data) ? data.length : 1} row(s)`,
+        message: `Successfully deleted ${deletedCount === 0 ? 'row(s)' : `${deletedCount} row(s)`}`,
         results: data,
       },
       error: undefined,
