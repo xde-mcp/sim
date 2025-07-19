@@ -20,10 +20,11 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       description: 'The name of the Supabase table to query',
     },
     filter: {
-      type: 'object',
+      type: 'string',
       required: false,
       visibility: 'user-or-llm',
-      description: 'Filter to apply to the query',
+      description:
+        'PostgREST filter (e.g., "id=eq.2", "name=not.is.null", "age=gt.18&status=eq.active")',
     },
     orderBy: {
       type: 'string',
@@ -57,17 +58,9 @@ export const queryTool: ToolConfig<SupabaseQueryParams, SupabaseQueryResponse> =
       // Construct the URL for the Supabase REST API
       let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
 
-      // Add filters if provided
-      if (
-        params.filter &&
-        typeof params.filter === 'object' &&
-        Object.keys(params.filter).length > 0
-      ) {
-        const filterParams = new URLSearchParams()
-        Object.entries(params.filter).forEach(([key, value]) => {
-          filterParams.append(key, `eq.${value}`)
-        })
-        url += `&${filterParams.toString()}`
+      // Add filters if provided - using PostgREST syntax
+      if (params.filter && params.filter.trim()) {
+        url += `&${params.filter.trim()}`
       }
 
       // Add order by if provided

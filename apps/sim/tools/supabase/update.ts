@@ -20,10 +20,11 @@ export const updateTool: ToolConfig<SupabaseUpdateParams, SupabaseUpdateResponse
       description: 'The name of the Supabase table to update',
     },
     filter: {
-      type: 'object',
+      type: 'string',
       required: true,
       visibility: 'user-or-llm',
-      description: 'Filter criteria to identify rows to update (e.g., {"id": 123})',
+      description:
+        'PostgREST filter to identify rows to update (e.g., "id=eq.123", "status=eq.active", "name=not.is.null")',
     },
     data: {
       type: 'object',
@@ -53,13 +54,9 @@ export const updateTool: ToolConfig<SupabaseUpdateParams, SupabaseUpdateResponse
       // Construct the URL for the Supabase REST API with select to return updated data
       let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
 
-      // Add filters (required for update)
-      if (params.filter && Object.keys(params.filter).length > 0) {
-        const filterParams = new URLSearchParams()
-        Object.entries(params.filter).forEach(([key, value]) => {
-          filterParams.append(key, `eq.${value}`)
-        })
-        url += `&${filterParams.toString()}`
+      // Add filters (required for update) - using PostgREST syntax
+      if (params.filter && params.filter.trim()) {
+        url += `&${params.filter.trim()}`
       }
 
       // Fetch the data

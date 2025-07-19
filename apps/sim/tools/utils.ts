@@ -166,7 +166,11 @@ export function validateToolRequest(
   // Ensure all required parameters for tool call are provided
   // Note: user-only parameters are not checked here as they're optional
   for (const [paramName, paramConfig] of Object.entries(tool.params)) {
-    if (paramConfig.visibility === 'user-or-llm' && !(paramName in params)) {
+    if (
+      paramConfig.visibility === 'user-or-llm' &&
+      paramConfig.required &&
+      !(paramName in params)
+    ) {
       throw new Error(`Parameter "${paramName}" is required for ${toolId} but was not provided`)
     }
   }

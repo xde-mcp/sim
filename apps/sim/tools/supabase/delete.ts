@@ -20,10 +20,11 @@ export const deleteTool: ToolConfig<SupabaseDeleteParams, SupabaseDeleteResponse
       description: 'The name of the Supabase table to delete from',
     },
     filter: {
-      type: 'object',
+      type: 'string',
       required: true,
       visibility: 'user-or-llm',
-      description: 'Filter criteria to identify rows to delete (e.g., {"id": 123})',
+      description:
+        'PostgREST filter to identify rows to delete (e.g., "id=eq.123", "status=eq.active", "name=not.is.null")',
     },
     apiKey: {
       type: 'string',
@@ -46,13 +47,9 @@ export const deleteTool: ToolConfig<SupabaseDeleteParams, SupabaseDeleteResponse
       // Construct the URL for the Supabase REST API with select to return deleted data
       let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
 
-      // Add filters (required for delete)
-      if (params.filter && Object.keys(params.filter).length > 0) {
-        const filterParams = new URLSearchParams()
-        Object.entries(params.filter).forEach(([key, value]) => {
-          filterParams.append(key, `eq.${value}`)
-        })
-        url += `&${filterParams.toString()}`
+      // Add filters (required for delete) - using PostgREST syntax
+      if (params.filter && params.filter.trim()) {
+        url += `&${params.filter.trim()}`
       } else {
         throw new Error(
           'Filter is required for delete operations to prevent accidental deletion of all rows'

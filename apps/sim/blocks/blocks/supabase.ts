@@ -1,6 +1,9 @@
 import { SupabaseIcon } from '@/components/icons'
+import { createLogger } from '@/lib/logs/console-logger'
 import type { BlockConfig } from '@/blocks/types'
 import type { SupabaseResponse } from '@/tools/supabase/types'
+
+const logger = createLogger('SupabaseBlock')
 
 export const SupabaseBlock: BlockConfig<SupabaseResponse> = {
   type: 'supabase',
@@ -31,6 +34,7 @@ export const SupabaseBlock: BlockConfig<SupabaseResponse> = {
       title: 'Project ID',
       type: 'short-input',
       layout: 'full',
+      password: true,
       placeholder: 'Your Supabase project ID (e.g., jdrkgepadsdopsntdlom)',
     },
     {
@@ -65,38 +69,38 @@ export const SupabaseBlock: BlockConfig<SupabaseResponse> = {
       placeholder: '{\n  "column1": "value1",\n  "column2": "value2"\n}',
       condition: { field: 'operation', value: 'update' },
     },
-    // Filter/WHERE clause for get_row, update, delete operations
+    // Filter for get_row, update, delete operations (required)
     {
       id: 'filter',
-      title: 'Filter (WHERE clause)',
-      type: 'code',
+      title: 'Filter (PostgREST syntax)',
+      type: 'short-input',
       layout: 'full',
-      placeholder: '{\n  "id": 123\n}',
+      placeholder: 'id=eq.123',
       condition: { field: 'operation', value: 'get_row' },
     },
     {
       id: 'filter',
-      title: 'Filter (WHERE clause)',
-      type: 'code',
+      title: 'Filter (PostgREST syntax)',
+      type: 'short-input',
       layout: 'full',
-      placeholder: '{\n  "id": 123\n}',
+      placeholder: 'id=eq.123',
       condition: { field: 'operation', value: 'update' },
     },
     {
       id: 'filter',
-      title: 'Filter (WHERE clause)',
-      type: 'code',
+      title: 'Filter (PostgREST syntax)',
+      type: 'short-input',
       layout: 'full',
-      placeholder: '{\n  "id": 123\n}',
+      placeholder: 'id=eq.123',
       condition: { field: 'operation', value: 'delete' },
     },
-    // Optional filters for query operation
+    // Optional filter for query operation
     {
       id: 'filter',
-      title: 'Filter',
-      type: 'code',
+      title: 'Filter (PostgREST syntax)',
+      type: 'short-input',
       layout: 'full',
-      placeholder: '{\n  "status": "active"\n}',
+      placeholder: 'status=eq.active',
       condition: { field: 'operation', value: 'query' },
     },
     // Optional order by for query operation
@@ -158,16 +162,10 @@ export const SupabaseBlock: BlockConfig<SupabaseResponse> = {
           parsedData = data
         }
 
-        // Parse JSON filter if it's a string
+        // Handle filter - just pass through PostgREST syntax
         let parsedFilter
         if (filter && typeof filter === 'string' && filter.trim()) {
-          try {
-            parsedFilter = JSON.parse(filter)
-          } catch (_e) {
-            throw new Error('Invalid JSON filter format')
-          }
-        } else if (filter && typeof filter === 'object') {
-          parsedFilter = filter
+          parsedFilter = filter.trim()
         }
 
         // Build params object, only including defined values
@@ -177,7 +175,7 @@ export const SupabaseBlock: BlockConfig<SupabaseResponse> = {
           result.data = parsedData
         }
 
-        if (parsedFilter !== undefined) {
+        if (parsedFilter !== undefined && parsedFilter !== '') {
           result.filter = parsedFilter
         }
 
@@ -192,8 +190,8 @@ export const SupabaseBlock: BlockConfig<SupabaseResponse> = {
     apiKey: { type: 'string', required: true },
     // Data for insert/update operations
     data: { type: 'json', required: false },
-    // Filter for get_row/update/delete/query operations
-    filter: { type: 'json', required: false },
+    // Filter for operations
+    filter: { type: 'string', required: false },
     // Query operation inputs
     orderBy: { type: 'string', required: false },
     limit: { type: 'number', required: false },

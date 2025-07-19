@@ -20,10 +20,11 @@ export const getRowTool: ToolConfig<SupabaseGetRowParams, SupabaseGetRowResponse
       description: 'The name of the Supabase table to query',
     },
     filter: {
-      type: 'object',
+      type: 'string',
       required: true,
       visibility: 'user-or-llm',
-      description: 'Filter criteria to find the specific row (e.g., {"id": 123})',
+      description:
+        'PostgREST filter to find the specific row (e.g., "id=eq.123", "status=eq.active", "name=not.is.null")',
     },
     apiKey: {
       type: 'string',
@@ -45,13 +46,9 @@ export const getRowTool: ToolConfig<SupabaseGetRowParams, SupabaseGetRowResponse
       // Construct the URL for the Supabase REST API
       let url = `https://${params.projectId}.supabase.co/rest/v1/${params.table}?select=*`
 
-      // Add filters (required for get_row)
-      if (params.filter && Object.keys(params.filter).length > 0) {
-        const filterParams = new URLSearchParams()
-        Object.entries(params.filter).forEach(([key, value]) => {
-          filterParams.append(key, `eq.${value}`)
-        })
-        url += `&${filterParams.toString()}`
+      // Add filters (required for get_row) - using PostgREST syntax
+      if (params.filter && params.filter.trim()) {
+        url += `&${params.filter.trim()}`
       }
 
       // Limit to 1 row since we want a single row

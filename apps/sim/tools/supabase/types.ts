@@ -4,7 +4,7 @@ export interface SupabaseQueryParams {
   apiKey: string
   projectId: string
   table: string
-  filter?: any
+  filter?: string
   orderBy?: string
   limit?: number
 }
@@ -20,14 +20,14 @@ export interface SupabaseGetRowParams {
   apiKey: string
   projectId: string
   table: string
-  filter: any
+  filter: string
 }
 
 export interface SupabaseUpdateParams {
   apiKey: string
   projectId: string
   table: string
-  filter: any
+  filter: string
   data: any
 }
 
@@ -35,7 +35,7 @@ export interface SupabaseDeleteParams {
   apiKey: string
   projectId: string
   table: string
-  filter: any
+  filter: string
 }
 
 export interface SupabaseBaseResponse extends ToolResponse {
