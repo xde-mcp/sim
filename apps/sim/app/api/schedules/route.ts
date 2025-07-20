@@ -150,10 +150,19 @@ export async function POST(req: NextRequest) {
 
     logger.info(`[${requestId}] Processing schedule update for workflow ${workflowId}`)
 
-    // Find either starter block or schedule trigger block
-    const targetBlock = Object.values(state.blocks).find(
-      (block: any) => block.type === 'starter' || block.type === 'schedule'
-    ) as BlockState | undefined
+    // Find the target block - prioritize the specific blockId if provided
+    let targetBlock: BlockState | undefined
+    if (blockId) {
+      // If blockId is provided, find that specific block
+      targetBlock = Object.values(state.blocks).find((block: any) => block.id === blockId) as
+        | BlockState
+        | undefined
+    } else {
+      // Fallback: find either starter block or schedule trigger block
+      targetBlock = Object.values(state.blocks).find(
+        (block: any) => block.type === 'starter' || block.type === 'schedule'
+      ) as BlockState | undefined
+    }
 
     if (!targetBlock) {
       logger.warn(`[${requestId}] No starter or schedule block found in workflow ${workflowId}`)
@@ -174,6 +183,23 @@ export async function POST(req: NextRequest) {
     // For starter blocks, check if schedule is selected and has valid config
     const isScheduleBlock = targetBlock.type === 'schedule'
     const hasValidConfig = isScheduleBlock || (startWorkflow === 'schedule' && hasScheduleConfig)
+
+    // Debug logging to understand why validation fails
+    logger.info(`[${requestId}] Schedule validation debug:`, {
+      workflowId,
+      blockId,
+      blockType: targetBlock.type,
+      isScheduleBlock,
+      startWorkflow,
+      scheduleType,
+      hasScheduleConfig,
+      hasValidConfig,
+      scheduleValues: {
+        minutesInterval: scheduleValues.minutesInterval,
+        dailyTime: scheduleValues.dailyTime,
+        cronExpression: scheduleValues.cronExpression,
+      },
+    })
 
     if (!hasValidConfig) {
       logger.info(
@@ -270,7 +296,7 @@ export async function POST(req: NextRequest) {
       .insert(workflowSchedule)
       .values(values)
       .onConflictDoUpdate({
-        target: [workflowSchedule.workflowId],
+        target: [workflowSchedule.workflowId, workflowSchedule.blockId],
         set: setValues,
       })
 

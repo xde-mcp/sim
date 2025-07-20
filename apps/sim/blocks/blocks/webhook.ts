@@ -7,11 +7,11 @@ import {
   SlackIcon,
   StripeIcon,
   TelegramIcon,
+  WebhookIcon,
   WhatsAppIcon,
 } from '@/components/icons'
 import type { BlockConfig } from '../types'
 
-// Helper function to get provider icon
 const getWebhookProviderIcon = (provider: string) => {
   const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     slack: SlackIcon,
@@ -28,12 +28,12 @@ const getWebhookProviderIcon = (provider: string) => {
   return iconMap[provider.toLowerCase()]
 }
 
-export const WebhookTriggerBlock: BlockConfig = {
-  type: 'webhook_trigger',
+export const WebhookBlock: BlockConfig = {
+  type: 'webhook',
   name: 'Webhook',
   description: 'Trigger workflow execution from external webhooks',
   category: 'triggers',
-  icon: SignalIcon,
+  icon: WebhookIcon,
   bgColor: '#10B981', // Green color for triggers
 
   subBlocks: [

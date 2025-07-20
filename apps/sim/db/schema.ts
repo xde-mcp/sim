@@ -410,24 +410,34 @@ export const settings = pgTable('settings', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
-export const workflowSchedule = pgTable('workflow_schedule', {
-  id: text('id').primaryKey(),
-  workflowId: text('workflow_id')
-    .notNull()
-    .references(() => workflow.id, { onDelete: 'cascade' })
-    .unique(),
-  blockId: text('block_id').references(() => workflowBlocks.id, { onDelete: 'cascade' }),
-  cronExpression: text('cron_expression'),
-  nextRunAt: timestamp('next_run_at'),
-  lastRanAt: timestamp('last_ran_at'),
-  triggerType: text('trigger_type').notNull(), // "manual", "webhook", "schedule"
-  timezone: text('timezone').notNull().default('UTC'),
-  failedCount: integer('failed_count').notNull().default(0), // Track consecutive failures
-  status: text('status').notNull().default('active'), // 'active' or 'disabled'
-  lastFailedAt: timestamp('last_failed_at'), // When the schedule last failed
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-})
+export const workflowSchedule = pgTable(
+  'workflow_schedule',
+  {
+    id: text('id').primaryKey(),
+    workflowId: text('workflow_id')
+      .notNull()
+      .references(() => workflow.id, { onDelete: 'cascade' }),
+    blockId: text('block_id').references(() => workflowBlocks.id, { onDelete: 'cascade' }),
+    cronExpression: text('cron_expression'),
+    nextRunAt: timestamp('next_run_at'),
+    lastRanAt: timestamp('last_ran_at'),
+    triggerType: text('trigger_type').notNull(), // "manual", "webhook", "schedule"
+    timezone: text('timezone').notNull().default('UTC'),
+    failedCount: integer('failed_count').notNull().default(0), // Track consecutive failures
+    status: text('status').notNull().default('active'), // 'active' or 'disabled'
+    lastFailedAt: timestamp('last_failed_at'), // When the schedule last failed
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      workflowBlockUnique: uniqueIndex('workflow_schedule_workflow_block_unique').on(
+        table.workflowId,
+        table.blockId
+      ),
+    }
+  }
+)
 
 export const webhook = pgTable(
   'webhook',

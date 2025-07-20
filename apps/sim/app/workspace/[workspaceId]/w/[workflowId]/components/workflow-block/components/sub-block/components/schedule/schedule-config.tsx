@@ -49,7 +49,6 @@ export function ScheduleConfig({
   const workflowId = params.workflowId as string
 
   // Get workflow state from store
-  const setScheduleStatus = useWorkflowStore((state) => state.setScheduleStatus)
 
   // Get the schedule type from the block state
   const [scheduleType] = useSubBlockValue(blockId, 'scheduleType')
@@ -95,16 +94,15 @@ export function ScheduleConfig({
           setCronExpression(data.schedule.cronExpression)
           setTimezone(data.schedule.timezone || 'UTC')
 
-          // Set active schedule flag to true since we found an active schedule
-          setScheduleStatus(true)
+          // Note: We no longer set global schedule status from individual components
+          // The global schedule status should be managed by a higher-level component
         } else {
           setScheduleId(null)
           setNextRunAt(null)
           setLastRanAt(null)
           setCronExpression(null)
 
-          // Set active schedule flag to false since no schedule was found
-          setScheduleStatus(false)
+          // Note: We no longer set global schedule status from individual components
         }
       }
     } catch (error) {
@@ -117,9 +115,8 @@ export function ScheduleConfig({
 
   // Check for schedule on mount and when relevant dependencies change
   useEffect(() => {
-    // Only check for schedules when workflowId changes or modal opens
-    // Avoid checking on every scheduleType change to prevent excessive API calls
-    if (workflowId && (isModalOpen || refreshCounter > 0)) {
+    // Check for schedules when workflowId changes, modal opens, or on initial mount
+    if (workflowId) {
       checkSchedule()
     }
 
@@ -262,7 +259,7 @@ export function ScheduleConfig({
       }
 
       // 6. Update the schedule status and trigger a workflow update
-      setScheduleStatus(true)
+      // Note: Global schedule status is managed at a higher level
 
       // 7. Tell the workflow store that the state has been saved
       const workflowStore = useWorkflowStore.getState()
@@ -335,7 +332,7 @@ export function ScheduleConfig({
       setCronExpression(null)
 
       // 6. Update schedule status and refresh UI
-      setScheduleStatus(false)
+      // Note: Global schedule status is managed at a higher level
       setRefreshCounter((prev) => prev + 1)
 
       return true

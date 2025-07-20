@@ -1,4 +1,4 @@
-import { CalendarIcon } from '@/components/icons'
+import { ScheduleIcon } from '@/components/icons'
 import type { BlockConfig } from '../types'
 
 export const ScheduleBlock: BlockConfig = {
@@ -8,8 +8,8 @@ export const ScheduleBlock: BlockConfig = {
   longDescription:
     'Configure automated workflow execution with flexible timing options. Set up recurring workflows that run at specific intervals or times.',
   category: 'triggers',
-  bgColor: '#8B5CF6', // Purple color for schedule triggers
-  icon: CalendarIcon,
+  bgColor: '#7B68EE',
+  icon: ScheduleIcon,
 
   subBlocks: [
     // Schedule configuration status display
@@ -34,16 +34,6 @@ export const ScheduleBlock: BlockConfig = {
         { label: 'Custom Cron', id: 'custom' },
       ],
       value: () => 'daily',
-      hidden: true,
-    },
-    {
-      id: 'scheduleStartAt',
-      type: 'date-input',
-      hidden: true,
-    },
-    {
-      id: 'scheduleTime',
-      type: 'time-input',
       hidden: true,
     },
     {

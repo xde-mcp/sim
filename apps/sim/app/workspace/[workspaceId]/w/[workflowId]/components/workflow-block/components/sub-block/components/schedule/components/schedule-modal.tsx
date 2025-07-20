@@ -405,7 +405,7 @@ export function ScheduleModal({
             )}
 
             {/* Daily schedule options */}
-            {scheduleType === 'daily' && (
+            {(scheduleType === 'daily' || !scheduleType) && (
               <div className='space-y-1'>
                 <label htmlFor='dailyTime' className='font-medium text-sm'>
                   Time of Day
@@ -514,29 +514,31 @@ export function ScheduleModal({
               </div>
             )}
 
-            {/* Timezone configuration */}
-            <div className='space-y-1'>
-              <label htmlFor='timezone' className='font-medium text-sm'>
-                Timezone
-              </label>
-              <Select value={timezone || 'UTC'} onValueChange={(value) => setTimezone(value)}>
-                <SelectTrigger className='h-10'>
-                  <SelectValue placeholder='Select timezone' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='UTC'>UTC</SelectItem>
-                  <SelectItem value='America/New_York'>US Eastern (UTC-4)</SelectItem>
-                  <SelectItem value='America/Chicago'>US Central (UTC-5)</SelectItem>
-                  <SelectItem value='America/Denver'>US Mountain (UTC-6)</SelectItem>
-                  <SelectItem value='America/Los_Angeles'>US Pacific (UTC-7)</SelectItem>
-                  <SelectItem value='Europe/London'>London (UTC+1)</SelectItem>
-                  <SelectItem value='Europe/Paris'>Paris (UTC+2)</SelectItem>
-                  <SelectItem value='Asia/Singapore'>Singapore (UTC+8)</SelectItem>
-                  <SelectItem value='Asia/Tokyo'>Tokyo (UTC+9)</SelectItem>
-                  <SelectItem value='Australia/Sydney'>Sydney (UTC+10)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Timezone configuration - only show for time-specific schedules */}
+            {scheduleType !== 'minutes' && scheduleType !== 'hourly' && (
+              <div className='space-y-1'>
+                <label htmlFor='timezone' className='font-medium text-sm'>
+                  Timezone
+                </label>
+                <Select value={timezone || 'UTC'} onValueChange={(value) => setTimezone(value)}>
+                  <SelectTrigger className='h-10'>
+                    <SelectValue placeholder='Select timezone' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='UTC'>UTC</SelectItem>
+                    <SelectItem value='America/New_York'>US Eastern (UTC-4)</SelectItem>
+                    <SelectItem value='America/Chicago'>US Central (UTC-5)</SelectItem>
+                    <SelectItem value='America/Denver'>US Mountain (UTC-6)</SelectItem>
+                    <SelectItem value='America/Los_Angeles'>US Pacific (UTC-7)</SelectItem>
+                    <SelectItem value='Europe/London'>London (UTC+1)</SelectItem>
+                    <SelectItem value='Europe/Paris'>Paris (UTC+2)</SelectItem>
+                    <SelectItem value='Asia/Singapore'>Singapore (UTC+8)</SelectItem>
+                    <SelectItem value='Asia/Tokyo'>Tokyo (UTC+9)</SelectItem>
+                    <SelectItem value='Australia/Sydney'>Sydney (UTC+10)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
 
