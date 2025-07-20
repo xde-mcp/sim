@@ -30,9 +30,9 @@ const getWebhookProviderIcon = (provider: string) => {
 
 export const WebhookTriggerBlock: BlockConfig = {
   type: 'webhook_trigger',
-  name: 'Webhook Trigger',
+  name: 'Webhook',
   description: 'Trigger workflow execution from external webhooks',
-  category: 'blocks',
+  category: 'triggers',
   icon: SignalIcon,
   bgColor: '#10B981', // Green color for triggers
 

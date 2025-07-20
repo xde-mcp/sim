@@ -1080,12 +1080,12 @@ const WorkflowContent = React.memo(() => {
 
         if (!sourceNode || !targetNode) return
 
-        // Prevent incoming connections to webhook trigger blocks
-        if (targetNode.data?.type === 'webhook_trigger') {
+        // Prevent incoming connections to trigger blocks (webhook, schedule, etc.)
+        if (targetNode.data?.config?.category === 'triggers') {
           return
         }
 
-        // Prevent incoming connections to starter blocks
+        // Prevent incoming connections to starter blocks (still keep separate for backward compatibility)
         if (targetNode.data?.type === 'starter') {
           return
         }

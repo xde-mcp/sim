@@ -6,7 +6,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { createLogger } from '@/lib/logs/console-logger'
 import { parseCronToHumanReadable } from '@/lib/schedules/utils'
 import { formatDateTime } from '@/lib/utils'
-import { getWorkflowWithValues } from '@/stores/workflows'
+import { getBlockWithValues, getWorkflowWithValues } from '@/stores/workflows'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
 import { useSubBlockStore } from '@/stores/workflows/subblock/store'
 import { useWorkflowStore } from '@/stores/workflows/workflow/store'
@@ -58,12 +58,25 @@ export function ScheduleConfig({
   // and expose the setter so we can update it
   const [_startWorkflow, setStartWorkflow] = useSubBlockValue(blockId, 'startWorkflow')
 
+  // Determine if this is a schedule trigger block vs starter block
+  const blockWithValues = getBlockWithValues(blockId)
+  const isScheduleTriggerBlock = blockWithValues?.type === 'schedule'
+
   // Function to check if schedule exists in the database
   const checkSchedule = async () => {
     setIsLoading(true)
     try {
       // Check if there's a schedule for this workflow, passing the mode parameter
-      const response = await fetch(`/api/schedules?workflowId=${workflowId}&mode=schedule`, {
+      // For schedule trigger blocks, include blockId to get the specific schedule
+      const url = new URL('/api/schedules', window.location.origin)
+      url.searchParams.set('workflowId', workflowId)
+      url.searchParams.set('mode', 'schedule')
+
+      if (isScheduleTriggerBlock) {
+        url.searchParams.set('blockId', blockId)
+      }
+
+      const response = await fetch(url.toString(), {
         // Add cache: 'no-store' to prevent caching of this request
         cache: 'no-store',
         headers: {
@@ -160,22 +173,32 @@ export function ScheduleConfig({
     setError(null)
 
     try {
-      // 1. First, update the startWorkflow value in SubBlock store to 'schedule'
-      setStartWorkflow('schedule')
+      // For starter blocks, update the startWorkflow value to 'schedule'
+      // For schedule trigger blocks, skip this step as startWorkflow is not needed
+      if (!isScheduleTriggerBlock) {
+        // 1. First, update the startWorkflow value in SubBlock store to 'schedule'
+        setStartWorkflow('schedule')
 
-      // 2. Directly access and modify the SubBlock store to guarantee the value is set
+        // 2. Directly access and modify the SubBlock store to guarantee the value is set
+        const activeWorkflowId = useWorkflowRegistry.getState().activeWorkflowId
+        if (!activeWorkflowId) {
+          setError('No active workflow found')
+          return false
+        }
+
+        // Update the SubBlock store directly to ensure the value is set correctly
+        const subBlockStore = useSubBlockStore.getState()
+        subBlockStore.setValue(blockId, 'startWorkflow', 'schedule')
+
+        // Give React time to process the state update
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      }
+
       const activeWorkflowId = useWorkflowRegistry.getState().activeWorkflowId
       if (!activeWorkflowId) {
         setError('No active workflow found')
         return false
       }
-
-      // Update the SubBlock store directly to ensure the value is set correctly
-      const subBlockStore = useSubBlockStore.getState()
-      subBlockStore.setValue(blockId, 'startWorkflow', 'schedule')
-
-      // Give React time to process the state update
-      await new Promise((resolve) => setTimeout(resolve, 200))
 
       // 3. Get the fully merged current state with updated values
       // This ensures we send the complete, correct workflow state to the backend
@@ -188,15 +211,24 @@ export function ScheduleConfig({
       // 4. Make a direct API call instead of relying on sync
       // This gives us more control and better error handling
       logger.debug('Making direct API call to save schedule with complete state')
+
+      // Prepare the request body
+      const requestBody: any = {
+        workflowId,
+        state: currentWorkflowWithValues.state,
+      }
+
+      // For schedule trigger blocks, include the blockId
+      if (isScheduleTriggerBlock) {
+        requestBody.blockId = blockId
+      }
+
       const response = await fetch('/api/schedules', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          workflowId,
-          state: currentWorkflowWithValues.state,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       // Parse the response
@@ -262,24 +294,28 @@ export function ScheduleConfig({
 
     setIsDeleting(true)
     try {
-      // 1. First update the workflow state to disable scheduling
-      setStartWorkflow('manual')
+      // For starter blocks, update the startWorkflow value to 'manual'
+      // For schedule trigger blocks, skip this step as startWorkflow is not relevant
+      if (!isScheduleTriggerBlock) {
+        // 1. First update the workflow state to disable scheduling
+        setStartWorkflow('manual')
 
-      // 2. Directly update the SubBlock store to ensure the value is set
-      const activeWorkflowId = useWorkflowRegistry.getState().activeWorkflowId
-      if (!activeWorkflowId) {
-        setError('No active workflow found')
-        return false
+        // 2. Directly update the SubBlock store to ensure the value is set
+        const activeWorkflowId = useWorkflowRegistry.getState().activeWorkflowId
+        if (!activeWorkflowId) {
+          setError('No active workflow found')
+          return false
+        }
+
+        // Update the store directly
+        const subBlockStore = useSubBlockStore.getState()
+        subBlockStore.setValue(blockId, 'startWorkflow', 'manual')
+
+        // 3. Update the workflow store
+        const workflowStore = useWorkflowStore.getState()
+        workflowStore.triggerUpdate()
+        workflowStore.updateLastSaved()
       }
-
-      // Update the store directly
-      const subBlockStore = useSubBlockStore.getState()
-      subBlockStore.setValue(blockId, 'startWorkflow', 'manual')
-
-      // 3. Update the workflow store
-      const workflowStore = useWorkflowStore.getState()
-      workflowStore.triggerUpdate()
-      workflowStore.updateLastSaved()
 
       // 4. Make the DELETE API call to remove the schedule
       const response = await fetch(`/api/schedules/${scheduleId}`, {

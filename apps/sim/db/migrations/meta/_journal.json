@@ -400,6 +400,13 @@
       "when": 1752952373340,
       "tag": "0057_useful_vulture",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1752973801217,
+      "tag": "0058_lush_william_stryker",
+      "breakpoints": true
     }
   ]
 }

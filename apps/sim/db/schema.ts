@@ -416,6 +416,7 @@ export const workflowSchedule = pgTable('workflow_schedule', {
     .notNull()
     .references(() => workflow.id, { onDelete: 'cascade' })
     .unique(),
+  blockId: text('block_id').references(() => workflowBlocks.id, { onDelete: 'cascade' }),
   cronExpression: text('cron_expression'),
   nextRunAt: timestamp('next_run_at'),
   lastRanAt: timestamp('last_ran_at'),

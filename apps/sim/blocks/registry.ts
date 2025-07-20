@@ -45,6 +45,7 @@ import { RedditBlock } from '@/blocks/blocks/reddit'
 import { ResponseBlock } from '@/blocks/blocks/response'
 import { RouterBlock } from '@/blocks/blocks/router'
 import { S3Block } from '@/blocks/blocks/s3'
+import { ScheduleBlock } from '@/blocks/blocks/schedule'
 import { SerperBlock } from '@/blocks/blocks/serper'
 import { SlackBlock } from '@/blocks/blocks/slack'
 import { StagehandBlock } from '@/blocks/blocks/stagehand'
@@ -109,6 +110,7 @@ export const registry: Record<string, BlockConfig> = {
   reddit: RedditBlock,
   response: ResponseBlock,
   router: RouterBlock,
+  schedule: ScheduleBlock,
   s3: S3Block,
   serper: SerperBlock,
   stagehand: StagehandBlock,
@@ -134,7 +136,7 @@ export const registry: Record<string, BlockConfig> = {
 // Helper functions to access the registry
 export const getBlock = (type: string): BlockConfig | undefined => registry[type]
 
-export const getBlocksByCategory = (category: 'blocks' | 'tools'): BlockConfig[] =>
+export const getBlocksByCategory = (category: 'blocks' | 'tools' | 'triggers'): BlockConfig[] =>
   Object.values(registry).filter((block) => block.category === category)
 
 export const getAllBlockTypes = (): string[] => Object.keys(registry)

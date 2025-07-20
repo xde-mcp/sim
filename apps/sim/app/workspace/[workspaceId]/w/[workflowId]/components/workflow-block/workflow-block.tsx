@@ -100,6 +100,11 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
   const params = useParams()
   const currentWorkflowId = params.workflowId as string
 
+  // Check if this is a starter block or trigger block
+  const isStarterBlock = type === 'starter'
+  const isTriggerBlock = config.category === 'triggers'
+  const isWebhookTriggerBlock = type === 'webhook_trigger'
+
   const reactivateSchedule = async (scheduleId: string) => {
     try {
       const response = await fetch(`/api/schedules/${scheduleId}`, {
@@ -196,18 +201,18 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
   }
 
   useEffect(() => {
-    if (type === 'starter' && currentWorkflowId) {
+    if ((isStarterBlock || (isTriggerBlock && type === 'schedule')) && currentWorkflowId) {
       fetchScheduleInfo(currentWorkflowId)
     } else {
       setScheduleInfo(null)
-      setIsLoadingScheduleInfo(false) // Reset loading state when not a starter block
+      setIsLoadingScheduleInfo(false) // Reset loading state when not a schedule block
     }
 
     // Cleanup function to reset loading state when component unmounts or workflow changes
     return () => {
       setIsLoadingScheduleInfo(false)
     }
-  }, [type, currentWorkflowId])
+  }, [isStarterBlock, isTriggerBlock, type, currentWorkflowId])
 
   // Get webhook information for the tooltip
   useEffect(() => {
@@ -392,9 +397,7 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
     }
   }
 
-  // Check if this is a starter block or webhook trigger block and has active webhook
-  const isStarterBlock = type === 'starter'
-  const isWebhookTriggerBlock = type === 'webhook_trigger'
+  // Check webhook indicator
   const showWebhookIndicator = (isStarterBlock || isWebhookTriggerBlock) && blockWebhookStatus
 
   const getProviderName = (providerId: string): string => {
@@ -411,7 +414,10 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
     return providers[providerId] || 'Webhook'
   }
 
-  const shouldShowScheduleBadge = isStarterBlock && !isLoadingScheduleInfo && scheduleInfo !== null
+  const shouldShowScheduleBadge =
+    (isStarterBlock || (isTriggerBlock && type === 'schedule')) &&
+    !isLoadingScheduleInfo &&
+    scheduleInfo !== null
   const userPermissions = useUserPermissionsContext()
 
   return (
@@ -436,15 +442,18 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
         )}
 
         <ActionBar blockId={id} blockType={type} disabled={!userPermissions.canEdit} />
-        <ConnectionBlocks
-          blockId={id}
-          setIsConnecting={setIsConnecting}
-          isDisabled={!userPermissions.canEdit}
-          horizontalHandles={horizontalHandles}
-        />
+        {/* Connection Blocks - Don't show for trigger blocks or starter blocks */}
+        {config.category !== 'triggers' && type !== 'starter' && (
+          <ConnectionBlocks
+            blockId={id}
+            setIsConnecting={setIsConnecting}
+            isDisabled={!userPermissions.canEdit}
+            horizontalHandles={horizontalHandles}
+          />
+        )}
 
-        {/* Input Handle - Don't show for starter blocks or webhook trigger blocks */}
-        {type !== 'starter' && type !== 'webhook_trigger' && (
+        {/* Input Handle - Don't show for trigger blocks or starter blocks */}
+        {config.category !== 'triggers' && type !== 'starter' && (
           <Handle
             type='target'
             position={horizontalHandles ? Position.Left : Position.Top}
@@ -814,8 +823,8 @@ export function WorkflowBlock({ id, data }: NodeProps<WorkflowBlockProps>) {
               isValidConnection={(connection) => connection.target !== id}
             />
 
-            {/* Error Handle - Don't show for starter blocks or webhook trigger blocks */}
-            {type !== 'starter' && type !== 'webhook_trigger' && (
+            {/* Error Handle - Don't show for trigger blocks or starter blocks */}
+            {config.category !== 'triggers' && type !== 'starter' && (
               <Handle
                 type='source'
                 position={horizontalHandles ? Position.Right : Position.Bottom}

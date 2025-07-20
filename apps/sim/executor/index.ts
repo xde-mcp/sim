@@ -167,7 +167,7 @@ export class Executor {
    * Executes the workflow and returns the result.
    *
    * @param workflowId - Unique identifier for the workflow execution
-   * @param startBlockId - Optional block ID to start execution from (for webhook triggers)
+   * @param startBlockId - Optional block ID to start execution from (for webhook or schedule triggers)
    * @returns Execution result containing output, logs, and metadata, or a stream, or combined execution and stream
    */
   async execute(
@@ -547,7 +547,7 @@ export class Executor {
 
   /**
    * Validates that the workflow meets requirements for execution.
-   * Checks for starter block or webhook trigger block, connections, and loop configurations.
+   * Checks for starter block, webhook trigger block, or schedule trigger block, connections, and loop configurations.
    *
    * @param startBlockId - Optional specific block to start from
    * @throws Error if workflow validation fails
@@ -556,13 +556,13 @@ export class Executor {
     let validationBlock: SerializedBlock | undefined
 
     if (startBlockId) {
-      // If starting from a specific block (webhook trigger), validate that block exists
+      // If starting from a specific block (webhook trigger or schedule trigger), validate that block exists
       const startBlock = this.actualWorkflow.blocks.find((block) => block.id === startBlockId)
       if (!startBlock || !startBlock.enabled) {
         throw new Error(`Start block ${startBlockId} not found or disabled`)
       }
       validationBlock = startBlock
-      // Webhook trigger blocks can have incoming connections, so no need to check that
+      // Trigger blocks (webhook and schedule) can have incoming connections, so no need to check that
     } else {
       // Default validation for starter block
       const starterBlock = this.actualWorkflow.blocks.find(
@@ -580,7 +580,7 @@ export class Executor {
         throw new Error('Starter block cannot have incoming connections')
       }
 
-      // Only check outgoing connections for starter blocks, not webhook triggers
+      // Only check outgoing connections for starter blocks, not trigger blocks
       const outgoingFromStarter = this.actualWorkflow.connections.filter(
         (conn) => conn.source === starterBlock.id
       )
@@ -623,7 +623,7 @@ export class Executor {
 
   /**
    * Creates the initial execution context with predefined states.
-   * Sets up the starter block or webhook trigger block and its connections in the active execution path.
+   * Sets up the starter block, webhook trigger block, or schedule trigger block and its connections in the active execution path.
    *
    * @param workflowId - Unique identifier for the workflow execution
    * @param startTime - Execution start time
@@ -680,7 +680,7 @@ export class Executor {
     // Determine which block to initialize as the starting point
     let initBlock: SerializedBlock | undefined
     if (startBlockId) {
-      // Starting from a specific block (webhook trigger)
+      // Starting from a specific block (webhook trigger or schedule trigger)
       initBlock = this.actualWorkflow.blocks.find((block) => block.id === startBlockId)
     } else {
       // Default to starter block
