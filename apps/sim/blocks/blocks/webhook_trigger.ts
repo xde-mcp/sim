@@ -1,5 +1,32 @@
-import { SignalIcon } from '@/components/icons'
+import {
+  AirtableIcon,
+  DiscordIcon,
+  GithubIcon,
+  GmailIcon,
+  SignalIcon,
+  SlackIcon,
+  StripeIcon,
+  TelegramIcon,
+  WhatsAppIcon,
+} from '@/components/icons'
 import type { BlockConfig } from '../types'
+
+// Helper function to get provider icon
+const getWebhookProviderIcon = (provider: string) => {
+  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    slack: SlackIcon,
+    gmail: GmailIcon,
+    airtable: AirtableIcon,
+    telegram: TelegramIcon,
+    generic: SignalIcon,
+    whatsapp: WhatsAppIcon,
+    github: GithubIcon,
+    discord: DiscordIcon,
+    stripe: StripeIcon,
+  }
+
+  return iconMap[provider.toLowerCase()]
+}
 
 export const WebhookTriggerBlock: BlockConfig = {
   type: 'webhook_trigger',
@@ -16,16 +43,35 @@ export const WebhookTriggerBlock: BlockConfig = {
       type: 'dropdown',
       layout: 'full',
       options: [
-        { label: 'Slack', id: 'slack' },
-        { label: 'Gmail', id: 'gmail' },
-        { label: 'Airtable', id: 'airtable' },
-        { label: 'Telegram', id: 'telegram' },
-        { label: 'Generic', id: 'generic' },
-        { label: 'WhatsApp', id: 'whatsapp' },
-        { label: 'GitHub', id: 'github' },
-        { label: 'Discord', id: 'discord' },
-        { label: 'Stripe', id: 'stripe' },
-      ],
+        'slack',
+        'gmail',
+        'airtable',
+        'telegram',
+        'generic',
+        'whatsapp',
+        'github',
+        'discord',
+        'stripe',
+      ].map((provider) => {
+        const providerLabels = {
+          slack: 'Slack',
+          gmail: 'Gmail',
+          airtable: 'Airtable',
+          telegram: 'Telegram',
+          generic: 'Generic',
+          whatsapp: 'WhatsApp',
+          github: 'GitHub',
+          discord: 'Discord',
+          stripe: 'Stripe',
+        }
+
+        const icon = getWebhookProviderIcon(provider)
+        return {
+          label: providerLabels[provider as keyof typeof providerLabels],
+          id: provider,
+          ...(icon && { icon }),
+        }
+      }),
       value: () => 'generic',
     },
     {

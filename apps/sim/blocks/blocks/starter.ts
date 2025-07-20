@@ -6,7 +6,7 @@ export const StarterBlock: BlockConfig = {
   name: 'Starter',
   description: 'Start workflow',
   longDescription:
-    'Initiate your workflow manually, on a schedule, or via webhook triggers. Configure flexible execution patterns with customizable timing options and webhook security.',
+    'Initiate your workflow manually or on a schedule. Configure flexible execution patterns with customizable timing options.',
   category: 'blocks',
   bgColor: '#2FB3FF',
   icon: StartIcon,
@@ -19,7 +19,6 @@ export const StarterBlock: BlockConfig = {
       layout: 'full',
       options: [
         { label: 'Run manually', id: 'manual' },
-        { label: 'On webhook call', id: 'webhook' },
         { label: 'On schedule', id: 'schedule' },
       ],
       value: () => 'manual',
