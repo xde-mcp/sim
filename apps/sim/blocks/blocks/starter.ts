@@ -16,7 +16,10 @@ export const StarterBlock: BlockConfig = {
       title: 'Start Workflow',
       type: 'dropdown',
       layout: 'full',
-      options: [{ label: 'Run manually', id: 'manual' }],
+      options: [
+        { label: 'Run manually', id: 'manual' },
+        { label: 'Chat', id: 'chat' },
+      ],
       value: () => 'manual',
     },
     // Structured Input format - visible if manual run is selected (advanced mode)
